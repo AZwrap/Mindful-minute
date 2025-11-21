@@ -76,6 +76,24 @@ export const useEntries = create((set, get) => ({
     return entries;
   },
 
+  deleteEntry: (date) => {
+    const map = { ...(get().map || {}) };
+    if (map[date]) {
+      delete map[date];
+      set({ map });
+      saveAll(map);
+    }
+  },
+
+  archiveEntry: (date) => {
+    const map = { ...(get().map || {}) };
+    if (map[date]) {
+      map[date].archived = true;
+      set({ map });
+      saveAll(map);
+    }
+  },
+
   deleteAll: async () => {
     set({ map: {}, loaded: true });
     try { await AsyncStorage.setItem(KEY, JSON.stringify({})); } catch {}

@@ -35,115 +35,41 @@ const SwipeableEntry = ({
 }) => {
   const swipeableRef = useRef(null);
 
-  const scaleAnim = useRef(new Animated.Value(0.8)).current;
-
 const renderRightActions = (progress) => {
-  const scale = progress.interpolate({
+  const translateX = progress.interpolate({
+    inputRange: [0, 1],
+    outputRange: [50, 0],
+    extrapolate: 'clamp',
+  });
+
+  const opacity = progress.interpolate({
     inputRange: [0, 1],
     outputRange: [0, 1],
     extrapolate: 'clamp',
   });
 
-  return (
-    <Animated.View
-      style={[
-        styles.deleteButtonWrapper,   // <— rounded + scaling happens here
-        { transform: [{ scale }] }
-      ]}
-    >      
-     <Pressable
+ return (
+  <View
+    style={[
+      styles.entryWrapper,
+      {
+        backgroundColor: isDark ? '#1F2937' : '#FFFFFF',
+        borderColor,
+      },
+    ]}
+  >
+      <Pressable
         style={styles.deleteButton}
         onPress={() => {
           onDelete(entry);
           swipeableRef.current?.close();
         }}
       >
-          <Text style={styles.swipeActionText}>Delete</Text>
-        </Pressable>
-      </Animated.View>
-    );
-  };
-
-  function formatDate(iso) {
-    const d = new Date(`${iso}T00:00:00`);
-    return d.toLocaleDateString(undefined, {
-      weekday: 'short',
-      month: 'short',
-      day: 'numeric',
-    });
-  }
-
-  return (
-    <View
-      style={[
-        styles.entryWrapper,
-        {
-          backgroundColor: isDark ? '#FFFFFF' : '#FFFFFF',
-          borderColor,
-        },
-      ]}
-    >
-      <Swipeable
-        ref={swipeableRef}
-        renderRightActions={renderRightActions}
-        rightThreshold={30}
-        friction={2}
-        overshootFriction={8}
-      >
-        <Pressable
-          onPress={onPress}
-          style={({ pressed }) => [
-            styles.entryItem,
-            { opacity: pressed ? 0.8 : 1 },
-          ]}
-        >
-          <View style={styles.entryHeader}>
-            <Text style={[styles.entryDate, { color: textMain }]}>
-              {formatDate(entry.date)}
-            </Text>
-          </View>
-
-          <Text
-            style={[styles.entryPrompt, { color: textSub }]}
-            numberOfLines={2}
-          >
-            {entry.promptText}
-          </Text>
-
-          {entry.text && (
-            <Text
-              style={[styles.entryReflection, { color: textMain }]}
-              numberOfLines={3}
-            >
-              {entry.text}
-            </Text>
-          )}
-
-          {entry.moodTag?.value && (
-            <View
-              style={[
-                styles.moodTag,
-                {
-                  backgroundColor: isDark
-                    ? 'rgba(99,102,241,0.15)'
-                    : 'rgba(99,102,241,0.08)',
-                  borderColor: isDark
-                    ? 'rgba(99,102,241,0.3)'
-                    : 'rgba(99,102,241,0.2)',
-                },
-              ]}
-            >
-              <Text style={[styles.moodText, { color: '#6366F1' }]}>
-                {entry.moodTag.value}
-              </Text>
-            </View>
-          )}
-        </Pressable>
-      </Swipeable>
+        <Text style={styles.swipeActionText}>Delete</Text>
+      </Pressable>
     </View>
   );
-};
-
+}};
 
 
 
@@ -525,9 +451,10 @@ row: {
 entryWrapper: {
   borderRadius: 12,
   overflow: 'hidden',
-  borderWidth: 1,
   marginBottom: 8,
+  borderWidth: 1,
 },
+
 
   // keep the “card” padding etc, but remove border/radius from here
 entryItem: {
@@ -543,22 +470,21 @@ entryItem: {
     marginBottom: 8, // you can rerove this if using entryWrapper marginBottom
   },
 
-  swipeActions: {
-    width: 65,              // how wide the red area is
-    justifyContent: 'center',
-    alignItems: 'stretch',
-  },
+swipeActions: {
+  width: 65,
+  justifyContent: 'center',
+  alignItems: 'stretch',
+  flex: 1,   // ← REQUIRED so it stays same height as the row
+},
+
 
 deleteButton: {
   flex: 1,
   justifyContent: 'center',
   alignItems: 'center',
   backgroundColor: '#EF4444',
-  borderTopLeftRadius: 12,      // <— ADD THESE
-  borderBottomLeftRadius: 12,   // <— ADD THESE
-  borderTopRightRadius: 12,      // <— ADD THESE
-  borderBottomRightRadius: 12,   // <— ADD THESE
 },
+
 
 
   swipeActionText: {
@@ -574,13 +500,12 @@ deleteButton: {
     textTransform: 'uppercase',
     letterSpacing: 0.5,
   },
-  deleteButtonWrapper: {
+  rightActionContainer: {
   width: 65,
-  height: '100%',
+  height: '100%',        // 🔥 KEY FIX — this stops disappearing
   justifyContent: 'center',
-  borderTopLeftRadius: 12,
-  borderBottomLeftRadius: 12,
-  overflow: 'hidden',        // <-- crucial: keeps corners clipped during scale
+  alignItems: 'stretch',
+  backgroundColor: 'transparent',
 },
 
 });

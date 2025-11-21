@@ -74,15 +74,8 @@ const renderRightActions = (progress) => {
   }
 
   return (
-    <View
-      style={[
-        styles.entryWrapper,
-        {
-          backgroundColor: isDark ? '#FFFFFF' : '#FFFFFF',
-          borderColor,
-        },
-      ]}
-    >
+<View style={styles.entryRowContainer}>
+
       <Swipeable
         ref={swipeableRef}
         renderRightActions={renderRightActions}
@@ -554,11 +547,8 @@ deleteButton: {
   justifyContent: 'center',
   alignItems: 'center',
   backgroundColor: '#EF4444',
-  borderTopLeftRadius: 12,      // <— ADD THESE
-  borderBottomLeftRadius: 12,   // <— ADD THESE
-  borderTopRightRadius: 12,      // <— ADD THESE
-  borderBottomRightRadius: 12,   // <— ADD THESE
 },
+
 
 
   swipeActionText: {
@@ -582,5 +572,6 @@ deleteButton: {
   borderBottomLeftRadius: 12,
   overflow: 'hidden',        // <-- crucial: keeps corners clipped during scale
 },
+
 
 });

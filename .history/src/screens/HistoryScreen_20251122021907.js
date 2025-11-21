@@ -556,8 +556,6 @@ deleteButton: {
   backgroundColor: '#EF4444',
   borderTopLeftRadius: 12,      // <— ADD THESE
   borderBottomLeftRadius: 12,   // <— ADD THESE
-  borderTopRightRadius: 12,      // <— ADD THESE
-  borderBottomRightRadius: 12,   // <— ADD THESE
 },
 
 

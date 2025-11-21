@@ -24,128 +24,102 @@ import { useTheme } from '../stores/themeStore';
 import PremiumPressable from '../components/PremiumPressable';
 import { Swipeable } from 'react-native-gesture-handler';
 
-const SwipeableEntry = ({
-  entry,
-  onDelete,
+const SwipeableEntry = ({ 
+  entry, 
+  onDelete, 
   onPress,
   isDark,
   textMain,
   textSub,
-  borderColor,
+  borderColor 
 }) => {
   const swipeableRef = useRef(null);
 
-  const scaleAnim = useRef(new Animated.Value(0.8)).current;
-
-const renderRightActions = (progress) => {
-  const scale = progress.interpolate({
-    inputRange: [0, 1],
-    outputRange: [0, 1],
-    extrapolate: 'clamp',
-  });
-
-  return (
-    <Animated.View
-      style={[
-        styles.deleteButtonWrapper,   // <— rounded + scaling happens here
-        { transform: [{ scale }] }
-      ]}
-    >      
-     <Pressable
-        style={styles.deleteButton}
-        onPress={() => {
-          onDelete(entry);
-          swipeableRef.current?.close();
-        }}
-      >
+  const renderRightActions = (progress, dragX) => {
+    const scale = dragX.interpolate({
+      inputRange: [-55, -55, 0], // Just change from -65 to -55
+      outputRange: [1, 1, 0],
+      extrapolate: 'clamp',
+    });
+        return (
+      <View style={styles.swipeActions}>
+        <Pressable
+          style={styles.deleteButton}
+          onPress={() => {
+            onDelete(entry);
+            swipeableRef.current?.close();
+          }}
+        >
           <Text style={styles.swipeActionText}>Delete</Text>
         </Pressable>
-      </Animated.View>
+      </View>
     );
   };
 
   function formatDate(iso) {
     const d = new Date(`${iso}T00:00:00`);
-    return d.toLocaleDateString(undefined, {
-      weekday: 'short',
-      month: 'short',
-      day: 'numeric',
-    });
+    return d.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
   }
 
   return (
-    <View
-      style={[
-        styles.entryWrapper,
-        {
-          backgroundColor: isDark ? '#FFFFFF' : '#FFFFFF',
-          borderColor,
-        },
-      ]}
+    <Swipeable
+      ref={swipeableRef}
+      renderRightActions={renderRightActions}
+      rightThreshold={30}
+      friction={2}
+      overshootFriction={8}
+      containerStyle={styles.swipeableContainer}
     >
-      <Swipeable
-        ref={swipeableRef}
-        renderRightActions={renderRightActions}
-        rightThreshold={30}
-        friction={2}
-        overshootFriction={8}
+      <Pressable
+        onPress={onPress}
+        style={({ pressed }) => [
+          styles.entryItem,
+          { 
+            backgroundColor: isDark ? '#1F2937' : '#FFFFFF',
+            borderColor: borderColor,
+            opacity: pressed ? 0.8 : 1,
+          },
+        ]}
       >
-        <Pressable
-          onPress={onPress}
-          style={({ pressed }) => [
-            styles.entryItem,
-            { opacity: pressed ? 0.8 : 1 },
-          ]}
+        <View style={styles.entryHeader}>
+          <Text style={[styles.entryDate, { color: textMain }]}>
+            {formatDate(entry.date)}
+          </Text>
+        </View>
+        
+        <Text 
+          style={[styles.entryPrompt, { color: textSub }]}
+          numberOfLines={2}
         >
-          <View style={styles.entryHeader}>
-            <Text style={[styles.entryDate, { color: textMain }]}>
-              {formatDate(entry.date)}
+          {entry.promptText}
+        </Text>
+        
+        {entry.text && (
+          <Text 
+            style={[styles.entryReflection, { color: textMain }]}
+            numberOfLines={3}
+          >
+            {entry.text}
+          </Text>
+        )}
+        
+        {entry.moodTag?.value && (
+          <View style={[
+            styles.moodTag,
+            { 
+              backgroundColor: isDark ? 'rgba(99,102,241,0.15)' : 'rgba(99,102,241,0.08)',
+              borderColor: isDark ? 'rgba(99,102,241,0.3)' : 'rgba(99,102,241,0.2)',
+            }
+          ]}>
+            <Text style={[styles.moodText, { color: '#6366F1' }]}>
+              {entry.moodTag.value}
             </Text>
           </View>
-
-          <Text
-            style={[styles.entryPrompt, { color: textSub }]}
-            numberOfLines={2}
-          >
-            {entry.promptText}
-          </Text>
-
-          {entry.text && (
-            <Text
-              style={[styles.entryReflection, { color: textMain }]}
-              numberOfLines={3}
-            >
-              {entry.text}
-            </Text>
-          )}
-
-          {entry.moodTag?.value && (
-            <View
-              style={[
-                styles.moodTag,
-                {
-                  backgroundColor: isDark
-                    ? 'rgba(99,102,241,0.15)'
-                    : 'rgba(99,102,241,0.08)',
-                  borderColor: isDark
-                    ? 'rgba(99,102,241,0.3)'
-                    : 'rgba(99,102,241,0.2)',
-                },
-              ]}
-            >
-              <Text style={[styles.moodText, { color: '#6366F1' }]}>
-                {entry.moodTag.value}
-              </Text>
-            </View>
-          )}
-        </Pressable>
-      </Swipeable>
-    </View>
+        )}
+      </Pressable>
+    </Swipeable>
   );
 };
-
-
-
 
 export default function HistoryScreen({ navigation }) {
 const systemScheme = useColorScheme();
@@ -327,13 +301,6 @@ const currentGradient = gradients[currentTheme] || gradients.light;
           )}
         </View>
 
-        {/* Entry Count */}
-<View style={styles.entryCountContainer}>
-  <Text style={[styles.entryCount, { color: textSub }]}>
-    {filteredEntries.length} {filteredEntries.length === 1 ? 'entry' : 'entries'}
-  </Text>
-</View>
-
         {/* Virtualized Entries List */}
         <FlatList
           data={filteredEntries}
@@ -376,7 +343,6 @@ const currentGradient = gradients[currentTheme] || gradients.light;
             />
           )}
         />
-        
 
         {/* Stats Button - Bottom Left */}
         <PremiumPressable
@@ -445,7 +411,13 @@ const styles = StyleSheet.create({
     fontSize: 16,
     textAlign: 'center',
   },
-
+  entryItem: {
+    padding: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    marginBottom: 8,  // Reduced from 12
+    minHeight: 100,
+  },
   entryHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -507,80 +479,32 @@ const styles = StyleSheet.create({
     marginBottom: 8,
     fontStyle: 'italic',
   },
-
+    swipeableContainer: {
+    marginBottom: 8,
+  },
+  swipeActions: {
+    flexDirection: 'row',
+    width: 55, // Just reduce the width
+    alignSelf: 'stretch',
+  },
   swipeAction: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
   },
-swipeRowContainer: {
-  marginBottom: 8,
-},
-
-row: {
-  borderRadius: 12,
-  overflow: 'hidden',      // ⭐ forces row height to = card height
-  backgroundColor: 'transparent',
-},
-entryWrapper: {
-  borderRadius: 12,
-  overflow: 'hidden',
-  borderWidth: 1,
-  marginBottom: 8,
-},
-
-  // keep the “card” padding etc, but remove border/radius from here
-entryItem: {
-  padding: 12,
-  minHeight: 100,
-  backgroundColor: 'white',
-  // ❌ NO borderRadius
-  // ❌ NO overflow
-},
-
-
-  swipeableContainer: {
-    marginBottom: 8, // you can rerove this if using entryWrapper marginBottom
-  },
-
-  swipeActions: {
-    width: 65,              // how wide the red area is
+  deleteButton: {
+    flex: 1,
     justifyContent: 'center',
-    alignItems: 'stretch',
+    alignItems: 'center',
+    borderRadius: 8,
+    marginLeft: 2,
+    backgroundColor: '#EF4444',
   },
-
-deleteButton: {
-  flex: 1,
-  justifyContent: 'center',
-  alignItems: 'center',
-  backgroundColor: '#EF4444',
-  borderTopLeftRadius: 12,      // <— ADD THESE
-  borderBottomLeftRadius: 12,   // <— ADD THESE
-  borderTopRightRadius: 12,      // <— ADD THESE
-  borderBottomRightRadius: 12,   // <— ADD THESE
-},
-
-
   swipeActionText: {
     color: 'white',
     fontWeight: '600',
     fontSize: 13,
-    textAlign: 'center',
-    textAlignVertical: 'center',
+    textAlign: 'center', // Ensure text is centered
+    textAlignVertical: 'center', // For vertical centering (Android)
   },
-    entryCount: {
-    fontSize: 12,
-    fontWeight: '600',
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-  },
-  deleteButtonWrapper: {
-  width: 65,
-  height: '100%',
-  justifyContent: 'center',
-  borderTopLeftRadius: 12,
-  borderBottomLeftRadius: 12,
-  overflow: 'hidden',        // <-- crucial: keeps corners clipped during scale
-},
-
 });

@@ -16,7 +16,7 @@ import { useTheme } from '../stores/themeStore';
 import PremiumPressable from '../components/PremiumPressable';
 import { analyzeMoodTrends, getMoodInsights } from '../utils/moodTrends';
 import { analyzeWritingInsights, getWritingInsights } from '../utils/writingInsights';
-import { analyzeMoodCorrelations, getMoodCorrelationSummary } from '../utils/moodAnalysis';
+import { getMoodCorrelationSummary, analyzeMoodCorrelations } from '../utils/moodAnalysis';
 
 // Writing pattern analysis helpers
 const getDayName = (dateString) => {
@@ -33,6 +33,15 @@ const analyzeWritingPatterns = (allEntries) => {
     dayCounts[day] = (dayCounts[day] || 0) + 1;
   });
 
+    // Mood correlation analysis
+  const moodAnalysis = useMemo(() => {
+    return analyzeMoodCorrelations(entries);
+  }, [entries]);
+
+  const correlationSummary = useMemo(() => {
+    return getMoodCorrelationSummary(entries);
+  }, [entries]);
+  
   // Calculate total weeks
   if (allEntries.length === 0) return null;
   const firstEntry = new Date(allEntries[allEntries.length - 1].date);
@@ -157,7 +166,6 @@ const currentGradient = gradients[currentTheme] || gradients.light;
   const textMain = isDark ? '#E5E7EB' : '#0F172A';
   const textSub = isDark ? '#CBD5E1' : '#334155';
   const borderColor = isDark ? '#374151' : '#D1D5DB';
-    const brand = '#6366F1';
 
   const periodLabels = {
     week: 'Last 7 Days',
@@ -523,7 +531,7 @@ const currentGradient = gradients[currentTheme] || gradients.light;
         ]}
       >
         <Text style={[styles.insightText, { color: textMain }]}>
-          {insight.text}
+          💡 {insight.text}
         </Text>
       </View>
     ))}
@@ -541,56 +549,40 @@ const currentGradient = gradients[currentTheme] || gradients.light;
 </View>
 
         {/* Mood Correlation Analysis */}
-        <View style={[
-          styles.insightsSection, 
-          { 
-            backgroundColor: isDark ? 'rgba(30, 41, 59, 0.5)' : 'rgba(241, 245, 249, 0.8)' 
-          }
-        ]}>
-          <Text style={[styles.insightsTitle, { color: textMain }]}>
+        <View style={styles.section}>
+          <Text style={[styles.sectionTitle, { color: textMain }]}>
             Mood Patterns
           </Text>
           
           {correlationSummary.totalMoodsTracked > 0 ? (
             <>
-              {/* Stats Grid - matches your other stats sections */}
-              <View style={styles.insightsGrid}>
-                <View style={styles.insightItem}>
-                  <Text style={[styles.insightLabel, { color: textSub }]}>
-                    Different Moods
-                  </Text>
-                  <Text style={[styles.insightValue, { color: '#6366F1' }]}>
+              <View style={styles.statsGrid}>
+                <View style={styles.statCard}>
+                  <Text style={[styles.statValue, { color: brand }]}>
                     {correlationSummary.totalMoodsTracked}
+                  </Text>
+                  <Text style={[styles.statLabel, { color: textSub }]}>
+                    Different Moods
                   </Text>
                 </View>
                 
-                <View style={styles.insightItem}>
-                  <Text style={[styles.insightLabel, { color: textSub }]}>
-                    Most Common
-                  </Text>
-                  <Text style={[styles.insightValue, { color: '#6366F1' }]}>
+                <View style={styles.statCard}>
+                  <Text style={[styles.statValue, { color: brand }]}>
                     {correlationSummary.mostCommonMood}
+                  </Text>
+                  <Text style={[styles.statLabel, { color: textSub }]}>
+                    Most Common
                   </Text>
                 </View>
               </View>
 
-              {/* Mood Insights - matches your other insight sections */}
-              <View style={styles.distributionSection}>
-                <Text style={[styles.distributionTitle, { color: textSub }]}>
+              {/* Mood Insights */}
+              <View style={styles.insightsContainer}>
+                <Text style={[styles.insightsTitle, { color: textMain }]}>
                   Patterns
                 </Text>
                 {moodAnalysis.insights.map((insight, index) => (
-                  <View 
-                    key={index} 
-                    style={[
-                      styles.insightItem,
-                      { 
-                        backgroundColor: isDark 
-                          ? 'rgba(99, 102, 241, 0.1)' 
-                          : 'rgba(99, 102, 241, 0.05)' 
-                      }
-                    ]}
-                  >
+                  <View key={index} style={[styles.insightCard, { backgroundColor: isDark ? 'rgba(30, 41, 59, 0.4)' : 'rgba(241, 245, 249, 0.6)' }]}>
                     <Text style={[styles.insightText, { color: textMain }]}>
                       {insight}
                     </Text>
@@ -598,42 +590,27 @@ const currentGradient = gradients[currentTheme] || gradients.light;
                 ))}
               </View>
 
-              {/* Time Patterns - matches your other pattern sections */}
-              <View style={styles.distributionSection}>
-                <Text style={[styles.distributionTitle, { color: textSub }]}>
+              {/* Time Patterns */}
+              <View style={styles.timePatternsContainer}>
+                <Text style={[styles.insightsTitle, { color: textMain }]}>
                   Time of Day Patterns
                 </Text>
                 {Object.entries(moodAnalysis.timeCorrelations).map(([time, data]) => (
-                  <View 
-                    key={time} 
-                    style={[
-                      styles.moodStatItem,
-                      { 
-                        backgroundColor: isDark 
-                          ? 'rgba(30, 41, 59, 0.3)' 
-                          : 'rgba(241, 245, 249, 0.5)' 
-                      }
-                    ]}
-                  >
-                    <View style={styles.moodStatHeader}>
-                      <Text style={[styles.moodName, { color: textMain }]}>
-                        {time.charAt(0).toUpperCase() + time.slice(1)}
-                      </Text>
-                      <Text style={[styles.moodPercentage, { color: '#6366F1' }]}>
-                        Usually {data.dominantMood}
-                      </Text>
-                    </View>
+                  <View key={time} style={[styles.timePatternCard, { backgroundColor: isDark ? 'rgba(30, 41, 59, 0.4)' : 'rgba(241, 245, 249, 0.6)' }]}>
+                    <Text style={[styles.timeLabel, { color: textMain }]}>
+                      {time.charAt(0).toUpperCase() + time.slice(1)}
+                    </Text>
+                    <Text style={[styles.moodLabel, { color: textSub }]}>
+                      Usually {data.dominantMood}
+                    </Text>
                   </View>
                 ))}
               </View>
             </>
           ) : (
-            <View style={styles.emptyState}>
-              <Text style={[styles.emptyTitle, { color: textMain }]}>No Mood Patterns Yet</Text>
-              <Text style={[styles.emptySubtitle, { color: textSub }]}>
-                Write more entries with mood tags to see pattern analysis
-              </Text>
-            </View>
+            <Text style={[styles.emptyState, { color: textSub }]}>
+              Write more entries with mood tags to see pattern analysis
+            </Text>
           )}
         </View>
 
@@ -697,7 +674,7 @@ const currentGradient = gradients[currentTheme] || gradients.light;
               ]}
             >
               <Text style={[styles.writingInsightText, { color: textMain }]}>
-                {insight.text}
+                💭 {insight.text}
               </Text>
             </View>
           ))}

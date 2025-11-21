@@ -24,128 +24,106 @@ import { useTheme } from '../stores/themeStore';
 import PremiumPressable from '../components/PremiumPressable';
 import { Swipeable } from 'react-native-gesture-handler';
 
-const SwipeableEntry = ({
-  entry,
-  onDelete,
+
+const SwipeableEntry = ({ 
+  entry, 
+  onDelete, 
   onPress,
   isDark,
   textMain,
   textSub,
-  borderColor,
+  borderColor 
 }) => {
   const swipeableRef = useRef(null);
 
-  const scaleAnim = useRef(new Animated.Value(0.8)).current;
+  const renderRightActions = (progress, dragX) => {
+    const scale = dragX.interpolate({
+      inputRange: [-80, 0],
+      outputRange: [1, 0],
+      extrapolate: 'clamp',
+    });
 
-const renderRightActions = (progress) => {
-  const scale = progress.interpolate({
-    inputRange: [0, 1],
-    outputRange: [0, 1],
-    extrapolate: 'clamp',
-  });
-
-  return (
-    <Animated.View
-      style={[
-        styles.deleteButtonWrapper,   // <— rounded + scaling happens here
-        { transform: [{ scale }] }
-      ]}
-    >      
-     <Pressable
-        style={styles.deleteButton}
-        onPress={() => {
-          onDelete(entry);
-          swipeableRef.current?.close();
-        }}
-      >
-          <Text style={styles.swipeActionText}>Delete</Text>
-        </Pressable>
-      </Animated.View>
+    return (
+      <View style={styles.swipeActions}>
+        <Animated.View style={[styles.swipeAction, { transform: [{ scale }] }]}>
+          <Pressable
+            style={[styles.deleteButton, { backgroundColor: '#EF4444' }]}
+            onPress={() => {
+              onDelete(entry);
+              swipeableRef.current?.close();
+            }}
+          >
+            <Text style={styles.swipeActionText}>Delete</Text>
+          </Pressable>
+        </Animated.View>
+      </View>
     );
   };
 
   function formatDate(iso) {
     const d = new Date(`${iso}T00:00:00`);
-    return d.toLocaleDateString(undefined, {
-      weekday: 'short',
-      month: 'short',
-      day: 'numeric',
-    });
+    return d.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
   }
 
   return (
-    <View
-      style={[
-        styles.entryWrapper,
-        {
-          backgroundColor: isDark ? '#FFFFFF' : '#FFFFFF',
-          borderColor,
-        },
-      ]}
+    <Swipeable
+      ref={swipeableRef}
+      renderRightActions={renderRightActions}
+      rightThreshold={40}
+      friction={2}
+      overshootFriction={8}
+      containerStyle={styles.swipeableContainer}
     >
-      <Swipeable
-        ref={swipeableRef}
-        renderRightActions={renderRightActions}
-        rightThreshold={30}
-        friction={2}
-        overshootFriction={8}
+      <Pressable
+        onPress={onPress}
+        style={({ pressed }) => [
+          styles.entryItem,
+          { 
+            backgroundColor: isDark ? '#1F2937' : '#FFFFFF',
+            borderColor: borderColor,
+            opacity: pressed ? 0.8 : 1,
+          },
+        ]}
       >
-        <Pressable
-          onPress={onPress}
-          style={({ pressed }) => [
-            styles.entryItem,
-            { opacity: pressed ? 0.8 : 1 },
-          ]}
+        <View style={styles.entryHeader}>
+          <Text style={[styles.entryDate, { color: textMain }]}>
+            {formatDate(entry.date)}
+          </Text>
+        </View>
+        
+        <Text 
+          style={[styles.entryPrompt, { color: textSub }]}
+          numberOfLines={2}
         >
-          <View style={styles.entryHeader}>
-            <Text style={[styles.entryDate, { color: textMain }]}>
-              {formatDate(entry.date)}
+          {entry.promptText}
+        </Text>
+        
+        {entry.text && (
+          <Text 
+            style={[styles.entryReflection, { color: textMain }]}
+            numberOfLines={3}
+          >
+            {entry.text}
+          </Text>
+        )}
+        
+        {entry.moodTag?.value && (
+          <View style={[
+            styles.moodTag,
+            { 
+              backgroundColor: isDark ? 'rgba(99,102,241,0.15)' : 'rgba(99,102,241,0.08)',
+              borderColor: isDark ? 'rgba(99,102,241,0.3)' : 'rgba(99,102,241,0.2)',
+            }
+          ]}>
+            <Text style={[styles.moodText, { color: '#6366F1' }]}>
+              {entry.moodTag.value}
             </Text>
           </View>
-
-          <Text
-            style={[styles.entryPrompt, { color: textSub }]}
-            numberOfLines={2}
-          >
-            {entry.promptText}
-          </Text>
-
-          {entry.text && (
-            <Text
-              style={[styles.entryReflection, { color: textMain }]}
-              numberOfLines={3}
-            >
-              {entry.text}
-            </Text>
-          )}
-
-          {entry.moodTag?.value && (
-            <View
-              style={[
-                styles.moodTag,
-                {
-                  backgroundColor: isDark
-                    ? 'rgba(99,102,241,0.15)'
-                    : 'rgba(99,102,241,0.08)',
-                  borderColor: isDark
-                    ? 'rgba(99,102,241,0.3)'
-                    : 'rgba(99,102,241,0.2)',
-                },
-              ]}
-            >
-              <Text style={[styles.moodText, { color: '#6366F1' }]}>
-                {entry.moodTag.value}
-              </Text>
-            </View>
-          )}
-        </Pressable>
-      </Swipeable>
-    </View>
+        )}
+      </Pressable>
+    </Swipeable>
   );
 };
-
-
-
 
 export default function HistoryScreen({ navigation }) {
 const systemScheme = useColorScheme();
@@ -168,45 +146,6 @@ const { height: screenHeight } = Dimensions.get('window');
   const [searchText, setSearchText] = useState('');
   const [isSearching, setIsSearching] = useState(false);
   const contentFadeAnim = useRef(new Animated.Value(0)).current;
-
-    const [refreshing, setRefreshing] = useState(false);
-  const [deletedEntries, setDeletedEntries] = useState({});
-
-  // Handle entry deletion
-  const handleDeleteEntry = (entry) => {
-    Alert.alert(
-      "Delete Entry",
-      "Are you sure you want to delete this entry? This action cannot be undone.",
-      [
-        { text: "Cancel", style: "cancel" },
-        { 
-          text: "Delete", 
-          style: "destructive",
-          onPress: () => {
-            // Mark as deleted in local state first
-            setDeletedEntries(prev => ({
-              ...prev,
-              [entry.date]: true
-            }));
-            
-            // Then remove from store
-            const { removeEntry } = useEntries.getState();
-            removeEntry(entry.date);
-          }
-        }
-      ]
-    );
-  };
-
-  // Pull-to-refresh handler
-  const handleRefresh = async () => {
-    setRefreshing(true);
-    
-    // Simulate refresh - you can add actual data reloading here
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    setRefreshing(false);
-  };
 
   useEffect(() => {
   // Fade in when entries are loaded
@@ -238,20 +177,17 @@ const { height: screenHeight } = Dimensions.get('window');
       .map(([mood]) => mood);
   }, [entries]);
 
-  // Filter entries based on selected mood and exclude deleted
+  // Filter entries based on selected mood
   const filteredEntries = useMemo(() => {
-    // Filter out deleted entries first
-    const activeEntries = entries.filter(entry => !deletedEntries[entry.date]);
-    
     // Only show complete entries (with both text AND mood)
-    const completeEntries = activeEntries.filter(entry => entry.isComplete !== false);
+    const completeEntries = entries.filter(entry => entry.isComplete !== false);
     
     if (selectedMood === 'all') return completeEntries;
     if (selectedMood === 'custom') {
       return completeEntries.filter(entry => entry.moodTag?.type === 'custom');
     }
     return completeEntries.filter(entry => entry.moodTag?.value === selectedMood);
-  }, [entries, selectedMood, deletedEntries]);
+  }, [entries, selectedMood]);
 
   // Gradients
   const gradients = {
@@ -327,13 +263,6 @@ const currentGradient = gradients[currentTheme] || gradients.light;
           )}
         </View>
 
-        {/* Entry Count */}
-<View style={styles.entryCountContainer}>
-  <Text style={[styles.entryCount, { color: textSub }]}>
-    {filteredEntries.length} {filteredEntries.length === 1 ? 'entry' : 'entries'}
-  </Text>
-</View>
-
         {/* Virtualized Entries List */}
         <FlatList
           data={filteredEntries}
@@ -344,15 +273,6 @@ const currentGradient = gradients[currentTheme] || gradients.light;
           maxToRenderPerBatch={10}
           windowSize={10}
           removeClippedSubviews={true}
-          refreshControl={
-            <RefreshControl
-              refreshing={refreshing}
-              onRefresh={handleRefresh}
-              tintColor={isDark ? '#6366F1' : '#6366F1'}
-              colors={['#6366F1']}
-              progressBackgroundColor={isDark ? '#1E293B' : '#F1F5F9'}
-            />
-          }
           ListEmptyComponent={
             <View style={styles.emptyState}>
               <Text style={[styles.emptyText, { color: textSub }]}>
@@ -364,19 +284,57 @@ const currentGradient = gradients[currentTheme] || gradients.light;
             </View>
           }
           renderItem={({ item }) => (
-            <SwipeableEntry
-              key={item.date}
-              entry={item}
-              onDelete={handleDeleteEntry}
+            <Pressable
               onPress={() => navigation.navigate('EntryDetail', { date: item.date })}
-              isDark={isDark}
-              textMain={textMain}
-              textSub={textSub}
-              borderColor={borderColor}
-            />
+              style={({ pressed }) => [
+                styles.entryItem,
+                { 
+                  backgroundColor: isDark ? '#1F2937' : '#FFFFFF',
+                  borderColor: borderColor,
+                  opacity: pressed ? 0.8 : 1,
+                },
+                flashDate === item.date && styles.flashingEntry,
+              ]}
+            >
+              <View style={styles.entryHeader}>
+                <Text style={[styles.entryDate, { color: textMain }]}>
+                  {formatDate(item.date)}
+                </Text>
+              </View>
+              
+              <Text 
+                style={[styles.entryPrompt, { color: textSub }]}
+                numberOfLines={2}
+              >
+                {item.promptText}
+              </Text>
+              
+              {/* ADDED: Reflection text */}
+              {item.text && (
+                <Text 
+                  style={[styles.entryReflection, { color: textMain }]}
+                  numberOfLines={3}
+                >
+                  {item.text}
+                </Text>
+              )}
+              
+              {item.moodTag?.value && (
+                <View style={[
+                  styles.moodTag,
+                  { 
+                    backgroundColor: isDark ? 'rgba(99,102,241,0.15)' : 'rgba(99,102,241,0.08)',
+                    borderColor: isDark ? 'rgba(99,102,241,0.3)' : 'rgba(99,102,241,0.2)',
+                  }
+                ]}>
+                  <Text style={[styles.moodText, { color: '#6366F1' }]}>
+                    {item.moodTag.value}
+                  </Text>
+                </View>
+              )}
+            </Pressable>
           )}
         />
-        
 
         {/* Stats Button - Bottom Left */}
         <PremiumPressable
@@ -405,10 +363,10 @@ const styles = StyleSheet.create({
   },
   contentCard: {
     flex: 1,
-    marginHorizontal: 4,  // Reduced from 8
+    marginHorizontal: 8,
     marginTop: 8,
     marginBottom: 16,
-    padding: 12,  // Reduced from 16
+    padding: 16,
     borderRadius: 24,
   },
   filterContainer: {
@@ -445,7 +403,16 @@ const styles = StyleSheet.create({
     fontSize: 16,
     textAlign: 'center',
   },
-
+  entryItem: {
+    padding: 16,
+    borderRadius: 12,
+    borderWidth: 1,
+    marginBottom: 12,
+    minHeight: 100,
+  },
+  flashingEntry: {
+    backgroundColor: 'rgba(99, 102, 241, 0.1)',
+  },
   entryHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -507,80 +474,4 @@ const styles = StyleSheet.create({
     marginBottom: 8,
     fontStyle: 'italic',
   },
-
-  swipeAction: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-swipeRowContainer: {
-  marginBottom: 8,
-},
-
-row: {
-  borderRadius: 12,
-  overflow: 'hidden',      // ⭐ forces row height to = card height
-  backgroundColor: 'transparent',
-},
-entryWrapper: {
-  borderRadius: 12,
-  overflow: 'hidden',
-  borderWidth: 1,
-  marginBottom: 8,
-},
-
-  // keep the “card” padding etc, but remove border/radius from here
-entryItem: {
-  padding: 12,
-  minHeight: 100,
-  backgroundColor: 'white',
-  // ❌ NO borderRadius
-  // ❌ NO overflow
-},
-
-
-  swipeableContainer: {
-    marginBottom: 8, // you can rerove this if using entryWrapper marginBottom
-  },
-
-  swipeActions: {
-    width: 65,              // how wide the red area is
-    justifyContent: 'center',
-    alignItems: 'stretch',
-  },
-
-deleteButton: {
-  flex: 1,
-  justifyContent: 'center',
-  alignItems: 'center',
-  backgroundColor: '#EF4444',
-  borderTopLeftRadius: 12,      // <— ADD THESE
-  borderBottomLeftRadius: 12,   // <— ADD THESE
-  borderTopRightRadius: 12,      // <— ADD THESE
-  borderBottomRightRadius: 12,   // <— ADD THESE
-},
-
-
-  swipeActionText: {
-    color: 'white',
-    fontWeight: '600',
-    fontSize: 13,
-    textAlign: 'center',
-    textAlignVertical: 'center',
-  },
-    entryCount: {
-    fontSize: 12,
-    fontWeight: '600',
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-  },
-  deleteButtonWrapper: {
-  width: 65,
-  height: '100%',
-  justifyContent: 'center',
-  borderTopLeftRadius: 12,
-  borderBottomLeftRadius: 12,
-  overflow: 'hidden',        // <-- crucial: keeps corners clipped during scale
-},
-
 });

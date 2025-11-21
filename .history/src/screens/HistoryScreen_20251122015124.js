@@ -35,34 +35,19 @@ const SwipeableEntry = ({
 }) => {
   const swipeableRef = useRef(null);
 
-  const scaleAnim = useRef(new Animated.Value(0.8)).current;
-
-const renderRightActions = (progress) => {
-  const scale = progress.interpolate({
-    inputRange: [0, 1],
-    outputRange: [0, 1],
-    extrapolate: 'clamp',
-  });
-
-  return (
-    <Animated.View
-      style={[
-        styles.deleteButtonWrapper,   // <— rounded + scaling happens here
-        { transform: [{ scale }] }
-      ]}
-    >      
-     <Pressable
+  const renderRightActions = () => (
+    <View style={styles.swipeActions}>
+      <Pressable
         style={styles.deleteButton}
         onPress={() => {
           onDelete(entry);
           swipeableRef.current?.close();
         }}
       >
-          <Text style={styles.swipeActionText}>Delete</Text>
-        </Pressable>
-      </Animated.View>
-    );
-  };
+        <Text style={styles.swipeActionText}>Delete</Text>
+      </Pressable>
+    </View>
+  );
 
   function formatDate(iso) {
     const d = new Date(`${iso}T00:00:00`);
@@ -78,7 +63,7 @@ const renderRightActions = (progress) => {
       style={[
         styles.entryWrapper,
         {
-          backgroundColor: isDark ? '#FFFFFF' : '#FFFFFF',
+          backgroundColor: isDark ? '#FFFFFF' : '#FFFFFF', // card bg
           borderColor,
         },
       ]}
@@ -143,8 +128,6 @@ const renderRightActions = (progress) => {
     </View>
   );
 };
-
-
 
 
 export default function HistoryScreen({ navigation }) {
@@ -523,21 +506,18 @@ row: {
   backgroundColor: 'transparent',
 },
 entryWrapper: {
-  borderRadius: 12,
-  overflow: 'hidden',
-  borderWidth: 1,
-  marginBottom: 8,
-},
+    borderRadius: 12,      // same as your old entryItem
+    borderWidth: 1,
+    marginBottom: 8,
+    overflow: 'hidden',    // IMPORTANT: clips both card and delete button
+  },
 
   // keep the “card” padding etc, but remove border/radius from here
 entryItem: {
   padding: 12,
   minHeight: 100,
-  backgroundColor: 'white',
-  // ❌ NO borderRadius
-  // ❌ NO overflow
+  borderRadius: 12,   // ⭐ ADD THIS STAR OF THE SHOW
 },
-
 
   swipeableContainer: {
     marginBottom: 8, // you can rerove this if using entryWrapper marginBottom
@@ -549,17 +529,13 @@ entryItem: {
     alignItems: 'stretch',
   },
 
-deleteButton: {
-  flex: 1,
-  justifyContent: 'center',
-  alignItems: 'center',
-  backgroundColor: '#EF4444',
-  borderTopLeftRadius: 12,      // <— ADD THESE
-  borderBottomLeftRadius: 12,   // <— ADD THESE
-  borderTopRightRadius: 12,      // <— ADD THESE
-  borderBottomRightRadius: 12,   // <— ADD THESE
-},
-
+  deleteButton: {
+    flex: 1,                // fill full height of the row
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#EF4444',
+    // no borderRadius here – wrapper handles corners
+  },
 
   swipeActionText: {
     color: 'white',
@@ -574,13 +550,4 @@ deleteButton: {
     textTransform: 'uppercase',
     letterSpacing: 0.5,
   },
-  deleteButtonWrapper: {
-  width: 65,
-  height: '100%',
-  justifyContent: 'center',
-  borderTopLeftRadius: 12,
-  borderBottomLeftRadius: 12,
-  overflow: 'hidden',        // <-- crucial: keeps corners clipped during scale
-},
-
 });
