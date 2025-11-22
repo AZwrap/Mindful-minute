@@ -18,7 +18,6 @@ import { analyzeMoodTrends, getMoodInsights } from '../utils/moodTrends';
 import { analyzeWritingInsights, getWritingInsights } from '../utils/writingInsights';
 import { analyzeMoodCorrelations, getMoodCorrelationSummary } from '../utils/moodAnalysis';
 
-
 // Writing pattern analysis helpers
 const getDayName = (dateString) => {
   const date = new Date(dateString);
@@ -806,7 +805,7 @@ const currentGradient = gradients[currentTheme] || gradients.light;
             Weekly Recap
           </Text>
         </PremiumPressable>
-
+        
     </>
   )}
           </View>

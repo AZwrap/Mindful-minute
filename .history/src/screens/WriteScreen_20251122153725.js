@@ -63,14 +63,6 @@ export default function WriteScreen({ navigation, route }) {
   const currentPrompt = smartPrompt || prompt;
 
   const [text, setText] = useState(route.params?.text || '');
-  
-  // Handle text updates from navigation params (including Focus Mode)
-  useEffect(() => {
-    if (route.params?.text !== undefined) {
-      console.log('Updating text from navigation params:', route.params.text);
-      setText(route.params.text);
-    }
-  }, [route.params?.text]);
   const [running, setRunning] = useState(true);
   const [showTimer, setShowTimer] = useState(true);
   const [wordCount, setWordCount] = useState(
@@ -327,19 +319,13 @@ export default function WriteScreen({ navigation, route }) {
   );
 
   useEffect(() => {
-    // Handle text updates from both initial load and Focus Mode
-    if (route.params?.text !== undefined) {
-      setText(route.params.text);
-      
-      // Auto-focus if coming from Focus Mode or if there's existing text
-      if (route.params?.fromFocusMode || route.params?.text?.trim().length > 0) {
-        const timer = setTimeout(() => {
-          inputRef.current?.focus();
-        }, 150);
-        return () => clearTimeout(timer);
-      }
+    if (route.params?.text?.trim().length > 0) {
+      const timer = setTimeout(() => {
+        inputRef.current?.focus();
+      }, 150);
+      return () => clearTimeout(timer);
     }
-  }, [route.params?.text, route.params?.fromFocusMode]);
+  }, [route.params?.text]);
 
   const handleTick = (t) => {
     if (!mounted.current) return;
@@ -554,29 +540,21 @@ const continueToMood = async () => {
   }, 50);
 };
 
-  // Use the text from route params directly instead of local state
+const handleTextChange = (newText) => {
+  setText(newText);
+  const words = newText.trim().split(/\s+/).filter(word => word.length > 0).length;
+  setWordCount(words);
   
-  const handleTextChange = (newText) => {
-    // Update the route params directly
-    navigation.setParams({
-      text: newText,
-      date,
-      prompt
-    });
-    
-    const words = newText.trim().split(/\s+/).filter(word => word.length > 0).length;
-    setWordCount(words);
-    
-    // Auto-suggest moods when user types enough content
-    if (newText.length > 15) {
-      const suggestions = getMoodSuggestions(newText);
-      console.log('Text:', newText);
-      console.log('Suggestions:', suggestions);
-      setSuggestedMoods(suggestions);
-    } else {
-      setSuggestedMoods([]);
-    }
-  };
+  // Auto-suggest moods when user types enough content
+  if (newText.length > 15) {
+    const suggestions = getMoodSuggestions(newText);
+    console.log('Text:', newText); // DEBUG
+    console.log('Suggestions:', suggestions); // DEBUG
+    setSuggestedMoods(suggestions);
+  } else {
+    setSuggestedMoods([]);
+  }
+};
 
   // Gradients for WriteScreen
   const gradients = {
@@ -738,7 +716,7 @@ const continueToMood = async () => {
         ]}>
           <TextInput
             ref={inputRef}
-            value={route.params?.text || ''} 
+            value={text}
             onChangeText={handleTextChange}
             onFocus={handleInputFocus}
             onBlur={handleInputBlur}

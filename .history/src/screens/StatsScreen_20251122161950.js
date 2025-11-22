@@ -17,6 +17,7 @@ import PremiumPressable from '../components/PremiumPressable';
 import { analyzeMoodTrends, getMoodInsights } from '../utils/moodTrends';
 import { analyzeWritingInsights, getWritingInsights } from '../utils/writingInsights';
 import { analyzeMoodCorrelations, getMoodCorrelationSummary } from '../utils/moodAnalysis';
+import WeeklyRecapScreen from './WeeklyRecapScreen';
 
 
 // Writing pattern analysis helpers

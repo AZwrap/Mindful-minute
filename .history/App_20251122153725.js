@@ -17,7 +17,6 @@ import { useColorScheme } from 'react-native';
 import { StatusBar } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import FocusWriteScreen from './src/screens/FocusWriteScreen';
-import WeeklyRecapScreen from './src/screens/WeeklyRecapScreen';
 
 
 const Stack = createNativeStackNavigator();
@@ -68,14 +67,7 @@ function StackNavigator() {
           title: 'Add Mood',
         }}
       />
-
-<Stack.Screen 
-  name="WeeklyRecap" 
-  component={WeeklyRecapScreen}
-  options={{
-    title: 'Weekly Recap',
-  }}
-/>      
+      
       <Stack.Screen 
         name="History" 
         component={HistoryScreen}

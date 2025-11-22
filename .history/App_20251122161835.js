@@ -19,6 +19,9 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import FocusWriteScreen from './src/screens/FocusWriteScreen';
 import WeeklyRecapScreen from './src/screens/WeeklyRecapScreen';
 
+// Add to your Stack Navigator:
+<Stack.Screen name="WeeklyRecap" component={WeeklyRecapScreen} />
+
 
 const Stack = createNativeStackNavigator();
 
@@ -74,6 +77,7 @@ function StackNavigator() {
   component={WeeklyRecapScreen}
   options={{
     title: 'Weekly Recap',
+    // Add any other options you want
   }}
 />      
       <Stack.Screen 

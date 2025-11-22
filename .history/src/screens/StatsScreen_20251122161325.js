@@ -18,7 +18,6 @@ import { analyzeMoodTrends, getMoodInsights } from '../utils/moodTrends';
 import { analyzeWritingInsights, getWritingInsights } from '../utils/writingInsights';
 import { analyzeMoodCorrelations, getMoodCorrelationSummary } from '../utils/moodAnalysis';
 
-
 // Writing pattern analysis helpers
 const getDayName = (dateString) => {
   const date = new Date(dateString);
@@ -796,17 +795,6 @@ const currentGradient = gradients[currentTheme] || gradients.light;
     </Text>
   </View>
 ))}
-        {/* Weekly Recap Button - Bottom Right */}
-        <PremiumPressable
-          onPress={() => navigation.navigate('WeeklyRecap')}
-          haptic="light"
-          style={styles.recapButton}
-        >
-          <Text style={styles.recapButtonText}>
-            Weekly Recap
-          </Text>
-        </PremiumPressable>
-
     </>
   )}
           </View>
@@ -816,7 +804,13 @@ const currentGradient = gradients[currentTheme] || gradients.light;
   </LinearGradient>
 );
 }
-
+<PremiumPressable
+  onPress={() => navigation.navigate('WeeklyRecap')}
+  haptic="light"
+  style={styles.recapButton}
+>
+  <Text style={styles.recapButtonText}>Weekly Recap</Text>
+</PremiumPressable>
 
 const styles = StyleSheet.create({
   container: {
@@ -1359,20 +1353,5 @@ insightsSection: {
     textAlign: 'center',
     fontStyle: 'italic',
     padding: 20,
-  },
-    recapButton: {
-    position: 'absolute',
-    bottom: 16,
-    right: 16,
-    borderWidth: 1,
-    paddingVertical: 14,
-    paddingHorizontal: 20,
-    borderRadius: 16,
-    borderColor: 'rgba(99,102,241,0.3)',
-  },
-  recapButtonText: {
-    fontWeight: '700',
-    fontSize: 14,
-    color: '#6366F1',
   },
 });
