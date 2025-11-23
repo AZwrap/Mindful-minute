@@ -744,16 +744,7 @@ const currentGradient = gradients[currentTheme] || gradients.light;
 </View>
 
 {/* Statistics */}
-<View style={[
-  styles.statsSection, 
-  { 
-    backgroundColor: isDark ? 'rgba(30, 41, 59, 0.5)' : 'rgba(241, 245, 249, 0.8)' 
-  }
-]}>
-  <Text style={[styles.statsTitle, { color: textMain }]}>
-    Mood Statistics
-  </Text>
-  
+<View style={styles.statsSection}>
   {moodStats.length === 0 ? (
     <View style={styles.emptyState}>
       <Text style={[styles.emptyTitle, { color: textMain }]}>
@@ -768,7 +759,7 @@ const currentGradient = gradients[currentTheme] || gradients.light;
     </View>
   ) : (
     <>
-      <View style={styles.summary}>
+                <View style={styles.summary}>
         <Text style={[styles.summaryText, { color: textMain }]}>
           {periodEntries.length} entries • {moodStats.length} moods
         </Text>
@@ -783,7 +774,7 @@ const currentGradient = gradients[currentTheme] || gradients.light;
   >
     <View style={styles.statHeader}>
       <Text style={[styles.moodName, { color: textMain }]}>
-        {stat.mood.charAt(0).toUpperCase() + stat.mood.slice(1)}
+        {stat.mood.charAt(0).toUpperCase() + stat.mood.slice(1)} {/* Add capitalization */}
       </Text>
       <Text style={[styles.statCount, { color: '#6366F1' }]}>
         {stat.count} time{stat.count !== 1 ? 's' : ''}
@@ -807,36 +798,13 @@ const currentGradient = gradients[currentTheme] || gradients.light;
     </Text>
   </View>  
 ))}
-
     </>
   )}
-</View>
-
-{/* Weekly Recap Button - At the very bottom */}
-<View style={styles.bottomRecapContainer}>
-  <PremiumPressable
-    onPress={() => navigation.navigate('WeeklyRecap')}
-    haptic="light"
-    style={[
-      styles.recapButton,
-      { 
-        backgroundColor: isDark ? 'rgba(99, 102, 241, 0.15)' : 'rgba(99, 102, 241, 0.08)',
-        borderColor: isDark ? 'rgba(99, 102, 241, 0.3)' : 'rgba(99, 102, 241, 0.2)'
-      }
-    ]}
-  >
-    <Text style={[
-      styles.recapButtonText,
-      { color: '#6366F1' }
-    ]}>
-      View Weekly Recap
-    </Text>
-  </PremiumPressable>
-</View>
-</View>
-</ScrollView>
-</Animated.View>
-</LinearGradient>
+          </View>
+        </View>
+      </ScrollView>
+    </Animated.View>
+  </LinearGradient>
 );
 }
 
@@ -882,17 +850,7 @@ periodText: {
   fontWeight: '600',
   paddingHorizontal: 4, // Add padding around text
 },
-  statsSection: {
-    marginBottom: 24,
-    paddingHorizontal: 16,
-    paddingVertical: 16,
-    borderRadius: 12,
-  },
-  statsTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    marginBottom: 16,
-  },
+  statsSection: {},
 emptyState: {
   justifyContent: 'center',
   alignItems: 'center',
@@ -1393,20 +1351,19 @@ insightsSection: {
     fontStyle: 'italic',
     padding: 20,
   },
-  recapButton: {
+    recapButton: {
+    position: 'absolute',
+    bottom: 16,
+    right: 16,
     borderWidth: 1,
     paddingVertical: 14,
     paddingHorizontal: 20,
-    borderRadius: 12,
-    alignItems: 'center',
+    borderRadius: 16,
+    borderColor: 'rgba(99,102,241,0.3)',
   },
   recapButtonText: {
-    fontWeight: '600',
-    fontSize: 15,
-  },
-  bottomRecapContainer: {
-    paddingHorizontal: 16,
-    paddingVertical: 16,
-    marginTop: 8,
+    fontWeight: '700',
+    fontSize: 14,
+    color: '#6366F1',
   },
 });
