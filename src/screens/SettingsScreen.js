@@ -52,8 +52,11 @@ export default function SettingsScreen({ navigation }) {
   const setPreserveTimerProgress = useSettings((s) => s.setPreserveTimerProgress);
   const init = useSettings((s) => s.init);
   const map = useEntries((s) => s.map);
+<<<<<<< HEAD
   const gratitudeModeEnabled = useSettings((s) => s.gratitudeModeEnabled);
   const setGratitudeModeEnabled = useSettings((s) => s.setGratitudeModeEnabled);
+=======
+>>>>>>> 3921cadd5abd400df2e0feb6de4b791110deec31
 
   const gradients = {
     dark: {
@@ -352,6 +355,7 @@ const premiumToastStyle = {
                 value={preserveTimerProgress}
                 onValueChange={setPreserveTimerProgress}
               />
+<<<<<<< HEAD
               
 
             </View>
@@ -365,6 +369,8 @@ const premiumToastStyle = {
                 value={gratitudeModeEnabled}
                 onValueChange={setGratitudeModeEnabled}
               />
+=======
+>>>>>>> 3921cadd5abd400df2e0feb6de4b791110deec31
             </View>
 
             {/* Session */}

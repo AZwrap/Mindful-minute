@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 export const GRATITUDE_PROMPTS = [
   "What's one small thing you're grateful for today?",
   "Who made a positive impact on your day and how?",
@@ -12,6 +13,10 @@ export const GRATITUDE_PROMPTS = [
 ];
 
 export const POSITIVE_PROMPTS = [
+=======
+export const POSITIVE_PROMPTS = [
+  "What’s one small thing you’re grateful for right now?",
+>>>>>>> 3921cadd5abd400df2e0feb6de4b791110deec31
   "What energized you today?",
   "What surprised you—in a good way?",
   "What made you smile?",
@@ -48,7 +53,10 @@ export const CHALLENGING_PROMPTS = [
 ];
 
 export const ALL_PROMPTS = [
+<<<<<<< HEAD
   ...GRATITUDE_PROMPTS,
+=======
+>>>>>>> 3921cadd5abd400df2e0feb6de4b791110deec31
   ...POSITIVE_PROMPTS,
   ...NEUTRAL_PROMPTS,
   ...CHALLENGING_PROMPTS,

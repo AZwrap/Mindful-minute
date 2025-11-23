@@ -15,7 +15,10 @@ const DEFAULTS = {
   breakDuration: 30,      // 30 seconds  
   longBreakDuration: 300, // 5 minutes
   totalCycles: 4,         // 4 cycles
+<<<<<<< HEAD
     gratitudeModeEnabled: false,
+=======
+>>>>>>> 3921cadd5abd400df2e0feb6de4b791110deec31
 };
 
 async function loadSettings() {
@@ -130,9 +133,12 @@ export const useSettings = create((set, get) => ({
     set({ totalCycles: n });
     await saveSettings(next);
   },
+<<<<<<< HEAD
   setGratitudeModeEnabled: async (enabled) => {
     const next = { ...get(), gratitudeModeEnabled: enabled };
     set({ gratitudeModeEnabled: enabled });
     await saveSettings(next);
   },
+=======
+>>>>>>> 3921cadd5abd400df2e0feb6de4b791110deec31
 }));

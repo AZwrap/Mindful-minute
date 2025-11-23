@@ -18,6 +18,7 @@ import { analyzeMoodTrends, getMoodInsights } from '../utils/moodTrends';
 import { analyzeWritingInsights, getWritingInsights } from '../utils/writingInsights';
 import { analyzeMoodCorrelations, getMoodCorrelationSummary } from '../utils/moodAnalysis';
 
+<<<<<<< HEAD
 // Gratitude analytics helper
 const analyzeGratitudePractice = (entries) => {
   const gratitudeEntries = entries.filter(entry => entry.isGratitude);
@@ -56,6 +57,8 @@ const analyzeGratitudePractice = (entries) => {
     hasGratitudeData: gratitudeEntries.length > 0
   };
 };
+=======
+>>>>>>> 3921cadd5abd400df2e0feb6de4b791110deec31
 
 // Writing pattern analysis helpers
 const getDayName = (dateString) => {
@@ -118,7 +121,10 @@ const isDark = currentTheme === 'dark';
   
 const writingPatterns = useMemo(() => analyzeWritingPatterns(entries), [entries]);
 const writingAnalytics = useMemo(() => analyzeWritingAnalytics(entries), [entries]);
+<<<<<<< HEAD
 const gratitudeAnalytics = useMemo(() => analyzeGratitudePractice(entries), [entries]);
+=======
+>>>>>>> 3921cadd5abd400df2e0feb6de4b791110deec31
 const moodTrends = useMemo(() => analyzeMoodTrends(entries, selectedPeriod), [entries, selectedPeriod]);
 const moodInsights = useMemo(() => getMoodInsights(moodTrends), [moodTrends]);
 const writingInsightsAnalysis = useMemo(() => analyzeWritingInsights(entries, selectedPeriod), [entries, selectedPeriod]);
@@ -250,6 +256,7 @@ const currentGradient = gradients[currentTheme] || gradients.light;
             ))}
           </View>
 
+<<<<<<< HEAD
                     {/* Gratitude Practice Analytics */}
           {gratitudeAnalytics?.hasGratitudeData && (
             <View style={[
@@ -305,6 +312,8 @@ const currentGradient = gradients[currentTheme] || gradients.light;
             </View>
           )}
 
+=======
+>>>>>>> 3921cadd5abd400df2e0feb6de4b791110deec31
           {/* Writing Patterns */}
           <View style={[
             styles.insightsSection, 
@@ -354,6 +363,7 @@ const currentGradient = gradients[currentTheme] || gradients.light;
 </View>
             )}
 
+<<<<<<< HEAD
       {/* Writing Patterns */}
 <View style={[
   styles.insightsSection, 
@@ -362,6 +372,8 @@ const currentGradient = gradients[currentTheme] || gradients.light;
   }
 ]}></View>
 
+=======
+>>>>>>> 3921cadd5abd400df2e0feb6de4b791110deec31
 
             
             {/* Day Distribution */}
@@ -1511,6 +1523,7 @@ insightsSection: {
     paddingVertical: 16,
     marginTop: 8,
   },
+<<<<<<< HEAD
     gratitudeInsights: {
     marginTop: 12,
     paddingTop: 12,
@@ -1524,4 +1537,6 @@ insightsSection: {
     textAlign: 'center',
     fontStyle: 'italic',
   },
+=======
+>>>>>>> 3921cadd5abd400df2e0feb6de4b791110deec31
 });
