@@ -37,7 +37,6 @@ const SwipeableEntry = ({
 
   const scaleAnim = useRef(new Animated.Value(0.8)).current;
 
-<<<<<<< HEAD
 const renderRightActions = (progress, dragX) => {
   return (
     <View style={styles.deleteButtonWrapper}>
@@ -71,13 +70,6 @@ const renderRightActions = (progress) => {
     </View>
   );
 };
-=======
-          <Text style={styles.swipeActionText}>Delete</Text>
-        </Pressable>
-      </Animated.View>
-    );
-  };
->>>>>>> 3921cadd5abd400df2e0feb6de4b791110deec31
 
   function formatDate(iso) {
     const d = new Date(`${iso}T00:00:00`);
@@ -569,13 +561,8 @@ deleteButton: {
   justifyContent: 'center',
   alignItems: 'center',
   backgroundColor: '#EF4444',
-<<<<<<< HEAD
   borderTopLeftRadius: 0,      // <— ADD THESE
   borderBottomLeftRadius: 0,
-=======
-  borderTopLeftRadius: 12,      // <— ADD THESE
-  borderBottomLeftRadius: 12,   // <— ADD THESE
->>>>>>> 3921cadd5abd400df2e0feb6de4b791110deec31
   borderTopRightRadius: 12,      // <— ADD THESE
   borderBottomRightRadius: 12,   // <— ADD THESE
 },
@@ -598,15 +585,9 @@ deleteButton: {
   width: 65,
   height: '100%',
   justifyContent: 'center',
-<<<<<<< HEAD
   borderTopLeftRadius: 0,
   borderBottomLeftRadius: 0,
   overflow: 'hidden',   
-=======
-  borderTopLeftRadius: 12,
-  borderBottomLeftRadius: 12,
-  overflow: 'hidden',        // <-- crucial: keeps corners clipped during scale
->>>>>>> 3921cadd5abd400df2e0feb6de4b791110deec31
 },
 
 });
