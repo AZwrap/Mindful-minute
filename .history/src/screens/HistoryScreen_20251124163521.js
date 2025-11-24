@@ -543,8 +543,13 @@ deleteButton: {
   justifyContent: 'center',
   alignItems: 'center',
   backgroundColor: '#EF4444',
+<<<<<<< HEAD
   borderTopLeftRadius: 0,      // <— ADD THESE
   borderBottomLeftRadius: 0,
+=======
+  borderTopLeftRadius: 12,      // <— ADD THESE
+  borderBottomLeftRadius: 12,   // <— ADD THESE
+>>>>>>> 3921cadd5abd400df2e0feb6de4b791110deec31
   borderTopRightRadius: 12,      // <— ADD THESE
   borderBottomRightRadius: 12,   // <— ADD THESE
 },

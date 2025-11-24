@@ -37,6 +37,7 @@ const SwipeableEntry = ({
 
   const scaleAnim = useRef(new Animated.Value(0.8)).current;
 
+<<<<<<< HEAD
 const renderRightActions = (progress, dragX) => {
   return (
     <View style={styles.deleteButtonWrapper}>
@@ -567,9 +568,15 @@ deleteButton: {
   width: 65,
   height: '100%',
   justifyContent: 'center',
+<<<<<<< HEAD
   borderTopLeftRadius: 0,
   borderBottomLeftRadius: 0,
   overflow: 'hidden',   
+=======
+  borderTopLeftRadius: 12,
+  borderBottomLeftRadius: 12,
+  overflow: 'hidden',        // <-- crucial: keeps corners clipped during scale
+>>>>>>> 3921cadd5abd400df2e0feb6de4b791110deec31
 },
 
 });
