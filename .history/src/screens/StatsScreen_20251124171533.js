@@ -512,40 +512,27 @@ const currentGradient = gradients[currentTheme] || gradients.light;
   ({writingAnalytics.timeStats.mostActiveCount} entry{writingAnalytics.timeStats.mostActiveCount !== 1 ? 's' : ''})
 </Text>
                     <View style={styles.timeBars}>
-{Object.entries(writingAnalytics.timeStats.slots).map(([time, count]) => (
-  <View key={time} style={styles.timeBarItem}>
-    <Text 
-  style={[
-    styles.timeLabel, 
-    { 
-      color: textSub, 
-      width: 50,        // ← FIXED WIDTH
-      textAlign: 'right'
-    }
-  ]}
->
-
-      {time === 'Morning' ? 'AM' : 
-       time === 'Afternoon' ? 'Noon' :
-       time === 'Evening' ? 'Eve' : 'Night'}
-    </Text>
-    <View style={[styles.timeBarContainer, { backgroundColor: isDark ? '#374151' : '#E5E7EB' }]}>
-      <View 
-        style={[
-          styles.timeBar,
-          { 
-            width: '100%', // All bars same full width
-            backgroundColor: '#6366F1',
-            opacity: count / writingAnalytics.timeStats.mostActiveCount // Intensity via opacity
-          }
-        ]} 
-      />
-    </View>
-    <Text style={[styles.timeCount, { color: textSub }]}>
-      {count}
-    </Text>
-  </View>
-))}
+                      {Object.entries(writingAnalytics.timeStats.slots).map(([time, count]) => (
+                        <View key={time} style={styles.timeBarItem}>
+                          <Text style={[styles.timeLabel, { color: textSub }]}>
+                            {time}
+                          </Text>
+                          <View style={[styles.timeBarContainer, { backgroundColor: isDark ? '#374151' : '#E5E7EB' }]}>
+                            <View 
+                              style={[
+                                styles.timeBar,
+                                { 
+                                  width: `${(count / writingAnalytics.timeStats.mostActiveCount) * 100}%`,
+                                  backgroundColor: '#6366F1',
+                                }
+                              ]} 
+                            />
+                          </View>
+                          <Text style={[styles.timeCount, { color: textSub }]}>
+                            {count}
+                          </Text>
+                        </View>
+                      ))}
                     </View>
                   </View>
                 )}
@@ -1039,17 +1026,17 @@ const currentGradient = gradients[currentTheme] || gradients.light;
       </Text>
     </View>
                     
-    <View style={styles.percentageBar}>
-      <View 
-        style={[
-          styles.percentageFill,
-          { 
-            width: `${stat.percentage}%`,
-            backgroundColor: '#6366F1'
-          }
-        ]} 
-      />
-    </View>
+<View style={styles.percentageBar}>
+  <View 
+    style={[
+      styles.percentageFill,
+      { 
+        width: `${stat.percentage}%`,
+        backgroundColor: '#6366F1'
+      }
+    ]} 
+  />
+</View>
                     
     <Text style={[styles.percentageText, { color: textSub }]}>
       {stat.percentage}% of entries
@@ -1392,21 +1379,18 @@ insightValue: {
     alignItems: 'center',
     gap: 8,
   },
-timeLabel: {
-  fontSize: 11,
-  fontWeight: '600',
-  width: 50,         // ← ADD THIS
-  textAlign: 'right',
-  textTransform: 'capitalize',
-},
-
+  timeLabel: {
+    fontSize: 11,
+    fontWeight: '600',
+    width: 70,
+    textAlign: 'right',
+    textTransform: 'capitalize',
+  },
   timeBarContainer: {
     flex: 1,
     height: 6,
     borderRadius: 3,
     overflow: 'hidden',
-    justifyContent: 'flex-start', // Ensure bars start from left
-    alignItems: 'flex-start', // Ensure bars start from left
   },
   timeBar: {
     height: '100%',

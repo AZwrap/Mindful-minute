@@ -184,7 +184,7 @@ applyDailySave: ({ date, moodTagged, force = false, wordCount = 0, mood = null, 
 gratitudeEntries: s.achievements.progress.gratitudeEntries + (isGratitudeEntry ? 1 : 0),
 gratitudeStreak: isGratitudeEntry
   ? s.achievements.progress.gratitudeStreak + 1
-  : s.achievements.progress.gratitudeStreak,
+  : s.achievements.progress.gratitudeStreak
 
           // Update these if changed
           morningEntries: s.achievements.progress.morningEntries,

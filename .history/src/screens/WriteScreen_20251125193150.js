@@ -88,8 +88,6 @@ const [isGratitudeExpanded, setIsGratitudeExpanded] = useState(false);
   const inputRef = useRef(null);
   const [timerCompleted, setTimerCompleted] = useState(false);
   const [isInitialLoad, setIsInitialLoad] = useState(true);
-  const scrollRef = useRef(null);
-
 
     // TextInput focus animation
   const inputFocusAnim = useRef(new Animated.Value(0)).current;
@@ -629,7 +627,7 @@ navigation.navigate('MoodTag', {
   <KeyboardAvoidingView
     style={{ flex: 1 }}
     behavior="height"
-    keyboardVerticalOffset={80}   // best value for Android
+    keyboardVerticalOffset={1000}   // best value for Android
   >
     <LinearGradient
       colors={currentGradient.primary}
@@ -638,14 +636,11 @@ navigation.navigate('MoodTag', {
       end={{ x: 0, y: 1 }}
     >
 
-<ScrollView
-  ref={scrollRef}
-  style={styles.container}
-  contentContainerStyle={styles.scrollContent}
-  showsVerticalScrollIndicator={false}
-  keyboardShouldPersistTaps="handled"
->
-
+      <ScrollView 
+        style={styles.container}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
         <View style={styles.contentCard}>
     <Text style={[styles.prompt, { color: promptColor }]}>
       {prompt?.text}
@@ -918,22 +913,17 @@ onPress={() => {
                     <Text style={[styles.gratitudeNumber, { color: isDark ? '#A5B4FC' : '#4F46E5' }]}>
                       {num}.
                     </Text>
-<TextInput
-  style={[
-    styles.gratitudeInput,
-    { 
-      color: isDark ? '#E5E7EB' : '#0F172A',
-      backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(255,255,255,0.8)',
-      borderColor: isDark ? 'rgba(99, 102, 241, 0.4)' : 'rgba(99, 102, 241, 0.3)',
-    }
-  ]}
-  placeholder={`Gratitude #${num}...`}
-  placeholderTextColor={isDark ? '#6B7280' : '#9CA3AF'}
-  onFocus={() => {
-    setTimeout(() => {
-      scrollRef.current?.scrollToEnd({ animated: true });
-    }, 120); // slight delay ensures keyboard is fully up
-  }}
+                    <TextInput
+                      style={[
+                        styles.gratitudeInput,
+                        { 
+                          color: isDark ? '#E5E7EB' : '#0F172A',
+                          backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(255,255,255,0.8)',
+                          borderColor: isDark ? 'rgba(99, 102, 241, 0.4)' : 'rgba(99, 102, 241, 0.3)',
+                        }
+                      ]}
+                      placeholder={`Gratitude #${num}...`}
+                      placeholderTextColor={isDark ? '#6B7280' : '#9CA3AF'}
                       onChangeText={(text) => {
                         const newEntries = [...gratitudeEntries];
                         newEntries[num-1] = text;

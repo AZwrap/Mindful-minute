@@ -171,9 +171,6 @@ const isDark = currentTheme === 'dark';
   const level = useProgress((s) => s.level);
   const totalXP = useProgress((s) => s.totalXP);
   const contentFadeAnim = useRef(new Animated.Value(0)).current;
-  // Add these lines after your existing progress state
-const gratitudeStreak = useProgress((s) => s.gratitudeStreak);
-const totalGratitudeEntries = useProgress((s) => s.totalGratitudeEntries);
 
   
 const writingPatterns = useMemo(() => analyzeWritingPatterns(entries), [entries]);
@@ -507,45 +504,32 @@ const currentGradient = gradients[currentTheme] || gradients.light;
                 {/* Writing Time Patterns */}
                 {writingAnalytics.timeStats && (
                   <View style={styles.timeAnalysis}>
-                   <Text style={[styles.timeTitle, { color: textSub }]}>
-  Most active: {writingAnalytics.timeStats.mostActive} 
-  ({writingAnalytics.timeStats.mostActiveCount} entry{writingAnalytics.timeStats.mostActiveCount !== 1 ? 's' : ''})
-</Text>
+                    <Text style={[styles.timeTitle, { color: textSub }]}>
+                      Most active: {writingAnalytics.timeStats.mostActive} 
+                      ({writingAnalytics.timeStats.mostActiveCount} entries)
+                    </Text>
                     <View style={styles.timeBars}>
-{Object.entries(writingAnalytics.timeStats.slots).map(([time, count]) => (
-  <View key={time} style={styles.timeBarItem}>
-    <Text 
-  style={[
-    styles.timeLabel, 
-    { 
-      color: textSub, 
-      width: 50,        // ← FIXED WIDTH
-      textAlign: 'right'
-    }
-  ]}
->
-
-      {time === 'Morning' ? 'AM' : 
-       time === 'Afternoon' ? 'Noon' :
-       time === 'Evening' ? 'Eve' : 'Night'}
-    </Text>
-    <View style={[styles.timeBarContainer, { backgroundColor: isDark ? '#374151' : '#E5E7EB' }]}>
-      <View 
-        style={[
-          styles.timeBar,
-          { 
-            width: '100%', // All bars same full width
-            backgroundColor: '#6366F1',
-            opacity: count / writingAnalytics.timeStats.mostActiveCount // Intensity via opacity
-          }
-        ]} 
-      />
-    </View>
-    <Text style={[styles.timeCount, { color: textSub }]}>
-      {count}
-    </Text>
-  </View>
-))}
+                      {Object.entries(writingAnalytics.timeStats.slots).map(([time, count]) => (
+                        <View key={time} style={styles.timeBarItem}>
+                          <Text style={[styles.timeLabel, { color: textSub }]}>
+                            {time}
+                          </Text>
+                          <View style={[styles.timeBarContainer, { backgroundColor: isDark ? '#374151' : '#E5E7EB' }]}>
+                            <View 
+                              style={[
+                                styles.timeBar,
+                                { 
+                                  width: `${(count / writingAnalytics.timeStats.mostActiveCount) * 100}%`,
+                                  backgroundColor: '#6366F1',
+                                }
+                              ]} 
+                            />
+                          </View>
+                          <Text style={[styles.timeCount, { color: textSub }]}>
+                            {count}
+                          </Text>
+                        </View>
+                      ))}
                     </View>
                   </View>
                 )}
@@ -610,30 +594,8 @@ const currentGradient = gradients[currentTheme] || gradients.light;
                 </Text>
               </View>
             </View>
-            
-            {/* XP Progress Bar */}
-            <View style={styles.xpContainer}>
-              <View style={styles.xpLabels}>
-                <Text style={[styles.xpText, { color: textSub }]}>Progress to Level {level + 1}</Text>
-                <Text style={[styles.xpText, { color: textSub }]}>
-                  {totalXP % 100}/100
-                </Text>
-              </View>
-              <View style={[styles.xpBar, { backgroundColor: isDark ? '#374151' : '#E5E7EB' }]}>
-                <View 
-                  style={[
-                    styles.xpProgress, 
-                    { 
-                      width: `${totalXP % 100}%`,
-                      backgroundColor: '#6366F1',
-                    }
-                  ]} 
-                />
-              </View>
-            </View>
-          </View>
 
-                                {/* Weekly Gratitude Report */}
+                      {/* Weekly Gratitude Report */}
           {gratitudeReport && gratitudeReport.gratitudeEntriesCount >= 3 && (
             <View style={[
               styles.insightsSection, 
@@ -706,6 +668,28 @@ const currentGradient = gradients[currentTheme] || gradients.light;
               </View>
             </View>
           )}
+            
+            {/* XP Progress Bar */}
+            <View style={styles.xpContainer}>
+              <View style={styles.xpLabels}>
+                <Text style={[styles.xpText, { color: textSub }]}>Progress to Level {level + 1}</Text>
+                <Text style={[styles.xpText, { color: textSub }]}>
+                  {totalXP % 100}/100
+                </Text>
+              </View>
+              <View style={[styles.xpBar, { backgroundColor: isDark ? '#374151' : '#E5E7EB' }]}>
+                <View 
+                  style={[
+                    styles.xpProgress, 
+                    { 
+                      width: `${totalXP % 100}%`,
+                      backgroundColor: '#6366F1',
+                    }
+                  ]} 
+                />
+              </View>
+            </View>
+          </View>
 
           {/* Mood Trends Section */}
 <View style={[
@@ -728,14 +712,14 @@ const currentGradient = gradients[currentTheme] || gradients.light;
         
         {moodTrends.moodStats.map((stat, index) => (
           <View key={stat.mood} style={styles.moodStatItem}>
-<View style={styles.moodStatHeader}>
-  <Text style={[styles.moodName, { color: textMain }]}>
-    {stat.mood.charAt(0).toUpperCase() + stat.mood.slice(1)}
-  </Text>
-  <Text style={[styles.statCount, { color: '#6366F1', marginLeft: 8 }]}>
-    {stat.count} time{stat.count !== 1 ? 's' : ''}
-  </Text>
-</View>
+            <View style={styles.moodStatHeader}>
+              <Text style={[styles.moodName, { color: textMain }]}>
+                {stat.mood.charAt(0).toUpperCase() + stat.mood.slice(1)}
+              </Text>
+              <Text style={[styles.moodPercentage, { color: '#6366F1' }]}>
+                {stat.percentage}%
+              </Text>
+            </View>
             <View style={[styles.percentageBar, { backgroundColor: isDark ? '#374151' : '#E5E7EB' }]}>
               <View 
                 style={[
@@ -1182,8 +1166,8 @@ emptySubtitle: {
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 8,
-    paddingHorizontal: 8, // Add horizontal padding
-    gap: 8, // Force space between mood name and count
+      paddingHorizontal: 4, // Add some horizontal padding
+
   },
   moodName: {
     fontSize: 16,
@@ -1392,21 +1376,18 @@ insightValue: {
     alignItems: 'center',
     gap: 8,
   },
-timeLabel: {
-  fontSize: 11,
-  fontWeight: '600',
-  width: 50,         // ← ADD THIS
-  textAlign: 'right',
-  textTransform: 'capitalize',
-},
-
+  timeLabel: {
+    fontSize: 11,
+    fontWeight: '600',
+    width: 70,
+    textAlign: 'right',
+    textTransform: 'capitalize',
+  },
   timeBarContainer: {
     flex: 1,
     height: 6,
     borderRadius: 3,
     overflow: 'hidden',
-    justifyContent: 'flex-start', // Ensure bars start from left
-    alignItems: 'flex-start', // Ensure bars start from left
   },
   timeBar: {
     height: '100%',

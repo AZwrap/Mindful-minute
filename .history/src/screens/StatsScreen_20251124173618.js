@@ -1392,14 +1392,13 @@ insightValue: {
     alignItems: 'center',
     gap: 8,
   },
-timeLabel: {
-  fontSize: 11,
-  fontWeight: '600',
-  width: 50,         // ← ADD THIS
-  textAlign: 'right',
-  textTransform: 'capitalize',
-},
-
+  timeLabel: {
+    fontSize: 11,
+    fontWeight: '600',
+    width: 70,
+    textAlign: 'right',
+    textTransform: 'capitalize',
+  },
   timeBarContainer: {
     flex: 1,
     height: 6,

@@ -514,17 +514,7 @@ const currentGradient = gradients[currentTheme] || gradients.light;
                     <View style={styles.timeBars}>
 {Object.entries(writingAnalytics.timeStats.slots).map(([time, count]) => (
   <View key={time} style={styles.timeBarItem}>
-    <Text 
-  style={[
-    styles.timeLabel, 
-    { 
-      color: textSub, 
-      width: 50,        // ← FIXED WIDTH
-      textAlign: 'right'
-    }
-  ]}
->
-
+    <Text style={[styles.timeLabel, { color: textSub }]}>
       {time === 'Morning' ? 'AM' : 
        time === 'Afternoon' ? 'Noon' :
        time === 'Evening' ? 'Eve' : 'Night'}
@@ -1392,14 +1382,13 @@ insightValue: {
     alignItems: 'center',
     gap: 8,
   },
-timeLabel: {
-  fontSize: 11,
-  fontWeight: '600',
-  width: 50,         // ← ADD THIS
-  textAlign: 'right',
-  textTransform: 'capitalize',
-},
-
+  timeLabel: {
+    fontSize: 11,
+    fontWeight: '600',
+    width: 70,
+    textAlign: 'right',
+    textTransform: 'capitalize',
+  },
   timeBarContainer: {
     flex: 1,
     height: 6,

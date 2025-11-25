@@ -59,17 +59,17 @@ const analyzeWritingTimes = (entryTimes) => {
   if (!entryTimes.length) return null;
   
   const timeSlots = {
-    Morning: 0,    // 5am - 12pm
-    Afternoon: 0,  // 12pm - 5pm
-    Evening: 0,    // 5pm - 9pm
-    Night: 0       // 9pm - 5am
+    morning: 0,    // 5am - 12pm
+    afternoon: 0,  // 12pm - 5pm
+    evening: 0,    // 5pm - 9pm
+    night: 0       // 9pm - 5am
   };
   
   entryTimes.forEach(hour => {
-    if (hour >= 5 && hour < 12) timeSlots.Morning++;
-    else if (hour >= 12 && hour < 17) timeSlots.Afternoon++;
-    else if (hour >= 17 && hour < 21) timeSlots.Evening++;
-    else timeSlots.Night++;
+    if (hour >= 5 && hour < 12) timeSlots.morning++;
+    else if (hour >= 12 && hour < 17) timeSlots.afternoon++;
+    else if (hour >= 17 && hour < 21) timeSlots.evening++;
+    else timeSlots.night++;
   });
   
   const mostActiveSlot = Object.entries(timeSlots).reduce((a, b) => 

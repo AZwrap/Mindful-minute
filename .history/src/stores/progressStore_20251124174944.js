@@ -181,11 +181,7 @@ applyDailySave: ({ date, moodTagged, force = false, wordCount = 0, mood = null, 
           totalEntries: s.achievements.progress.totalEntries + 1,
           entriesThisMonth: entriesThisMonth + 1,
           currentMonth: currentMonth,
-gratitudeEntries: s.achievements.progress.gratitudeEntries + (isGratitudeEntry ? 1 : 0),
-gratitudeStreak: isGratitudeEntry
-  ? s.achievements.progress.gratitudeStreak + 1
-  : s.achievements.progress.gratitudeStreak,
-
+          gratitudeEntries: s.achievements.progress.gratitudeEntries + (isGratitudeEntry ? 1 : 0),
           // Update these if changed
           morningEntries: s.achievements.progress.morningEntries,
           eveningEntries: s.achievements.progress.eveningEntries,
@@ -212,24 +208,6 @@ gratitudeStreak: isGratitudeEntry
           newProgress.timedSessions += 1;
         }
 
-// --- GRATITUDE STREAK LOGIC (correct order before achievement checks) ---
-let updatedGratitudeStreak = s.gratitudeStreak;
-
-if (isGratitudeEntry) {
-  const today = new Date().toDateString();
-  const yesterday = new Date();
-  yesterday.setDate(yesterday.getDate() - 1);
-
-  if (s.lastGratitudeDate === today) {
-    // already counted today, no change
-  } else if (s.lastGratitudeDate === yesterday.toDateString()) {
-    updatedGratitudeStreak = s.gratitudeStreak + 1;
-  } else {
-    updatedGratitudeStreak = 1;
-  }
-}
-
-
         // 6. Check for newly unlocked achievements
         const newAchievementsIds = checkNewAchievements(
           s.achievements.unlocked, 
@@ -241,23 +219,17 @@ if (isGratitudeEntry) {
         );
 
         // 7. Update State
-set({
-  totalXP,
-  level,
-  tier,
-  lastEntryDate: date,
-  streak: nextStreak,
-  achievements: {
-    unlocked: [...s.achievements.unlocked, ...newAchievementsIds],
-    progress: newProgress
-  },
-  ...(isGratitudeEntry && {
-    gratitudeStreak: updatedGratitudeStreak,
-    totalGratitudeEntries: s.totalGratitudeEntries + 1,
-    lastGratitudeDate: new Date().toDateString()
-  })
-});
-
+        set({
+          totalXP,
+          level,
+          tier,
+          lastEntryDate: date,
+          streak: nextStreak,
+          achievements: {
+            unlocked: [...s.achievements.unlocked, ...newAchievementsIds],
+            progress: newProgress
+          }
+        });
 
         // 8. Return results for UI (Popups, etc.)
         return { 

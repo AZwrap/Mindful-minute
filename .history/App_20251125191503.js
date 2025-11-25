@@ -19,11 +19,6 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import FocusWriteScreen from './src/screens/FocusWriteScreen';
 import WeeklyRecapScreen from './src/screens/WeeklyRecapScreen';
 import { useProgress } from './src/stores/progressStore';
-import { useEntries } from './src/stores/entriesStore';
-import { useSettings } from './src/stores/settingsStore';
-
-global.useEntries = useEntries;
-global.useSettings = useSettings;
 global.useProgress = useProgress;
 
 

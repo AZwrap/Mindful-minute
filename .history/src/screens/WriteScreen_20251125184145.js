@@ -24,7 +24,6 @@ import PremiumPressable from '../components/PremiumPressable';
 import { getMoodSuggestions, suggestMoodFromText } from '../utils/autoTagger';
 import { generateSmartPrompt, analyzeForSmartPrompts, getPromptExplanation } from '../utils/smartPrompts';
 import { useProgress } from '../stores/progressStore';
-import { KeyboardAvoidingView, Platform } from "react-native";
 
 
 
@@ -88,8 +87,6 @@ const [isGratitudeExpanded, setIsGratitudeExpanded] = useState(false);
   const inputRef = useRef(null);
   const [timerCompleted, setTimerCompleted] = useState(false);
   const [isInitialLoad, setIsInitialLoad] = useState(true);
-  const scrollRef = useRef(null);
-
 
     // TextInput focus animation
   const inputFocusAnim = useRef(new Animated.Value(0)).current;
@@ -533,21 +530,22 @@ const continueToMood = async () => {
     try { await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); } catch {}
   }
   
-// Gratitude validation: only require ANY words typed, but at least 2 boxes
-const completedGratitudeItems = gratitudeEntries.filter(entry => entry?.trim()).length;
+  // Gratitude validation:
+  // Any words are allowed, but we only count it as a gratitude entry
+  // if at least 2 of the boxes have something typed.
+  const completedGratitudeItems = gratitudeEntries.filter(entry => entry?.trim()).length;
 
-// A gratitude entry is valid ONLY if at least 2 boxes are filled
-const isGratitudeEntry = completedGratitudeItems >= 2;
-
-// XP bonus only applies when it's valid gratitude
-const xpBonus = isGratitudeEntry ? 10 : 0;
-
+  const isGratitudeEntry = completedGratitudeItems >= 2;
+  const xpBonus = isGratitudeEntry ? 10 : 0;
 
   // Track gratitude streak only when it's a valid gratitude entry
   if (isGratitudeEntry) {
     const { incrementGratitudeStreak } = useProgress.getState();
     incrementGratitudeStreak();
   }
+
+
+  
   
   // Save draft before navigating
   upsert({ 
@@ -568,15 +566,14 @@ const xpBonus = isGratitudeEntry ? 10 : 0;
   
   // Add a small delay to ensure state is committed
   setTimeout(() => {
-navigation.navigate('MoodTag', { 
-  date, 
-  prompt, 
-  text,
-  suggestedMood: selectedSuggestedMood,
-  isGratitudeEntry,    // <-- MUST BE HERE
-  xpBonus              // <-- MUST BE HERE
-});
-
+    navigation.navigate('MoodTag', { 
+      date, 
+      prompt, 
+      text,
+      suggestedMood: selectedSuggestedMood,
+      isGratitudeEntry,
+      xpBonus
+    });
   }, 50);
 };
 
@@ -626,26 +623,17 @@ navigation.navigate('MoodTag', {
   const placeholderCol = isDark ? '#64748B' : '#94A3B8';
 
   return (
-  <KeyboardAvoidingView
-    style={{ flex: 1 }}
-    behavior="height"
-    keyboardVerticalOffset={80}   // best value for Android
-  >
     <LinearGradient
       colors={currentGradient.primary}
       style={styles.container}
       start={{ x: 0, y: 0 }}
       end={{ x: 0, y: 1 }}
     >
-
-<ScrollView
-  ref={scrollRef}
-  style={styles.container}
-  contentContainerStyle={styles.scrollContent}
-  showsVerticalScrollIndicator={false}
-  keyboardShouldPersistTaps="handled"
->
-
+      <ScrollView 
+        style={styles.container}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
         <View style={styles.contentCard}>
     <Text style={[styles.prompt, { color: promptColor }]}>
       {prompt?.text}
@@ -918,22 +906,17 @@ onPress={() => {
                     <Text style={[styles.gratitudeNumber, { color: isDark ? '#A5B4FC' : '#4F46E5' }]}>
                       {num}.
                     </Text>
-<TextInput
-  style={[
-    styles.gratitudeInput,
-    { 
-      color: isDark ? '#E5E7EB' : '#0F172A',
-      backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(255,255,255,0.8)',
-      borderColor: isDark ? 'rgba(99, 102, 241, 0.4)' : 'rgba(99, 102, 241, 0.3)',
-    }
-  ]}
-  placeholder={`Gratitude #${num}...`}
-  placeholderTextColor={isDark ? '#6B7280' : '#9CA3AF'}
-  onFocus={() => {
-    setTimeout(() => {
-      scrollRef.current?.scrollToEnd({ animated: true });
-    }, 120); // slight delay ensures keyboard is fully up
-  }}
+                    <TextInput
+                      style={[
+                        styles.gratitudeInput,
+                        { 
+                          color: isDark ? '#E5E7EB' : '#0F172A',
+                          backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(255,255,255,0.8)',
+                          borderColor: isDark ? 'rgba(99, 102, 241, 0.4)' : 'rgba(99, 102, 241, 0.3)',
+                        }
+                      ]}
+                      placeholder={`Gratitude #${num}...`}
+                      placeholderTextColor={isDark ? '#6B7280' : '#9CA3AF'}
                       onChangeText={(text) => {
                         const newEntries = [...gratitudeEntries];
                         newEntries[num-1] = text;
@@ -1023,7 +1006,6 @@ onPress={() => {
               </ScrollView>
 
     </LinearGradient>
-</KeyboardAvoidingView>
   );
 }
 
