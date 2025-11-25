@@ -11,7 +11,6 @@ import {
   ScrollView,
   KeyboardAvoidingView,
   Platform,
-  Keyboard,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
@@ -43,7 +42,7 @@ export default function WriteScreen({ navigation, route }) {
   const entries = useMemo(() => {
     return Object.entries(map || {})
       .sort((a, b) => (a[0] < b[0] ? 1 : -1))
-      .map(([d, entry]) => ({ date: d, ...entry }));
+      .map(([date, entry]) => ({ date, ...entry }));
   }, [map]);
 
   const [smartPrompt, setSmartPrompt] = useState(null);
@@ -71,8 +70,6 @@ export default function WriteScreen({ navigation, route }) {
   const gratitudeModeEnabled = useSettings((s) => s.gratitudeModeEnabled);
   const [isGratitudeExpanded, setIsGratitudeExpanded] = useState(false);
 
-  const [keyboardHeight, setKeyboardHeight] = useState(0);
-
   const [running, setRunning] = useState(true);
   const [showTimer, setShowTimer] = useState(true);
   const [timerCompleted, setTimerCompleted] = useState(false);
@@ -83,14 +80,14 @@ export default function WriteScreen({ navigation, route }) {
       (route.params?.text || '')
         .trim()
         .split(/\s+/)
-        .filter((w) => w.length > 0).length
+        .filter((word) => word.length > 0).length
   );
   const [suggestedMoods, setSuggestedMoods] = useState([]);
   const [selectedSuggestedMood, setSelectedSuggestedMood] = useState(null);
 
   const inputRef = useRef(null);
 
-  // ===== SCROLL & SECTION POSITIONS =====
+  // ===== KEYBOARD / SCROLL MANAGEMENT =====
   const scrollRef = useRef(null);
   const [sectionPositions, setSectionPositions] = useState({
     editor: 0,
@@ -344,22 +341,6 @@ export default function WriteScreen({ navigation, route }) {
       }
     }
   }, [route.params?.text, route.params?.fromFocusMode]);
-
-  // ===== KEYBOARD LISTENERS (ANDROID-FRIENDLY) =====
-  useEffect(() => {
-    const show = Keyboard.addListener('keyboardDidShow', (e) => {
-      setKeyboardHeight(e.endCoordinates.height || 0);
-    });
-
-    const hide = Keyboard.addListener('keyboardDidHide', () => {
-      setKeyboardHeight(0);
-    });
-
-    return () => {
-      show.remove();
-      hide.remove();
-    };
-  }, []);
 
   // ===== TIMER TICK =====
   const handleTick = (t) => {
@@ -634,586 +615,579 @@ export default function WriteScreen({ navigation, route }) {
   const currentGradient = gradients[currentTheme] || gradients.light;
   const promptColor = isDark ? '#CBD5E1' : '#334155';
 
-  // ===== MAIN CONTENT (shared for iOS / Android) =====
-  const content = (
-    <LinearGradient
-      colors={currentGradient.primary}
-      style={styles.container}
-      start={{ x: 0, y: 0 }}
-      end={{ x: 0, y: 1 }}
+  // ===== RENDER =====
+  return (
+    <KeyboardAvoidingView
+      style={{ flex: 1 }}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 70}
     >
-      <ScrollView
-        ref={scrollRef}
+      <LinearGradient
+        colors={currentGradient.primary}
         style={styles.container}
-        contentContainerStyle={[
-          styles.scrollContent,
-          { paddingBottom: 20 + keyboardHeight },
-        ]}
-        showsVerticalScrollIndicator={false}
-        keyboardShouldPersistTaps="handled"
+        start={{ x: 0, y: 0 }}
+        end={{ x: 0, y: 1 }}
       >
-        <View style={styles.contentCard}>
-          {/* PROMPT */}
-          <Text style={[styles.prompt, { color: promptColor }]}>
-            {currentPrompt?.text}
-            {currentPrompt?.explanation && (
-              <Text
-                style={{
-                  fontSize: 12,
-                  color: isDark ? '#94A3B8' : '#64748B',
-                  fontStyle: 'italic',
-                }}
-              >
-                {'\n'}💡 {currentPrompt.explanation}
-              </Text>
-            )}
-          </Text>
-
-          {/* TIMER SECTION */}
-          <Animated.View style={[{ opacity: fade }, styles.timerContainer]}>
-            {showTimer && (
-              <View style={styles.timerRow}>
-                <Animated.View
+        <ScrollView
+          ref={scrollRef}
+          style={styles.container}
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+        >
+          <View style={styles.contentCard}>
+            {/* PROMPT */}
+            <Text style={[styles.prompt, { color: promptColor }]}>
+              {prompt?.text}
+              {prompt?.explanation && (
+                <Text
                   style={{
-                    transform: [{ scale: resetAnim }],
-                    marginRight: 20,
+                    fontSize: 12,
+                    color: isDark ? '#94A3B8' : '#64748B',
+                    fontStyle: 'italic',
                   }}
                 >
-                  <PremiumPressable
-                    onPress={handleReset}
-                    haptic="light"
-                    style={[
-                      styles.resetBtn,
-                      {
-                        backgroundColor: isDark
-                          ? 'rgba(255,255,255,0.05)'
-                          : 'rgba(0,0,0,0.03)',
-                      },
-                    ]}
+                  {'\n'}💡 {prompt.explanation}
+                </Text>
+              )}
+            </Text>
+
+            {/* TIMER SECTION */}
+            <Animated.View style={[{ opacity: fade }, styles.timerContainer]}>
+              {showTimer && (
+                <View style={styles.timerRow}>
+                  <Animated.View
+                    style={{
+                      transform: [{ scale: resetAnim }],
+                      marginRight: 20,
+                    }}
                   >
-                    <RotateCcw
-                      size={18}
-                      color={isDark ? '#A5B4FC' : '#4F46E5'}
-                    />
-                  </PremiumPressable>
-                </Animated.View>
-
-                <Animated.View
-                  style={[
-                    styles.timerPill,
-                    {
-                      transform: [{ scale: pulse }],
-                      backgroundColor:
-                        phase === 'writing'
-                          ? isDark
-                            ? 'rgba(255,255,255,0.07)'
-                            : 'rgba(99,102,241,0.07)'
-                          : isDark
-                          ? 'rgba(34,197,94,0.1)'
-                          : 'rgba(34,197,94,0.07)',
-                      borderWidth: 0,
-                      height:
-                        phase === 'break' && skipBreakAvailable ? 115 : 90,
-                    },
-                  ]}
-                >
-                  <View style={styles.phaseIndicator}>
-                    <Text
-                      style={[
-                        styles.phaseText,
-                        {
-                          color:
-                            phase === 'writing'
-                              ? isDark
-                                ? '#A5B4FC'
-                                : '#4F46E5'
-                              : isDark
-                              ? '#4ADE80'
-                              : '#16A34A',
-                        },
-                      ]}
-                    >
-                      {phase === 'writing' ? '🖊️ Writing' : '⏸️ Break'}
-                    </Text>
-                    <Text
-                      style={[
-                        styles.cycleText,
-                        { color: isDark ? '#9CA3AF' : '#6B7280' },
-                      ]}
-                    >
-                      Cycle {currentCycle}/{totalCycles}
-                    </Text>
-                  </View>
-
-                  <Timer
-                    seconds={remaining}
-                    running={running && (phase === 'writing' || phase === 'break')}
-                    onTick={handleTick}
-                    onDone={undefined}
-                  />
-
-                  <Text
-                    style={[
-                      styles.timerStatus,
-                      {
-                        color: isDark
-                          ? running
-                            ? '#A5B4FC'
-                            : '#9CA3AF'
-                          : running
-                          ? '#4F46E5'
-                          : '#6B7280',
-                      },
-                    ]}
-                  >
-                    {running
-                      ? phase === 'writing'
-                        ? 'Writing'
-                        : 'Break'
-                      : 'Paused'}
-                  </Text>
-
-                  {phase === 'break' && skipBreakAvailable && (
                     <PremiumPressable
-                      onPress={skipBreak}
+                      onPress={handleReset}
                       haptic="light"
                       style={[
-                        styles.skipButton,
+                        styles.resetBtn,
                         {
                           backgroundColor: isDark
-                            ? 'rgba(99,102,241,0.08)'
-                            : 'rgba(99,102,241,0.06)',
+                            ? 'rgba(255,255,255,0.05)'
+                            : 'rgba(0,0,0,0.03)',
                         },
                       ]}
                     >
-                      <Text style={[styles.skipText, { color: '#6366F1' }]}>
-                        Skip Break
-                      </Text>
+                      <RotateCcw
+                        size={18}
+                        color={isDark ? '#A5B4FC' : '#4F46E5'}
+                      />
                     </PremiumPressable>
-                  )}
-                </Animated.View>
+                  </Animated.View>
 
-                <View
-                  style={{
-                    transform: [{ translateX: 24 }, { translateY: 8 }],
-                  }}
-                >
-                  <BreathingCircle running={running} isDark={isDark} />
-                </View>
-              </View>
-            )}
-          </Animated.View>
-
-          {!timerCompleted && (
-            <PremiumPressable
-              onPress={() => setShowTimer((s) => !s)}
-              haptic="light"
-              style={styles.toggle}
-            >
-              <Text
-                style={{
-                  color: isDark ? '#A5B4FC' : '#4F46E5',
-                  fontWeight: '500',
-                }}
-              >
-                {showTimer ? 'Hide Timer' : 'Show Timer'}
-              </Text>
-            </PremiumPressable>
-          )}
-
-          {/* MAIN EDITOR */}
-          <Animated.View
-            style={[
-              animatedInputStyle,
-              {
-                marginTop: timerCompleted ? -120 : 2,
-                borderRadius: 14,
-              },
-            ]}
-            onLayout={(e) => {
-              const y = e.nativeEvent.layout.y;
-              setSectionPositions((prev) => ({ ...prev, editor: y }));
-            }}
-          >
-            <TextInput
-              ref={inputRef}
-              value={route.params?.text || text}
-              onChangeText={handleTextChange}
-              onFocus={() => {
-                handleInputFocusAnim(1);
-                if (scrollRef.current) {
-                  scrollRef.current.scrollTo({
-                    y: Math.max(0, sectionPositions.editor - 40),
-                    animated: true,
-                  });
-                }
-              }}
-              onBlur={() => handleInputFocusAnim(0)}
-              placeholder="Take a minute to breathe and write…"
-              multiline
-              style={[
-                styles.input,
-                {
-                  color: isDark ? '#E5E7EB' : '#0F172A',
-                  backgroundColor: isDark ? '#111827' : '#FFFFFF',
-                  borderWidth: 0,
-                },
-              ]}
-              autoFocus={false}
-            />
-          </Animated.View>
-
-          {/* MOOD SUGGESTIONS + WORD COUNT */}
-          <View style={styles.bottomRowContainer}>
-            {suggestedMoods.length > 0 && (
-              <View style={styles.suggestionsContainer}>
-                <Text
-                  style={[
-                    styles.suggestionsLabel,
-                    { color: isDark ? '#CBD5E1' : '#334155' },
-                  ]}
-                >
-                  Suggested moods:
-                </Text>
-                <View style={styles.suggestionsRow}>
-                  {suggestedMoods.map((suggestion) => (
-                    <Pressable
-                      key={suggestion.mood}
-                      onPress={async () => {
-                        const newSelection =
-                          selectedSuggestedMood === suggestion.mood
-                            ? null
-                            : suggestion.mood;
-                        setSelectedSuggestedMood(newSelection);
-                        if (hapticsEnabled) {
-                          try {
-                            await Haptics.impactAsync(
-                              Haptics.ImpactFeedbackStyle.Light
-                            );
-                          } catch {}
-                        }
-                      }}
-                      style={[
-                        styles.suggestionChip,
-                        {
-                          backgroundColor:
-                            selectedSuggestedMood === suggestion.mood
-                              ? isDark
-                                ? 'rgba(99, 102, 241, 0.4)'
-                                : 'rgba(99, 102, 241, 0.3)'
-                              : isDark
-                              ? 'rgba(99, 102, 241, 0.2)'
-                              : 'rgba(99, 102, 241, 0.1)',
-                          borderColor:
-                            selectedSuggestedMood === suggestion.mood
-                              ? isDark
-                                ? 'rgba(99, 102, 241, 0.8)'
-                                : 'rgba(99, 102, 241, 0.6)'
-                              : isDark
-                              ? 'rgba(99, 102, 241, 0.4)'
-                              : 'rgba(99, 102, 241, 0.3)',
-                          borderWidth:
-                            selectedSuggestedMood === suggestion.mood ? 2 : 1,
-                        },
-                      ]}
-                    >
+                  <Animated.View
+                    style={[
+                      styles.timerPill,
+                      {
+                        transform: [{ scale: pulse }],
+                        backgroundColor:
+                          phase === 'writing'
+                            ? isDark
+                              ? 'rgba(255,255,255,0.07)'
+                              : 'rgba(99,102,241,0.07)'
+                            : isDark
+                            ? 'rgba(34,197,94,0.1)'
+                            : 'rgba(34,197,94,0.07)',
+                        borderWidth: 0,
+                        height:
+                          phase === 'break' && skipBreakAvailable ? 115 : 90,
+                      },
+                    ]}
+                  >
+                    <View style={styles.phaseIndicator}>
                       <Text
                         style={[
-                          styles.suggestionText,
+                          styles.phaseText,
                           {
-                            color: '#6366F1',
-                            fontWeight:
-                              selectedSuggestedMood === suggestion.mood
-                                ? '800'
-                                : '700',
+                            color:
+                              phase === 'writing'
+                                ? isDark
+                                  ? '#A5B4FC'
+                                  : '#4F46E5'
+                                : isDark
+                                ? '#4ADE80'
+                                : '#16A34A',
                           },
                         ]}
                       >
-                        {suggestion.mood}
+                        {phase === 'writing' ? '🖊️ Writing' : '⏸️ Break'}
                       </Text>
-                      {suggestion.confidence > 60 && (
-                        <Text
-                          style={[
-                            styles.confidenceText,
-                            { color: '#6366F1' },
-                          ]}
-                        >
-                          {suggestion.confidence}%
+                      <Text
+                        style={[
+                          styles.cycleText,
+                          { color: isDark ? '#9CA3AF' : '#6B7280' },
+                        ]}
+                      >
+                        Cycle {currentCycle}/{totalCycles}
+                      </Text>
+                    </View>
+
+                    <Timer
+                      seconds={remaining}
+                      running={
+                        running && (phase === 'writing' || phase === 'break')
+                      }
+                      onTick={handleTick}
+                      onDone={undefined}
+                    />
+
+                    <Text
+                      style={[
+                        styles.timerStatus,
+                        {
+                          color: isDark
+                            ? running
+                              ? '#A5B4FC'
+                              : '#9CA3AF'
+                            : running
+                            ? '#4F46E5'
+                            : '#6B7280',
+                        },
+                      ]}
+                    >
+                      {running
+                        ? phase === 'writing'
+                          ? 'Writing'
+                          : 'Break'
+                        : 'Paused'}
+                    </Text>
+
+                    {phase === 'break' && skipBreakAvailable && (
+                      <PremiumPressable
+                        onPress={skipBreak}
+                        haptic="light"
+                        style={[
+                          styles.skipButton,
+                          {
+                            backgroundColor: isDark
+                              ? 'rgba(99,102,241,0.08)'
+                              : 'rgba(99,102,241,0.06)',
+                          },
+                        ]}
+                      >
+                        <Text style={[styles.skipText, { color: '#6366F1' }]}>
+                          Skip Break
                         </Text>
-                      )}
-                    </Pressable>
-                  ))}
+                      </PremiumPressable>
+                    )}
+                  </Animated.View>
+
+                  <View
+                    style={{
+                      transform: [{ translateX: 24 }, { translateY: 8 }],
+                    }}
+                  >
+                    <BreathingCircle running={running} isDark={isDark} />
+                  </View>
                 </View>
-              </View>
+              )}
+            </Animated.View>
+
+            {!timerCompleted && (
+              <PremiumPressable
+                onPress={() => setShowTimer((s) => !s)}
+                haptic="light"
+                style={styles.toggle}
+              >
+                <Text
+                  style={{
+                    color: isDark ? '#A5B4FC' : '#4F46E5',
+                    fontWeight: '500',
+                  }}
+                >
+                  {showTimer ? 'Hide Timer' : 'Show Timer'}
+                </Text>
+              </PremiumPressable>
             )}
 
-            <View style={styles.wordCountContainer}>
-              <Text
-                style={[
-                  styles.wordCount,
-                  { color: isDark ? '#9CA3AF' : '#6B7280' },
-                ]}
-              >
-                {wordCount} word{wordCount !== 1 ? 's' : ''}
-              </Text>
-            </View>
-          </View>
-
-          {/* FOCUS MODE BUTTON */}
-          <PremiumPressable
-            onPress={() =>
-              navigation.navigate('FocusWrite', {
-                date,
-                prompt: currentPrompt,
-                text,
-              })
-            }
-            haptic="light"
-            style={[
-              styles.focusButton,
-              {
-                backgroundColor: isDark
-                  ? 'rgba(99, 102, 241, 0.1)'
-                  : 'rgba(99, 102, 241, 0.05)',
-                borderColor: isDark
-                  ? 'rgba(99, 102, 241, 0.3)'
-                  : 'rgba(99, 102, 241, 0.2)',
-              },
-            ]}
-          >
-            <Text style={[styles.focusButtonText, { color: '#6366F1' }]}>
-              Enter Focus Mode
-            </Text>
-          </PremiumPressable>
-
-          {/* GRATITUDE SECTION */}
-          {(gratitudeModeEnabled ||
-            currentPrompt?.text?.toLowerCase().includes('grateful') ||
-            currentPrompt?.text?.toLowerCase().includes('thankful') ||
-            currentPrompt?.text?.toLowerCase().includes('appreciate')) && (
-            <View
+            {/* MAIN EDITOR */}
+            <Animated.View
               style={[
-                styles.gratitudeContainer,
+                animatedInputStyle,
+                {
+                  marginTop: timerCompleted ? -120 : 2,
+                  borderRadius: 14,
+                },
+              ]}
+              onLayout={(e) => {
+                const y = e.nativeEvent.layout.y;
+                setSectionPositions((prev) => ({ ...prev, editor: y }));
+              }}
+            >
+              <TextInput
+                ref={inputRef}
+                value={route.params?.text || text}
+                onChangeText={handleTextChange}
+                onFocus={() => {
+                  handleInputFocusAnim(1);
+                  if (scrollRef.current) {
+                    scrollRef.current.scrollTo({
+                      y: Math.max(0, sectionPositions.editor - 40),
+                      animated: true,
+                    });
+                  }
+                }}
+                onBlur={() => handleInputFocusAnim(0)}
+                placeholder="Take a minute to breathe and write…"
+                multiline
+                style={[
+                  styles.input,
+                  {
+                    color: isDark ? '#E5E7EB' : '#0F172A',
+                    backgroundColor: isDark ? '#111827' : '#FFFFFF',
+                    borderWidth: 0,
+                  },
+                ]}
+                autoFocus={false}
+              />
+            </Animated.View>
+
+            {/* MOOD SUGGESTIONS + WORD COUNT */}
+            <View style={styles.bottomRowContainer}>
+              {suggestedMoods.length > 0 && (
+                <View style={styles.suggestionsContainer}>
+                  <Text
+                    style={[
+                      styles.suggestionsLabel,
+                      { color: isDark ? '#CBD5E1' : '#334155' },
+                    ]}
+                  >
+                    Suggested moods:
+                  </Text>
+                  <View style={styles.suggestionsRow}>
+                    {suggestedMoods.map((suggestion) => (
+                      <Pressable
+                        key={suggestion.mood}
+                        onPress={async () => {
+                          const newSelection =
+                            selectedSuggestedMood === suggestion.mood
+                              ? null
+                              : suggestion.mood;
+                          setSelectedSuggestedMood(newSelection);
+                          if (hapticsEnabled) {
+                            try {
+                              await Haptics.impactAsync(
+                                Haptics.ImpactFeedbackStyle.Light
+                              );
+                            } catch {}
+                          }
+                        }}
+                        style={[
+                          styles.suggestionChip,
+                          {
+                            backgroundColor:
+                              selectedSuggestedMood === suggestion.mood
+                                ? isDark
+                                  ? 'rgba(99, 102, 241, 0.4)'
+                                  : 'rgba(99, 102, 241, 0.3)'
+                                : isDark
+                                ? 'rgba(99, 102, 241, 0.2)'
+                                : 'rgba(99, 102, 241, 0.1)',
+                            borderColor:
+                              selectedSuggestedMood === suggestion.mood
+                                ? isDark
+                                  ? 'rgba(99, 102, 241, 0.8)'
+                                  : 'rgba(99, 102, 241, 0.6)'
+                                : isDark
+                                ? 'rgba(99, 102, 241, 0.4)'
+                                : 'rgba(99, 102, 241, 0.3)',
+                            borderWidth:
+                              selectedSuggestedMood === suggestion.mood ? 2 : 1,
+                          },
+                        ]}
+                      >
+                        <Text
+                          style={[
+                            styles.suggestionText,
+                            {
+                              color: '#6366F1',
+                              fontWeight:
+                                selectedSuggestedMood === suggestion.mood
+                                  ? '800'
+                                  : '700',
+                            },
+                          ]}
+                        >
+                          {suggestion.mood}
+                        </Text>
+                        {suggestion.confidence > 60 && (
+                          <Text
+                            style={[
+                              styles.confidenceText,
+                              { color: '#6366F1' },
+                            ]}
+                          >
+                            {suggestion.confidence}%
+                          </Text>
+                        )}
+                      </Pressable>
+                    ))}
+                  </View>
+                </View>
+              )}
+
+              <View style={styles.wordCountContainer}>
+                <Text
+                  style={[
+                    styles.wordCount,
+                    { color: isDark ? '#9CA3AF' : '#6B7280' },
+                  ]}
+                >
+                  {wordCount} word{wordCount !== 1 ? 's' : ''}
+                </Text>
+              </View>
+            </View>
+
+            {/* FOCUS MODE BUTTON */}
+            <PremiumPressable
+              onPress={() =>
+                navigation.navigate('FocusWrite', {
+                  date,
+                  prompt,
+                  text,
+                })
+              }
+              haptic="light"
+              style={[
+                styles.focusButton,
                 {
                   backgroundColor: isDark
-                    ? 'rgba(99, 102, 241, 0.08)'
-                    : 'rgba(99, 102, 241, 0.04)',
+                    ? 'rgba(99, 102, 241, 0.1)'
+                    : 'rgba(99, 102, 241, 0.05)',
                   borderColor: isDark
                     ? 'rgba(99, 102, 241, 0.3)'
                     : 'rgba(99, 102, 241, 0.2)',
                 },
               ]}
-              onLayout={(e) => {
-                const y = e.nativeEvent.layout.y;
-                setSectionPositions((prev) => ({ ...prev, gratitude: y }));
-              }}
             >
-              <Pressable
-                onPress={() => {
-                  setIsGratitudeExpanded((prev) => !prev);
-                  if (!isGratitudeExpanded && scrollRef.current) {
-                    scrollRef.current.scrollTo({
-                      y: Math.max(0, sectionPositions.gratitude - 40),
-                      animated: true,
-                    });
-                  }
-                }}
-                style={styles.gratitudeHeader}
-              >
-                <Text
-                  style={[
-                    styles.gratitudeTitle,
-                    { color: isDark ? '#A5B4FC' : '#4F46E5' },
-                  ]}
-                >
-                  Gratitude Practice {isGratitudeExpanded ? '▲' : '▼'}
-                </Text>
-                <Text
-                  style={[
-                    styles.gratitudeSubtitle,
-                    { color: isDark ? '#CBD5E1' : '#334155' },
-                  ]}
-                >
-                  +10 XP bonus available
-                </Text>
-              </Pressable>
+              <Text style={[styles.focusButtonText, { color: '#6366F1' }]}>
+                Enter Focus Mode
+              </Text>
+            </PremiumPressable>
 
-              {isGratitudeExpanded && (
-                <>
+            {/* GRATITUDE SECTION */}
+            {(gratitudeModeEnabled ||
+              currentPrompt?.text
+                ?.toLowerCase()
+                .includes('grateful') ||
+              currentPrompt?.text
+                ?.toLowerCase()
+                .includes('thankful') ||
+              currentPrompt?.text
+                ?.toLowerCase()
+                .includes('appreciate')) && (
+              <View
+                style={[
+                  styles.gratitudeContainer,
+                  {
+                    backgroundColor: isDark
+                      ? 'rgba(99, 102, 241, 0.08)'
+                      : 'rgba(99, 102, 241, 0.04)',
+                    borderColor: isDark
+                      ? 'rgba(99, 102, 241, 0.3)'
+                      : 'rgba(99, 102, 241, 0.2)',
+                  },
+                ]}
+                onLayout={(e) => {
+                  const y = e.nativeEvent.layout.y;
+                  setSectionPositions((prev) => ({ ...prev, gratitude: y }));
+                }}
+              >
+                <Pressable
+                  onPress={() => {
+                    setIsGratitudeExpanded((prev) => !prev);
+                    if (!isGratitudeExpanded && scrollRef.current) {
+                      scrollRef.current.scrollTo({
+                        y: Math.max(0, sectionPositions.gratitude - 40),
+                        animated: true,
+                      });
+                    }
+                  }}
+                  style={styles.gratitudeHeader}
+                >
                   <Text
                     style={[
-                      styles.gratitudeDescription,
+                      styles.gratitudeTitle,
+                      { color: isDark ? '#A5B4FC' : '#4F46E5' },
+                    ]}
+                  >
+                    Gratitude Practice {isGratitudeExpanded ? '▲' : '▼'}
+                  </Text>
+                  <Text
+                    style={[
+                      styles.gratitudeSubtitle,
                       { color: isDark ? '#CBD5E1' : '#334155' },
                     ]}
                   >
-                    List 3 specific things you're grateful for today:
+                    +10 XP bonus available
                   </Text>
+                </Pressable>
 
-                  {[1, 2, 3].map((num, index) => (
-                    <View key={num} style={styles.gratitudeInputRow}>
+                {isGratitudeExpanded && (
+                  <>
+                    <Text
+                      style={[
+                        styles.gratitudeDescription,
+                        { color: isDark ? '#CBD5E1' : '#334155' },
+                      ]}
+                    >
+                      List 3 specific things you're grateful for today:
+                    </Text>
+
+                    {[1, 2, 3].map((num, index) => (
+                      <View key={num} style={styles.gratitudeInputRow}>
+                        <Text
+                          style={[
+                            styles.gratitudeNumber,
+                            { color: isDark ? '#A5B4FC' : '#4F46E5' },
+                          ]}
+                        >
+                          {num}.
+                        </Text>
+                        <TextInput
+                          style={[
+                            styles.gratitudeInput,
+                            {
+                              color: isDark ? '#E5E7EB' : '#0F172A',
+                              backgroundColor: isDark
+                                ? 'rgba(255,255,255,0.05)'
+                                : 'rgba(255,255,255,0.8)',
+                              borderColor: isDark
+                                ? 'rgba(99, 102, 241, 0.4)'
+                                : 'rgba(99, 102, 241, 0.3)',
+                            },
+                          ]}
+                          placeholder={`Gratitude #${num}...`}
+                          placeholderTextColor={
+                            isDark ? '#6B7280' : '#9CA3AF'
+                          }
+                          value={gratitudeEntries[index] || ''}
+                          onChangeText={(txt) => {
+                            const next = [...gratitudeEntries];
+                            next[index] = txt;
+                            setGratitudeEntries(next);
+                          }}
+                          onFocus={() => {
+                            if (scrollRef.current) {
+                              scrollRef.current.scrollTo({
+                                y: Math.max(
+                                  0,
+                                  sectionPositions.gratitude +
+                                    index * 32 -
+                                    140
+                                ),
+                                animated: true,
+                              });
+                            }
+                          }}
+                        />
+                      </View>
+                    ))}
+
+                    <View style={styles.gratitudeBenefits}>
                       <Text
                         style={[
-                          styles.gratitudeNumber,
-                          { color: isDark ? '#A5B4FC' : '#4F46E5' },
+                          styles.gratitudeBenefit,
+                          { color: isDark ? '#CBD5E1' : '#334155' },
                         ]}
                       >
-                        {num}.
+                        ✓ Proven to increase happiness
                       </Text>
-                      <TextInput
+                      <Text
                         style={[
-                          styles.gratitudeInput,
-                          {
-                            color: isDark ? '#E5E7EB' : '#0F172A',
-                            backgroundColor: isDark
-                              ? 'rgba(255,255,255,0.05)'
-                              : 'rgba(255,255,255,0.8)',
-                            borderColor: isDark
-                              ? 'rgba(99, 102, 241, 0.4)'
-                              : 'rgba(99, 102, 241, 0.3)',
-                          },
+                          styles.gratitudeBenefit,
+                          { color: isDark ? '#CBD5E1' : '#334155' },
                         ]}
-                        placeholder={`Gratitude #${num}...`}
-                        placeholderTextColor={
-                          isDark ? '#6B7280' : '#9CA3AF'
-                        }
-                        value={gratitudeEntries[index] || ''}
-                        onChangeText={(txt) => {
-                          const next = [...gratitudeEntries];
-                          next[index] = txt;
-                          setGratitudeEntries(next);
-                        }}
-                        onFocus={() => {
-                          if (scrollRef.current) {
-                            scrollRef.current.scrollTo({
-                              y: Math.max(
-                                0,
-                                sectionPositions.gratitude +
-                                  index * 32 -
-                                  140
-                              ),
-                              animated: true,
-                            });
-                          }
-                        }}
-                      />
+                      >
+                        ✓ Rewires your brain for positivity
+                      </Text>
                     </View>
-                  ))}
+                  </>
+                )}
+              </View>
+            )}
 
-                  <View style={styles.gratitudeBenefits}>
-                    <Text
-                      style={[
-                        styles.gratitudeBenefit,
-                        { color: isDark ? '#CBD5E1' : '#334155' },
-                      ]}
-                    >
-                      ✓ Proven to increase happiness
-                    </Text>
-                    <Text
-                      style={[
-                        styles.gratitudeBenefit,
-                        { color: isDark ? '#CBD5E1' : '#334155' },
-                      ]}
-                    >
-                      ✓ Rewires your brain for positivity
-                    </Text>
-                  </View>
-                </>
-              )}
-            </View>
-          )}
-
-          {/* ACTIONS */}
-          <View style={{ flexDirection: 'row', gap: 8, marginTop: 16 }}>
-            <PremiumPressable
-              onPress={() => setRunning((r) => !r)}
-              haptic="light"
-              style={[
-                styles.btnGhost,
-                {
-                  borderColor: isDark
-                    ? 'rgba(99,102,241,0.3)'
-                    : 'rgba(99,102,241,0.3)',
-                },
-              ]}
-            >
-              <Text
+            {/* ACTIONS */}
+            <View style={{ flexDirection: 'row', gap: 8, marginTop: 16 }}>
+              <PremiumPressable
+                onPress={() => setRunning((r) => !r)}
+                haptic="light"
                 style={[
-                  styles.btnGhostText,
-                  { color: isDark ? '#E5E7EB' : '#0F172A' },
+                  styles.btnGhost,
+                  {
+                    borderColor: isDark
+                      ? 'rgba(99,102,241,0.3)'
+                      : 'rgba(99,102,241,0.3)',
+                  },
                 ]}
               >
-                {running ? 'Pause' : 'Resume'}
-              </Text>
-            </PremiumPressable>
+                <Text
+                  style={[
+                    styles.btnGhostText,
+                    { color: isDark ? '#E5E7EB' : '#0F172A' },
+                  ]}
+                >
+                  {running ? 'Pause' : 'Resume'}
+                </Text>
+              </PremiumPressable>
 
-            <PremiumPressable
-              onPress={saveAndExit}
-              disabled={!text.trim() || !text}
-              haptic="light"
+              <PremiumPressable
+                onPress={saveAndExit}
+                disabled={!text.trim() || !text}
+                haptic="light"
+                style={[
+                  styles.btnGhost,
+                  {
+                    borderColor: '#6366F1',
+                    opacity: !text.trim() ? 0.5 : 1,
+                  },
+                ]}
+              >
+                <Text style={[styles.btnGhostText, { color: '#6366F1' }]}>
+                  Save & Exit
+                </Text>
+              </PremiumPressable>
+
+              <PremiumPressable
+                onPress={continueToMood}
+                disabled={!text.trim()}
+                haptic="light"
+                style={[
+                  styles.btnPrimary,
+                  { opacity: !text.trim() ? 0.5 : 1 },
+                ]}
+              >
+                <Text style={styles.btnPrimaryText}>Continue</Text>
+              </PremiumPressable>
+            </View>
+          </View>
+
+          {toastMessage && (
+            <View
               style={[
-                styles.btnGhost,
+                styles.toast,
                 {
-                  borderColor: '#6366F1',
-                  opacity: !text.trim() ? 0.5 : 1,
+                  backgroundColor: isDark
+                    ? 'rgba(99, 102, 241, 0.9)'
+                    : 'rgba(99, 102, 241, 0.8)',
                 },
               ]}
             >
-              <Text style={[styles.btnGhostText, { color: '#6366F1' }]}>
-                Save & Exit
+              <Text style={[styles.toastText, { color: 'white' }]}>
+                {toastMessage}
               </Text>
-            </PremiumPressable>
-
-            <PremiumPressable
-              onPress={continueToMood}
-              disabled={!text.trim()}
-              haptic="light"
-              style={[
-                styles.btnPrimary,
-                { opacity: !text.trim() ? 0.5 : 1 },
-              ]}
-            >
-              <Text style={styles.btnPrimaryText}>Continue</Text>
-            </PremiumPressable>
-          </View>
-        </View>
-
-        {toastMessage && (
-          <View
-            style={[
-              styles.toast,
-              {
-                backgroundColor: isDark
-                  ? 'rgba(99, 102, 241, 0.9)'
-                  : 'rgba(99, 102, 241, 0.8)',
-              },
-            ]}
-          >
-            <Text style={[styles.toastText, { color: 'white' }]}>
-              {toastMessage}
-            </Text>
-          </View>
-        )}
-      </ScrollView>
-    </LinearGradient>
+            </View>
+          )}
+        </ScrollView>
+      </LinearGradient>
+    </KeyboardAvoidingView>
   );
-
-  const isIOS = Platform.OS === 'ios';
-
-  // ===== RETURN (Android: no KeyboardAvoidingView) =====
-  if (isIOS) {
-    return (
-      <KeyboardAvoidingView
-        style={{ flex: 1 }}
-        behavior="padding"
-        keyboardVerticalOffset={90}
-      >
-        {content}
-      </KeyboardAvoidingView>
-    );
-  }
-
-  // Android path: just render content, rely on ScrollView + keyboard padding
-  return content;
 }
 
 const styles = StyleSheet.create({
