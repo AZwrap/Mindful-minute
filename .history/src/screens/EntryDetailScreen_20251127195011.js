@@ -162,6 +162,7 @@ Mood: ${entry.moodTag?.value || 'Not specified'}
   style={[
     styles.copyBtn,
     {
+
       borderColor: isDark
         ? "rgba(99,102,241,0.4)"
         : "rgba(99,102,241,0.3)",

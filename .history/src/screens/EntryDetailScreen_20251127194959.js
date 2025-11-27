@@ -159,26 +159,27 @@ Mood: ${entry.moodTag?.value || 'Not specified'}
 <PremiumPressable
   onPress={copyToClipboard}
   haptic="light"
-  style={[
-    styles.copyBtn,
-    {
-      borderColor: isDark
-        ? "rgba(99,102,241,0.4)"
-        : "rgba(99,102,241,0.3)",
-    },
-  ]}
+  style={{
+    paddingVertical: 12,
+    paddingHorizontal: 4,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "transparent",
+  }}
 >
   <Text
-    style={[
-      styles.copyBtnText,
-      {
-        color: "#6366F1",
-      },
-    ]}
+    style={{
+      fontSize: 15,
+      fontWeight: "700",
+      textAlign: "center",
+      color: isDark ? "#E5E7EB" : "#0F172A",
+      opacity: copied ? 0.6 : 1,
+    }}
   >
     {copied ? "✓ Copied!" : "Copy to Clipboard"}
   </Text>
 </PremiumPressable>
+
 
 
             <PremiumPressable

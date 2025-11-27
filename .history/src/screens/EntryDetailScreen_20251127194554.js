@@ -156,30 +156,27 @@ Mood: ${entry.moodTag?.value || 'Not specified'}
 
           {/* Buttons row */}
           <View style={styles.buttonsRow}>
-<PremiumPressable
-  onPress={copyToClipboard}
-  haptic="light"
-  style={[
-    styles.copyBtn,
-    {
-      borderColor: isDark
-        ? "rgba(99,102,241,0.4)"
-        : "rgba(99,102,241,0.3)",
-    },
-  ]}
->
-  <Text
-    style={[
-      styles.copyBtnText,
-      {
-        color: "#6366F1",
-      },
-    ]}
-  >
-    {copied ? "✓ Copied!" : "Copy to Clipboard"}
-  </Text>
-</PremiumPressable>
-
+            <PremiumPressable
+              onPress={copyToClipboard}
+              haptic="light"
+              style={[
+                styles.secondaryBtn,
+                {
+                  borderColor: isDark
+                    ? 'rgba(148, 163, 184, 0.8)'
+                    : 'rgba(148, 163, 184, 0.9)',
+                },
+              ]}
+            >
+              <Text
+                style={[
+                  styles.secondaryText,
+                  { color: isDark ? '#E5E7EB' : '#0F172A' },
+                ]}
+              >
+                {copied ? 'Copied!' : 'Copy to Clipboard'}
+              </Text>
+            </PremiumPressable>
 
             <PremiumPressable
               onPress={exportEntry}
@@ -295,20 +292,5 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginBottom: 16,
   },
-  copyBtn: {
-  flex: 1,
-  paddingVertical: 14,
-  borderRadius: 16,
-  borderWidth: 1,
-  justifyContent: "center",
-  alignItems: "center",
-},
-
-copyBtnText: {
-  fontSize: 15,
-  fontWeight: "700",
-  textAlign: "center",
-},
-
 });
 

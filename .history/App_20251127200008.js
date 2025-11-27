@@ -23,8 +23,7 @@ import { useEntries } from './src/stores/entriesStore';
 import { useSettings } from './src/stores/settingsStore';
 
 import * as QuickActions from "expo-quick-actions";
-import { navigationRef } from "./src/navigation/RootNavigation";
-
+import { navigationRef } from "./navigation/RootNavigation";
 
 global.useEntries = useEntries;
 global.useSettings = useSettings;

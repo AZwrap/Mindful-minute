@@ -162,6 +162,9 @@ Mood: ${entry.moodTag?.value || 'Not specified'}
   style={[
     styles.copyBtn,
     {
+      backgroundColor: isDark
+        ? "rgba(99,102,241,0.15)"
+        : "rgba(99,102,241,0.10)",
       borderColor: isDark
         ? "rgba(99,102,241,0.4)"
         : "rgba(99,102,241,0.3)",
@@ -295,20 +298,5 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginBottom: 16,
   },
-  copyBtn: {
-  flex: 1,
-  paddingVertical: 14,
-  borderRadius: 16,
-  borderWidth: 1,
-  justifyContent: "center",
-  alignItems: "center",
-},
-
-copyBtnText: {
-  fontSize: 15,
-  fontWeight: "700",
-  textAlign: "center",
-},
-
 });
 

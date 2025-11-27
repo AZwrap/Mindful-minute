@@ -35,7 +35,8 @@
     "plugins": [
       "expo-sqlite",
       "expo-audio",
-      "expo-asset"
+      "expo-asset",
+      "expo-quick-actions"
     ]
   }
 }
