@@ -11,14 +11,10 @@ import { useColorScheme } from "react-native";
 import { useTheme } from "./src/stores/themeStore";
 
 
-
+const isDark = currentTheme === "dark";
 
 
 export default function App() {
-  const system = useColorScheme();
-const { getCurrentTheme } = useTheme();
-const currentTheme = getCurrentTheme(system);
-const isDark = currentTheme === "dark";
   useEffect(() => {
     // QuickActions NOT supported in Expo Go → avoid crashing
     const HAS_QA =
