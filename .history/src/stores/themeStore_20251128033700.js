@@ -2,8 +2,6 @@
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { useSettings } from "./settingsStore";
-
 
 // Simple sunrise/sunset
 const DAY_START = 6;   // 06:00 = light
@@ -30,43 +28,25 @@ export const useTheme = create((set, get) => ({
   setDynamicSunset: (time) => set({ dynamicSunset: time }),
 
   // the main resolver
-getCurrentTheme: (systemScheme) => {
-  const { theme } = get();
-  const {
-    sunriseTime,
-    sunsetTime,
-    loaded,
-  } = useSettings.getState();
+  getCurrentTheme: (system) => {
+    const { theme, dynamicSunrise, dynamicSunset } = get();
 
-  // System theme mode
-  if (theme === "system") {
-    return systemScheme === "dark" ? "dark" : "light";
-  }
+    if (theme === "system") return system;
 
-  // Manual light/dark
-  if (theme !== "dynamic") {
+    if (theme === "dynamic") {
+      const [sunH, sunM] = dynamicSunrise.split(":").map(Number);
+      const [setH, setM] = dynamicSunset.split(":").map(Number);
+
+      const sunriseMin = sunH * 60 + sunM;
+      const sunsetMin = setH * 60 + setM;
+
+      const now = new Date();
+      const nowMin = now.getHours() * 60 + now.getMinutes();
+
+      return nowMin >= sunriseMin && nowMin < sunsetMin ? "light" : "dark";
+    }
+
     return theme;
   }
-
-  // Dynamic mode
-  if (!loaded || !sunriseTime || !sunsetTime) {
-    return "dark"; // fallback
-  }
-
-  const now = new Date();
-  const nowMin = now.getHours() * 60 + now.getMinutes();
-
-  const [srH, srM] = sunriseTime.split(":").map(Number);
-  const [ssH, ssM] = sunsetTime.split(":").map(Number);
-
-  const sunriseMin = srH * 60 + srM;
-  const sunsetMin = ssH * 60 + ssM;
-
-  return (nowMin >= sunriseMin && nowMin < sunsetMin)
-    ? "light"
-    : "dark";
-},
-
-
 }));
 

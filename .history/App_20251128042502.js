@@ -1,17 +1,17 @@
+// App.js
 import React, { useEffect } from "react";
 import { Platform } from "react-native";
 import * as QuickActions from "expo-quick-actions";
-
 import { NavigationContainer } from "@react-navigation/native";
 import RootStack from "./src/navigation/RootStack";
 import { navigationRef } from "./src/navigation/RootNavigation";
-
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
 import { useColorScheme } from "react-native";
 import { useTheme } from "./src/stores/themeStore";
-
-
+import "../src/stores/settingsStore";
+import "../src/stores/themeStore";
+import "../src/stores/entriesStore";
 
 
 export default function App() {

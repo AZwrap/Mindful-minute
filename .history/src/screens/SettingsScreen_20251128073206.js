@@ -401,7 +401,9 @@ const premiumToastStyle = {
               </View>
               
 {/* Theme */}
-<Text style={[styles.title, { color: palette.text }]}>Theme</Text>
+<Text style={[styles.label, { color: palette.sub, marginTop: 12 }]}>
+  Theme
+</Text>
 
 <View style={{ width: "100%" }}>
   {/* HEADER */}
@@ -422,11 +424,11 @@ const premiumToastStyle = {
     color: isDark ? "#E5E7EB" : "#0F172A",
   }}
 >
-  {theme === "system"
+  {selectedTheme === "system"
     ? "System"
-    : theme === "dynamic"
+    : selectedTheme === "dynamic"
     ? "Dynamic"
-    : theme === "light"
+    : selectedTheme === "light"
     ? "Light"
     : "Dark"}
 </Text>

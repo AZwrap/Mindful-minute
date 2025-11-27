@@ -401,83 +401,118 @@ const premiumToastStyle = {
               </View>
               
 {/* Theme */}
-<Text style={[styles.title, { color: palette.text }]}>Theme</Text>
-
-<View style={{ width: "100%" }}>
-  {/* HEADER */}
-  <Pressable
-    onPress={() => setDropdownOpen((p) => !p)}
-    style={[
-      styles.dropdownHeader,
-      {
-        backgroundColor: isDark ? "#1F2937" : "#F3F4F6",
-        borderColor: isDark ? "#374151" : "#D1D5DB",
-      },
-    ]}
-  >
- <Text
-  style={{
-    fontSize: 16,
-    fontWeight: "600",
-    color: isDark ? "#E5E7EB" : "#0F172A",
-  }}
->
-  {theme === "system"
-    ? "System"
-    : theme === "dynamic"
-    ? "Dynamic"
-    : theme === "light"
-    ? "Light"
-    : "Dark"}
+<Text style={[styles.label, { color: palette.sub, marginTop: 12 }]}>
+  Theme
 </Text>
 
-  </Pressable>
+<View style={{ marginTop: 6 }}>
 
-  {/* DROPDOWN directly under header */}
-  {dropdownOpen && (
-    <Animated.View
-      style={{
-        marginTop: 6,                     // ← PERFECT spacing
-        backgroundColor: isDark ? "#1E293B" : "#FFFFFF",
-        borderRadius: 12,
-        paddingVertical: 8,
-        elevation: 12,
-        overflow: "hidden",
-      }}
-    >
-{["light", "dark", "system", "dynamic"].map((opt) => (
-  <Pressable
-    key={opt}
-    onPress={() => {
-      setTheme(opt);
-      setDropdownOpen(false);
-    }}
-    style={{
-      paddingVertical: 12,
-      paddingHorizontal: 16,
-    }}
-  >
-    <Text
-      style={{
-        fontSize: 14,
-        fontWeight: "600",
-        color: isDark ? "#E5E7EB" : "#0F172A",
-      }}
-    >
-      {opt === "system"
-        ? "System"
-        : opt === "dynamic"
-        ? "Dynamic"
-        : opt.charAt(0).toUpperCase() + opt.slice(1)}
+  {/* Header */}
+<Pressable
+  ref={headerRef}
+  onLayout={(e) => setDropdownHeaderHeight(e.nativeEvent.layout.height)}
+  onPress={() => setDropdownOpen((p) => !p)}
+  style={[
+    styles.dropdownHeader,
+    {
+      backgroundColor: isDark ? "#1F2937" : "#F3F4F6",
+      borderColor: isDark ? "#374151" : "#D1D5DB",
+    },
+  ]}
+>
+
+    <Text style={[styles.dropdownHeaderText, { color: palette.text }]}>
+      {theme === "dynamic"
+        ? "Dynamic (Sunrise/Sunset)"
+        : theme.charAt(0).toUpperCase() + theme.slice(1)}
     </Text>
   </Pressable>
-))}
 
+  {/* ABSOLUTE CONTAINER (fixes Android layering) */}
+  <View style={{ position: "relative", zIndex: 9999 }}>
 
-    </Animated.View>
-  )}
+    {dropdownOpen && (
+      <>
+        {/* BACKDROP */}
+        <Pressable
+          style={{
+            position: "absolute",
+            top: 0,
+            bottom: 0,
+            left: 0,
+            right: 0,
+            zIndex: 1,
+          }}
+          onPress={() => setDropdownOpen(false)}
+        />
+
+        {/* DROPDOWN PANEL */}
+<Animated.View
+  style={{
+    position: "absolute",
+    top: dropdownHeaderHeight + 6, // ← dynamic position
+    left: 0,
+    right: 0,
+    zIndex: 9999,
+    backgroundColor: isDark ? "#1E293B" : "#FFFFFF",
+    borderRadius: 12,
+    paddingVertical: 8,
+    elevation: 18,
+    maxHeight: 240,
+    overflow: "hidden",
+    transform: [
+      {
+        scale: dropdownAnim.interpolate({
+          inputRange: [0, 1],
+          outputRange: [0.9, 1],
+        }),
+      },
+    ],
+    opacity: dropdownAnim,
+  }}
+>
+
+          <ScrollView nestedScrollEnabled>
+            {[
+              { label: "System", value: "system" },
+              { label: "Light", value: "light" },
+              { label: "Dark", value: "dark" },
+              { label: "Dynamic (Time-based)", value: "dynamic" },
+            ].map((opt) => (
+              <Pressable
+                key={opt.value}
+                onPress={() => {
+                  setTheme(opt.value);
+                  setDropdownOpen(false);
+                }}
+                style={{
+                  paddingVertical: 12,
+                  paddingHorizontal: 16,
+                  backgroundColor:
+                    theme === opt.value
+                      ? isDark
+                        ? "rgba(99,102,241,0.2)"
+                        : "rgba(99,102,241,0.1)"
+                      : "transparent",
+                }}
+              >
+                <Text
+                  style={{
+                    color: isDark ? "#E5E7EB" : "#0F172A",
+                    fontWeight: theme === opt.value ? "700" : "500",
+                  }}
+                >
+                  {opt.label}
+                </Text>
+              </Pressable>
+            ))}
+          </ScrollView>
+        </Animated.View>
+      </>
+    )}
+
+  </View>
 </View>
-
 
 {/* Dynamic time configuration */}
 {theme === "dynamic" && (

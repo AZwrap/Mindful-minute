@@ -12,19 +12,15 @@ import {
   Alert,
 } from 'react-native';
 import * as Haptics from 'expo-haptics';
-import { useSettings } from "../stores/settingsStore";
+import { useSettings } from '../stores/settingsStore';
 import * as Sharing from 'expo-sharing';
 import * as FileSystem from 'expo-file-system';
 import { useEntries } from '../stores/entriesStore';
-import { useTheme } from "../stores/themeStore";
+import { useTheme } from '../stores/themeStore';
 import { LinearGradient } from 'expo-linear-gradient';
 import PremiumPressable from '../components/PremiumPressable';
 import {  Easing } from "react-native";
 import { TouchableWithoutFeedback } from "react-native";
-import DateTimePickerModal from "react-native-modal-datetime-picker";
-import SunTimesSelector from "../components/SunTimesSelector";
-
-
 
 
 
@@ -34,7 +30,7 @@ const MAX = 600;
 
 export default function SettingsScreen({ navigation }) {
   const systemScheme = useColorScheme();
-  const { getCurrentTheme } = useTheme();
+  const { theme, setTheme, getCurrentTheme } = useTheme();
   const currentTheme = getCurrentTheme(systemScheme);
   const isDark = currentTheme === 'dark';
   
@@ -64,45 +60,10 @@ export default function SettingsScreen({ navigation }) {
   const [showThemeDropdown, setShowThemeDropdown] = useState(false);
 const animHeight = useRef(new Animated.Value(0)).current;
 const animOpacity = useRef(new Animated.Value(0)).current;
-const [dropdownOpen, setDropdownOpen] = useState(false);
-const {
-  theme,
-  setTheme,
-  dynamicSunrise,
-  dynamicSunset,
-  setDynamicSunrise,
-  setDynamicSunset,
-} = useTheme();
-const [pickerVisible, setPickerVisible] = useState(false);
-const [activePicker, setActivePicker] = useState(null); // "sunrise" or "sunset"
-const settings = useSettings();
-const formatTime = (date) => {
-  if (!date) return null;
-  const d = new Date(date);
-  const h = d.getHours().toString().padStart(2, "0");
-  const m = d.getMinutes().toString().padStart(2, "0");
-  return `${h}:${m}`;
-};
-const headerRef = useRef(null);
-const [dropdownHeaderHeight, setDropdownHeaderHeight] = useState(0);
-
-
-useEffect(() => {
-  console.log("SETTINGS DEBUG →", JSON.stringify(settings, null, 2));
-}, [settings]);
-
-const dropdownAnim = useRef(new Animated.Value(0)).current;
-
-useEffect(() => {
-  
-  Animated.timing(dropdownAnim, {
-    toValue: dropdownOpen ? 1 : 0,
-    duration: 150,
-    useNativeDriver: true,
-  }).start();
-}, [dropdownOpen]);
-
-
+const dynamicSunrise = useSettings((s) => s.dynamicSunrise);
+const dynamicSunset = useSettings((s) => s.dynamicSunset);
+const setDynamicSunrise = useSettings((s) => s.setDynamicSunrise);
+const setDynamicSunset = useSettings((s) => s.setDynamicSunset);
 
 
 // For dynamic theme time config
@@ -401,12 +362,14 @@ const premiumToastStyle = {
               </View>
               
 {/* Theme */}
-<Text style={[styles.title, { color: palette.text }]}>Theme</Text>
+<Text style={[styles.label, { color: palette.sub, marginTop: 12 }]}>
+  Theme
+</Text>
 
-<View style={{ width: "100%" }}>
-  {/* HEADER */}
+<View style={{ marginTop: 6, zIndex: 20 }}>
+  {/* Header */}
   <Pressable
-    onPress={() => setDropdownOpen((p) => !p)}
+    onPress={toggleDropdown}
     style={[
       styles.dropdownHeader,
       {
@@ -415,157 +378,137 @@ const premiumToastStyle = {
       },
     ]}
   >
- <Text
-  style={{
-    fontSize: 16,
-    fontWeight: "600",
-    color: isDark ? "#E5E7EB" : "#0F172A",
-  }}
->
-  {theme === "system"
-    ? "System"
-    : theme === "dynamic"
-    ? "Dynamic"
-    : theme === "light"
-    ? "Light"
-    : "Dark"}
-</Text>
-
+    <Text style={[styles.dropdownHeaderText, { color: palette.text }]}>
+      {theme === "dynamic"
+        ? "Dynamic (Sunrise/Sunset)"
+        : theme.charAt(0).toUpperCase() + theme.slice(1)}
+    </Text>
   </Pressable>
 
-  {/* DROPDOWN directly under header */}
-  {dropdownOpen && (
-    <Animated.View
+  {/* Animated dropdown */}
+{dropdownOpen && (
+  <>
+    {/* BACKDROP so tapping outside closes the dropdown */}
+    <Pressable
+      style={StyleSheet.absoluteFill}
+      onPress={() => setDropdownOpen(false)}
+    />
+
+    {/* DROPDOWN PANEL */}
+    <View
       style={{
-        marginTop: 6,                     // ← PERFECT spacing
+        position: "absolute",
+        top: 50,
+        left: 0,
+        right: 0,
         backgroundColor: isDark ? "#1E293B" : "#FFFFFF",
         borderRadius: 12,
         paddingVertical: 8,
         elevation: 12,
-        overflow: "hidden",
+        zIndex: 9999,
+        maxHeight: 240, // 🔥 makes it scrollable
       }}
     >
-{["light", "dark", "system", "dynamic"].map((opt) => (
-  <Pressable
-    key={opt}
-    onPress={() => {
-      setTheme(opt);
-      setDropdownOpen(false);
-    }}
-    style={{
-      paddingVertical: 12,
-      paddingHorizontal: 16,
-    }}
-  >
-    <Text
-      style={{
-        fontSize: 14,
-        fontWeight: "600",
-        color: isDark ? "#E5E7EB" : "#0F172A",
-      }}
-    >
-      {opt === "system"
-        ? "System"
-        : opt === "dynamic"
-        ? "Dynamic"
-        : opt.charAt(0).toUpperCase() + opt.slice(1)}
-    </Text>
-  </Pressable>
-))}
+      <ScrollView
+        nestedScrollEnabled
+        showsVerticalScrollIndicator={false}
+      >
+        {[
+          { label: "System", value: "system" },
+          { label: "Light", value: "light" },
+          { label: "Dark", value: "dark" },
+          { label: "Dynamic (Time-based)", value: "dynamic" },
+        ].map((opt) => (
+          <Pressable
+            key={opt.value}
+            onPress={() => {
+              setTheme(opt.value);
+              setDropdownOpen(false);
+            }}
+            style={{
+              paddingVertical: 12,
+              paddingHorizontal: 16,
+              backgroundColor:
+                theme === opt.value
+                  ? isDark
+                    ? "rgba(99,102,241,0.2)"
+                    : "rgba(99,102,241,0.1)"
+                  : "transparent",
+            }}
+          >
+            <Text
+              style={{
+                color: isDark ? "#E5E7EB" : "#0F172A",
+                fontWeight: theme === opt.value ? "700" : "500",
+              }}
+            >
+              {opt.label}
+            </Text>
+          </Pressable>
+        ))}
+      </ScrollView>
+    </View>
+  </>
+)}
 
-
-    </Animated.View>
-  )}
 </View>
-
 
 {/* Dynamic time configuration */}
 {theme === "dynamic" && (
   <View style={{ marginTop: 12, gap: 12 }}>
-<Text
-  style={[
-    styles.label,
-    {
-      marginBottom: 4,
-      color: isDark ? "#E5E7EB" : "#0F172A", // ONLY change color
-    },
-  ]}
->
-  Dynamic Theme Times
-</Text>
-
-
-<View style={{ flexDirection: "row", gap: 12 }}>
-
-  {/* Sunrise box */}
-  <View style={{ flex: 1 }}>
-  <Text style={[styles.smallLabel, { color: isDark ? "#CBD5E1" : "#334155" }]}>
-    Sunrise
-  </Text>
-
-  <Pressable
-    onPress={() => {
-      setActivePicker("sunrise");
-      setPickerVisible(true);
-    }}
-    style={[
-      styles.timeBox,
-      {
-        backgroundColor: isDark ? "#1E293B" : "#F1F5F9",
-        borderColor: isDark ? "#334155" : "#CBD5E1",
-      },
-    ]}
-  >
-    <Text
-      style={{
-        fontSize: 14,
-        fontWeight: "600",
-        color: isDark ? "#E5E7EB" : "#0F172A", // ← Correct light/dark text
-      }}
-    >
-      {settings.sunriseTime || "Select"}
+    <Text style={[styles.label, { color: palette.sub }]}>
+      Dynamic Theme Times
     </Text>
-  </Pressable>
-</View>
 
+    <View style={{ flexDirection: "row", gap: 10 }}>
+      <View style={{ flex: 1 }}>
+        <Text style={[styles.smallLabel, { color: palette.sub }]}>
+          Sunrise
+        </Text>
+        <TextInput
+          value={sunrise}
+          onChangeText={(t) => {
+            setSunrise(t);
+            setDynamicSunrise(t);
+          }}
+          style={[
+            styles.timeInput,
+            {
+              backgroundColor: isDark ? "#1F2937" : "#F3F4F6",
+              color: palette.text,
+              borderColor: isDark ? "#374151" : "#D1D5DB",
+            },
+          ]}
+          placeholder="06:00"
+          placeholderTextColor={palette.sub}
+        />
+      </View>
 
-  {/* Sunset box */}
-  <View style={{ flex: 1 }}>
-  <Text style={[styles.smallLabel, { color: palette.sub }]}>Sunset</Text>
-
-  <Pressable
-    onPress={() => {
-      setActivePicker("sunset");
-      setPickerVisible(true);
-    }}
-    style={[
-      styles.timeBox,
-      {
-        backgroundColor: isDark ? "#1E293B" : "#F1F5F9",
-        borderColor: isDark ? "#334155" : "#CBD5E1",
-      },
-    ]}
-  >
-    <Text
-      style={{
-        fontSize: 14,
-        fontWeight: "600",
-        color: isDark ? "#E5E7EB" : "#0F172A",
-      }}
-    >
-      {settings.sunsetTime || "Select"}
-    </Text>
-  </Pressable>
-</View>
-
-
-</View>
-
+      <View style={{ flex: 1 }}>
+        <Text style={[styles.smallLabel, { color: palette.sub }]}>
+          Sunset
+        </Text>
+        <TextInput
+          value={sunset}
+          onChangeText={(t) => {
+            setSunset(t);
+            setDynamicSunset(t);
+          }}
+          style={[
+            styles.timeInput,
+            {
+              backgroundColor: isDark ? "#1F2937" : "#F3F4F6",
+              color: palette.text,
+              borderColor: isDark ? "#374151" : "#D1D5DB",
+            },
+          ]}
+          placeholder="18:00"
+          placeholderTextColor={palette.sub}
+        />
+      </View>
+    </View>
   </View>
 )}
-
-
-
 
 
             </View>
@@ -827,26 +770,6 @@ const premiumToastStyle = {
                 Export all your journal entries as a text file that you can save, print, or share.
               </Text>
             </View>
-            <DateTimePickerModal
-  isVisible={pickerVisible}
-  mode="time"
-onConfirm={(date) => {
-  const hh = String(date.getHours()).padStart(2, "0");
-  const mm = String(date.getMinutes()).padStart(2, "0");
-  const value = `${hh}:${mm}`;
-
-  if (activePicker === "sunrise") {
-    useSettings.getState().setSunriseTime(value);
-  } else if (activePicker === "sunset") {
-    useSettings.getState().setSunsetTime(value);
-  }
-
-  setPickerVisible(false);
-}}
-
-  onCancel={() => setPickerVisible(false)}
-/>
-
           </ScrollView>
 
           {/* Toast */}
@@ -1047,13 +970,6 @@ timeInput: {
   borderWidth: 1,
   fontSize: 15,
 },
-timeBox: {
-  marginTop: 6,
-  paddingVertical: 14,
-  borderRadius: 12,
-  borderWidth: 1,
-  alignItems: "center",
-  justifyContent: "center",
-},
+
 
 });

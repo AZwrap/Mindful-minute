@@ -401,7 +401,9 @@ const premiumToastStyle = {
               </View>
               
 {/* Theme */}
-<Text style={[styles.title, { color: palette.text }]}>Theme</Text>
+<Text style={[styles.label, { color: palette.sub, marginTop: 12 }]}>
+  Theme
+</Text>
 
 <View style={{ width: "100%" }}>
   {/* HEADER */}
@@ -415,22 +417,15 @@ const premiumToastStyle = {
       },
     ]}
   >
- <Text
-  style={{
-    fontSize: 16,
-    fontWeight: "600",
-    color: isDark ? "#E5E7EB" : "#0F172A",
-  }}
->
-  {theme === "system"
-    ? "System"
-    : theme === "dynamic"
-    ? "Dynamic"
-    : theme === "light"
-    ? "Light"
-    : "Dark"}
-</Text>
-
+    <Text
+      style={{
+        color: isDark ? "#F3F4F6" : "#1F2937",
+        fontWeight: "600",
+        fontSize: 16,
+      }}
+    >
+      {theme === "system" ? "Follow System" : theme === "light" ? "Light" : "Dark"}
+    </Text>
   </Pressable>
 
   {/* DROPDOWN directly under header */}
@@ -453,26 +448,24 @@ const premiumToastStyle = {
       setDropdownOpen(false);
     }}
     style={{
-      paddingVertical: 12,
-      paddingHorizontal: 16,
+      paddingVertical: 10,
+      paddingHorizontal: 14,
     }}
   >
     <Text
       style={{
-        fontSize: 14,
-        fontWeight: "600",
         color: isDark ? "#E5E7EB" : "#0F172A",
+        fontSize: 15,
       }}
     >
       {opt === "system"
         ? "System"
         : opt === "dynamic"
-        ? "Dynamic"
+        ? "Dynamic (Sunrise/Sunset)"
         : opt.charAt(0).toUpperCase() + opt.slice(1)}
     </Text>
   </Pressable>
 ))}
-
 
     </Animated.View>
   )}

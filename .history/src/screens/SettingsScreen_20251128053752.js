@@ -73,28 +73,22 @@ const {
   setDynamicSunrise,
   setDynamicSunset,
 } = useTheme();
+// TIME VALUES (CORRECTLY SUBSCRIBED)
+const sunriseTime = useSettings((s) => s.sunriseTime);
+const sunsetTime = useSettings((s) => s.sunsetTime);
+const setSunriseTime = useSettings((s) => s.setSunriseTime);
+const setSunsetTime = useSettings((s) => s.setSunsetTime);
+
+// PICKER STATE
 const [pickerVisible, setPickerVisible] = useState(false);
-const [activePicker, setActivePicker] = useState(null); // "sunrise" or "sunset"
-const settings = useSettings();
-const formatTime = (date) => {
-  if (!date) return null;
-  const d = new Date(date);
-  const h = d.getHours().toString().padStart(2, "0");
-  const m = d.getMinutes().toString().padStart(2, "0");
-  return `${h}:${m}`;
-};
-const headerRef = useRef(null);
-const [dropdownHeaderHeight, setDropdownHeaderHeight] = useState(0);
+const [activePicker, setActivePicker] = useState(null);
 
 
-useEffect(() => {
-  console.log("SETTINGS DEBUG →", JSON.stringify(settings, null, 2));
-}, [settings]);
+
 
 const dropdownAnim = useRef(new Animated.Value(0)).current;
 
 useEffect(() => {
-  
   Animated.timing(dropdownAnim, {
     toValue: dropdownOpen ? 1 : 0,
     duration: 150,
@@ -401,10 +395,13 @@ const premiumToastStyle = {
               </View>
               
 {/* Theme */}
-<Text style={[styles.title, { color: palette.text }]}>Theme</Text>
+<Text style={[styles.label, { color: palette.sub, marginTop: 12 }]}>
+  Theme
+</Text>
 
-<View style={{ width: "100%" }}>
-  {/* HEADER */}
+<View style={{ marginTop: 6 }}>
+
+  {/* Header */}
   <Pressable
     onPress={() => setDropdownOpen((p) => !p)}
     style={[
@@ -415,151 +412,163 @@ const premiumToastStyle = {
       },
     ]}
   >
- <Text
-  style={{
-    fontSize: 16,
-    fontWeight: "600",
-    color: isDark ? "#E5E7EB" : "#0F172A",
-  }}
->
-  {theme === "system"
-    ? "System"
-    : theme === "dynamic"
-    ? "Dynamic"
-    : theme === "light"
-    ? "Light"
-    : "Dark"}
-</Text>
-
-  </Pressable>
-
-  {/* DROPDOWN directly under header */}
-  {dropdownOpen && (
-    <Animated.View
-      style={{
-        marginTop: 6,                     // ← PERFECT spacing
-        backgroundColor: isDark ? "#1E293B" : "#FFFFFF",
-        borderRadius: 12,
-        paddingVertical: 8,
-        elevation: 12,
-        overflow: "hidden",
-      }}
-    >
-{["light", "dark", "system", "dynamic"].map((opt) => (
-  <Pressable
-    key={opt}
-    onPress={() => {
-      setTheme(opt);
-      setDropdownOpen(false);
-    }}
-    style={{
-      paddingVertical: 12,
-      paddingHorizontal: 16,
-    }}
-  >
-    <Text
-      style={{
-        fontSize: 14,
-        fontWeight: "600",
-        color: isDark ? "#E5E7EB" : "#0F172A",
-      }}
-    >
-      {opt === "system"
-        ? "System"
-        : opt === "dynamic"
-        ? "Dynamic"
-        : opt.charAt(0).toUpperCase() + opt.slice(1)}
+    <Text style={[styles.dropdownHeaderText, { color: palette.text }]}>
+      {theme === "dynamic"
+        ? "Dynamic (Sunrise/Sunset)"
+        : theme.charAt(0).toUpperCase() + theme.slice(1)}
     </Text>
   </Pressable>
-))}
 
+  {/* ABSOLUTE CONTAINER (fixes Android layering) */}
+  <View style={{ position: "relative", zIndex: 9999 }}>
 
-    </Animated.View>
-  )}
+    {dropdownOpen && (
+      <>
+        {/* BACKDROP */}
+        <Pressable
+          style={{
+            position: "absolute",
+            top: 0,
+            bottom: 0,
+            left: 0,
+            right: 0,
+            zIndex: 1,
+          }}
+          onPress={() => setDropdownOpen(false)}
+        />
+
+        {/* DROPDOWN PANEL */}
+        <Animated.View
+          style={{
+            position: "absolute",
+            top: 50,
+            left: 0,
+            right: 0,
+            zIndex: 9999,
+            backgroundColor: isDark ? "#1E293B" : "#FFFFFF",
+            borderRadius: 12,
+            paddingVertical: 8,
+            elevation: 18,
+            maxHeight: 240,
+            overflow: "hidden",
+            transform: [
+              {
+                scale: dropdownAnim.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: [0.9, 1],
+                }),
+              },
+            ],
+            opacity: dropdownAnim,
+          }}
+        >
+          <ScrollView nestedScrollEnabled>
+            {[
+              { label: "System", value: "system" },
+              { label: "Light", value: "light" },
+              { label: "Dark", value: "dark" },
+              { label: "Dynamic (Time-based)", value: "dynamic" },
+            ].map((opt) => (
+              <Pressable
+                key={opt.value}
+                onPress={() => {
+                  setTheme(opt.value);
+                  setDropdownOpen(false);
+                }}
+                style={{
+                  paddingVertical: 12,
+                  paddingHorizontal: 16,
+                  backgroundColor:
+                    theme === opt.value
+                      ? isDark
+                        ? "rgba(99,102,241,0.2)"
+                        : "rgba(99,102,241,0.1)"
+                      : "transparent",
+                }}
+              >
+                <Text
+                  style={{
+                    color: isDark ? "#E5E7EB" : "#0F172A",
+                    fontWeight: theme === opt.value ? "700" : "500",
+                  }}
+                >
+                  {opt.label}
+                </Text>
+              </Pressable>
+            ))}
+          </ScrollView>
+        </Animated.View>
+      </>
+    )}
+
+  </View>
 </View>
-
 
 {/* Dynamic time configuration */}
 {theme === "dynamic" && (
   <View style={{ marginTop: 12, gap: 12 }}>
-<Text
-  style={[
-    styles.label,
-    {
-      marginBottom: 4,
-      color: isDark ? "#E5E7EB" : "#0F172A", // ONLY change color
-    },
-  ]}
->
-  Dynamic Theme Times
-</Text>
+    {/* DYNAMIC THEME TIMES */}
+<Text style={styles.sectionTitle}>Dynamic Theme Times</Text>
 
-
-<View style={{ flexDirection: "row", gap: 12 }}>
-
-  {/* Sunrise box */}
-  <View style={{ flex: 1 }}>
-  <Text style={[styles.smallLabel, { color: isDark ? "#CBD5E1" : "#334155" }]}>
-    Sunrise
-  </Text>
-
-  <Pressable
-    onPress={() => {
-      setActivePicker("sunrise");
-      setPickerVisible(true);
-    }}
-    style={[
-      styles.timeBox,
-      {
-        backgroundColor: isDark ? "#1E293B" : "#F1F5F9",
-        borderColor: isDark ? "#334155" : "#CBD5E1",
-      },
-    ]}
-  >
-    <Text
-      style={{
-        fontSize: 14,
-        fontWeight: "600",
-        color: isDark ? "#E5E7EB" : "#0F172A", // ← Correct light/dark text
+<View style={styles.timeRow}>
+  {/* SUNRISE COLUMN */}
+  <View style={styles.timeColumn}>
+    <Text style={styles.timeLabel}>Sunrise</Text>
+    <Pressable
+      onPress={() => {
+        setPickerVisible(true);
+        setActivePicker("sunrise");
       }}
+      style={styles.timeBox}
     >
-      {settings.sunriseTime || "Select"}
-    </Text>
-  </Pressable>
-</View>
+      <Text style={styles.timeValue}>
+        {sunriseTime
+          ? new Date(sunriseTime).toLocaleTimeString([], {
+              hour: "2-digit",
+              minute: "2-digit",
+            })
+          : "Select"}
+      </Text>
+    </Pressable>
+  </View>
 
-
-  {/* Sunset box */}
-  <View style={{ flex: 1 }}>
-  <Text style={[styles.smallLabel, { color: palette.sub }]}>Sunset</Text>
-
-  <Pressable
-    onPress={() => {
-      setActivePicker("sunset");
-      setPickerVisible(true);
-    }}
-    style={[
-      styles.timeBox,
-      {
-        backgroundColor: isDark ? "#1E293B" : "#F1F5F9",
-        borderColor: isDark ? "#334155" : "#CBD5E1",
-      },
-    ]}
-  >
-    <Text
-      style={{
-        fontSize: 14,
-        fontWeight: "600",
-        color: isDark ? "#E5E7EB" : "#0F172A",
+  {/* SUNSET COLUMN */}
+  <View style={styles.timeColumn}>
+    <Text style={styles.timeLabel}>Sunset</Text>
+    <Pressable
+      onPress={() => {
+        setPickerVisible(true);
+        setActivePicker("sunset");
       }}
+      style={styles.timeBox}
     >
-      {settings.sunsetTime || "Select"}
-    </Text>
-  </Pressable>
+      <Text style={styles.timeValue}>
+        {sunsetTime
+          ? new Date(sunsetTime).toLocaleTimeString([], {
+              hour: "2-digit",
+              minute: "2-digit",
+            })
+          : "Select"}
+      </Text>
+    </Pressable>
+  </View>
 </View>
 
 
-</View>
+<DateTimePickerModal
+  isVisible={pickerVisible}
+  mode="time"
+  onConfirm={(date) => {
+    if (activePicker === "sunrise") {
+      setSunriseTime(date);
+    } else {
+      setSunsetTime(date);
+    }
+    setPickerVisible(false);
+    setActivePicker(null);
+  }}
+  onCancel={() => setPickerVisible(false)}
+/>
 
   </View>
 )}
@@ -830,20 +839,21 @@ const premiumToastStyle = {
             <DateTimePickerModal
   isVisible={pickerVisible}
   mode="time"
-onConfirm={(date) => {
-  const hh = String(date.getHours()).padStart(2, "0");
-  const mm = String(date.getMinutes()).padStart(2, "0");
-  const value = `${hh}:${mm}`;
+  onConfirm={(date) => {
+    const hh = String(date.getHours()).padStart(2, "0");
+    const mm = String(date.getMinutes()).padStart(2, "0");
+    const value = `${hh}:${mm}`;
 
-  if (activePicker === "sunrise") {
-    useSettings.getState().setSunriseTime(value);
-  } else if (activePicker === "sunset") {
-    useSettings.getState().setSunsetTime(value);
-  }
+if (activePicker === "sunrise") {
+  settings.setSunriseTime(value);
+} else 
+if (activePicker === "sunset") {
+  settings.setSunsetTime(value);
+}
 
-  setPickerVisible(false);
-}}
 
+    setPickerVisible(false);
+  }}
   onCancel={() => setPickerVisible(false)}
 />
 
@@ -1047,13 +1057,49 @@ timeInput: {
   borderWidth: 1,
   fontSize: 15,
 },
-timeBox: {
-  marginTop: 6,
-  paddingVertical: 14,
-  borderRadius: 12,
-  borderWidth: 1,
-  alignItems: "center",
-  justifyContent: "center",
+timeRow: {
+  flexDirection: "row",
+  justifyContent: "space-between",
+  marginTop: 12,
+  gap: 12,
 },
 
+timeColumn: {
+  flex: 1,
+},
+
+timeLabel: {
+  fontSize: 13,
+  marginBottom: 6,
+  color: palette.sub,
+  opacity: 0.9,
+},
+
+timeBox: {
+  flex: 1,
+  paddingVertical: 14,
+  paddingHorizontal: 16,
+  borderRadius: 14,
+  borderWidth: 1,
+  borderColor: palette.border,
+  backgroundColor: palette.card,
+  justifyContent: "center",
+  alignItems: "center",
+  minHeight: 54,
+  flexDirection: "row",
+  gap: 6,
+
+  // subtle glow
+  shadowColor: currentTheme === "dark" ? "#000" : "#CBD5E1",
+  shadowOpacity: currentTheme === "dark" ? 0.25 : 0.15,
+  shadowRadius: 6,
+  shadowOffset: { width: 0, height: 2 },
+  elevation: 3,
+},
+
+timeValue: {
+  fontSize: 18,
+  fontWeight: "600",
+  color: palette.text,
+},
 });

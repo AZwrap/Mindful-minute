@@ -36,19 +36,20 @@ getCurrentTheme: (systemScheme) => {
     sunriseTime,
     sunsetTime,
     loaded,
+    useSystemTheme,   // if you have this setting
   } = useSettings.getState();
 
-  // System theme mode
+  // 1. System Theme
   if (theme === "system") {
     return systemScheme === "dark" ? "dark" : "light";
   }
 
-  // Manual light/dark
+  // 2. Manual Theme (light/dark)
   if (theme !== "dynamic") {
-    return theme;
+    return theme; 
   }
 
-  // Dynamic mode
+  // 3. Dynamic Theme (sunrise → light → sunset)
   if (!loaded || !sunriseTime || !sunsetTime) {
     return "dark"; // fallback
   }
@@ -62,11 +63,13 @@ getCurrentTheme: (systemScheme) => {
   const sunriseMin = srH * 60 + srM;
   const sunsetMin = ssH * 60 + ssM;
 
-  return (nowMin >= sunriseMin && nowMin < sunsetMin)
-    ? "light"
-    : "dark";
-},
+  // Light theme during day → dark theme at night
+  if (nowMin >= sunriseMin && nowMin < sunsetMin) {
+    return "light";
+  }
 
+  return "dark";
+},
 
 }));
 
