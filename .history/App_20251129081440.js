@@ -1,11 +1,13 @@
 import React, { useEffect } from "react";
-import { GestureHandlerRootView } from "react-native-gesture-handler";
-import { NavigationContainer } from "@react-navigation/native";
-import { StatusBar } from "expo-status-bar";
+import { Animated, Easing, Platform } from "react-native";
 import * as QuickActions from "expo-quick-actions";
 
+import { NavigationContainer } from "@react-navigation/native";
 import RootStack from "./src/navigation/RootStack";
 import { navigationRef } from "./src/navigation/RootNavigation";
+
+import { SafeAreaProvider } from "react-native-safe-area-context";
+import { StatusBar } from "expo-status-bar";
 import { useColorScheme } from "react-native";
 import { useTheme } from "./src/stores/themeStore";
 
@@ -14,8 +16,24 @@ import ThemeFadeWrapper from "./src/components/ThemeFadeWrapper";
 export default function App() {
   const system = useColorScheme();
   const { getCurrentTheme } = useTheme();
+  const currentTheme = getCurrentTheme(system);
 
-  // Quick Actions
+  const isDark = currentTheme === "dark";
+
+  // FADE ANIM when theme changes (extra polish)
+  const fadeAnim = React.useRef(new Animated.Value(1)).current;
+
+  useEffect(() => {
+    fadeAnim.setValue(0);
+    Animated.timing(fadeAnim, {
+      toValue: 1,
+      duration: 350,
+      easing: Easing.inOut(Easing.ease),
+      useNativeDriver: true,
+    }).start();
+  }, [currentTheme]);
+
+  // SAFE QuickActions (disabled unless available)
   useEffect(() => {
     if (!QuickActions.setShortcutItems) return;
 
@@ -35,14 +53,13 @@ export default function App() {
     return () => sub.remove();
   }, []);
 
-  return (
-    <GestureHandlerRootView style={{ flex: 1 }}>
+ return (
       <NavigationContainer ref={navigationRef}>
         <ThemeFadeWrapper>
           <RootStack />
         </ThemeFadeWrapper>
-        <StatusBar style="light" />
       </NavigationContainer>
-    </GestureHandlerRootView>
   );
+
+
 }

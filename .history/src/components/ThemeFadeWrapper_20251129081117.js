@@ -9,33 +9,32 @@ export default function ThemeFadeWrapper({ children }) {
   const theme = getCurrentTheme(system);
 
   const fade = useRef(new Animated.Value(1)).current;
-  const prevBg = useRef(theme === "dark" ? "#0F172A" : "#FFFFFF");
+  const prevBg = useRef(theme === "dark" ? "#0F172A" : "#FFFFFF").current;
 
   useEffect(() => {
     const newBg = theme === "dark" ? "#0F172A" : "#FFFFFF";
 
     fade.setValue(0);
-
     Animated.timing(fade, {
       toValue: 1,
       duration: 350,
-      useNativeDriver: false, // backgroundColor
+      useNativeDriver: false, // animate backgroundColor
     }).start(() => {
-      prevBg.current = newBg; // ✅ THIS IS THE CORRECT UPDATE
+      prevBg = newBg;
     });
   }, [theme]);
 
   const bgInterpolate = fade.interpolate({
     inputRange: [0, 1],
     outputRange: [
-      prevBg.current,
+      prevBg,
       theme === "dark" ? "#0F172A" : "#FFFFFF",
     ],
   });
 
   return (
     <View style={{ flex: 1 }}>
-      {/* BACKGROUND CROSSFADE */}
+      {/* FADING BACKGROUND LAYER */}
       <Animated.View
         pointerEvents="none"
         style={[
@@ -44,7 +43,7 @@ export default function ThemeFadeWrapper({ children }) {
         ]}
       />
 
-      {/* REAL APP */}
+      {/* REAL APP CONTENT */}
       {children}
     </View>
   );
