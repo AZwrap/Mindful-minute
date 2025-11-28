@@ -76,6 +76,7 @@ export default function WriteScreen({ navigation, route }) {
   const [keyboardHeight, setKeyboardHeight] = useState(0);
 
   const [running, setRunning] = useState(true);
+  const [showTimer, setShowTimer] = useState(true);
   const [timerCompleted, setTimerCompleted] = useState(false);
   const [isInitialLoad, setIsInitialLoad] = useState(true);
 
@@ -155,12 +156,10 @@ export default function WriteScreen({ navigation, route }) {
   const getDraft = useEntries((s) => s.getDraft);
   const getPomodoroState = useEntries((s) => s.getPomodoroState);
 
-const {
-  writeDuration,
-  breakDuration,
-  totalCycles,
-  showTimer,
-} = useWritingSettings();
+  const writeDuration = useSettings((s) => s.writeDuration) || 300;
+  const breakDuration = useSettings((s) => s.breakDuration) || 60;
+  const longBreakDuration = useSettings((s) => s.longBreakDuration) || 300;
+  const totalCycles = useSettings((s) => s.totalCycles) || 4;
 
   const hapticsEnabled = useSettings((s) => s.hapticsEnabled);
   const soundEnabled = useSettings((s) => s.soundEnabled);

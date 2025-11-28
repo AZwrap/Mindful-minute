@@ -36,20 +36,20 @@ export default function SettingsScreen({ navigation }) {
   const currentTheme = getCurrentTheme(systemScheme);
   const isDark = currentTheme === 'dark';
   const loaded = useSettings((s) => s.loaded);
-const showTimer = useWritingSettings((s) => s.showTimer);
+  const showTimer = useSettings((s) => s.showTimer);
   const durationSec = useSettings((s) => s.durationSec);
   const hapticsEnabled = useSettings((s) => s.hapticsEnabled);
   const soundEnabled = useSettings((s) => s.soundEnabled);
   const preserveTimerProgress = useSettings((s) => s.preserveTimerProgress);
-  const {
-  writeDuration,
-  breakDuration,
-  totalCycles,
-  setWriteDuration,
-  setBreakDuration,
-  setTotalCycles,
-} = useWritingSettings();
-const setShowTimer = useWritingSettings((s) => s.setShowTimer);
+  const writeDuration = useSettings((s) => s.writeDuration);
+  const breakDuration = useSettings((s) => s.breakDuration);
+  const longBreakDuration = useSettings((s) => s.longBreakDuration);
+  const totalCycles = useSettings((s) => s.totalCycles);
+  const setWriteDuration = useSettings((s) => s.setWriteDuration);
+  const setBreakDuration = useSettings((s) => s.setBreakDuration);
+  const setLongBreakDuration = useSettings((s) => s.setLongBreakDuration);
+  const setTotalCycles = useSettings((s) => s.setTotalCycles);
+  const setShowTimer = useSettings((s) => s.setShowTimer);
   const setDurationSec = useSettings((s) => s.setDurationSec);
   const setHapticsEnabled = useSettings((s) => s.setHapticsEnabled);
   const setSoundEnabled = useSettings((s) => s.setSoundEnabled);
@@ -169,7 +169,16 @@ const toggleDropdown = () => {
     }
   }, [loaded]);
 
+  useEffect(() => {
+    console.log('Current Pomodoro settings:', {
+      writeDuration,
+      breakDuration,
+      longBreakDuration, 
+      totalCycles
+    });
+  }, [writeDuration, breakDuration, longBreakDuration, totalCycles]);
 
+  useEffect(() => { setCustomBreakText(String(breakDuration)); }, [breakDuration]);
 
   // Validation for writing duration
   const { invalid: writeInvalid, message: writeMessage, parsed: writeParsed } = useMemo(() => {
@@ -592,11 +601,7 @@ onValueChange={setGratitudeModeEnabled}
                   return (
                     <PremiumPressable
                       key={s}
-                      onPress={() => {
-  setWriteDuration(s);
-  setCustomWriteText(String(s)); // <-- THIS MAKES TEXT BOX UPDATE
-}}
-
+                      onPress={() => setWriteDuration(s)}
                       haptic="light"
                       style={[
                         styles.chip,
@@ -675,11 +680,7 @@ onValueChange={setGratitudeModeEnabled}
                   return (
                     <PremiumPressable
                       key={s}
-                      onPress={() => {
-  setBreakDuration(s);
-  setCustomBreakText(String(s));  // <-- fix
-}}
-
+                      onPress={() => setBreakDuration(s)}
                       haptic="light"
                       style={[
                         styles.chip,

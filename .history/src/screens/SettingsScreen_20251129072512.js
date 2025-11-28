@@ -36,7 +36,7 @@ export default function SettingsScreen({ navigation }) {
   const currentTheme = getCurrentTheme(systemScheme);
   const isDark = currentTheme === 'dark';
   const loaded = useSettings((s) => s.loaded);
-const showTimer = useWritingSettings((s) => s.showTimer);
+  const showTimer = useSettings((s) => s.showTimer);
   const durationSec = useSettings((s) => s.durationSec);
   const hapticsEnabled = useSettings((s) => s.hapticsEnabled);
   const soundEnabled = useSettings((s) => s.soundEnabled);
@@ -49,7 +49,7 @@ const showTimer = useWritingSettings((s) => s.showTimer);
   setBreakDuration,
   setTotalCycles,
 } = useWritingSettings();
-const setShowTimer = useWritingSettings((s) => s.setShowTimer);
+  const setShowTimer = useSettings((s) => s.setShowTimer);
   const setDurationSec = useSettings((s) => s.setDurationSec);
   const setHapticsEnabled = useSettings((s) => s.setHapticsEnabled);
   const setSoundEnabled = useSettings((s) => s.setSoundEnabled);
@@ -587,25 +587,15 @@ onValueChange={setGratitudeModeEnabled}
               </Text>
 
               <View style={{ flexDirection: 'row', gap: 8, marginBottom: 16 }}>
-                {[30, 60, 120, 300].map((s) => {
-                  const active = writeDuration === s;
-                  return (
-                    <PremiumPressable
-                      key={s}
-                      onPress={() => {
+                {[30,60,120,300].map((s) => {
+  const active = writeDuration === s;
+  return (
+    <PremiumPressable
+onPress={() => {
   setWriteDuration(s);
   setCustomWriteText(String(s)); // <-- THIS MAKES TEXT BOX UPDATE
 }}
-
-                      haptic="light"
-                      style={[
-                        styles.chip,
-                        {
-                          borderColor: palette.border,
-                          backgroundColor: active ? palette.accentSoft : 'transparent',
-                        },
-                      ]}
-                    >
+    >
                       <Text style={{ color: active ? palette.accent : palette.sub, fontSize: 12 }}>
                         {s < 60 ? `${s}s` : `${s/60}min`}
                       </Text>
@@ -675,11 +665,7 @@ onValueChange={setGratitudeModeEnabled}
                   return (
                     <PremiumPressable
                       key={s}
-                      onPress={() => {
-  setBreakDuration(s);
-  setCustomBreakText(String(s));  // <-- fix
-}}
-
+                      onPress={() => setBreakDuration(s)}
                       haptic="light"
                       style={[
                         styles.chip,
