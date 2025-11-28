@@ -12,10 +12,8 @@ import { useTheme } from "./src/stores/themeStore";
 import ThemeFadeWrapper from "./src/components/ThemeFadeWrapper";
 
 export default function App() {
-const system = useColorScheme();
-const { getCurrentTheme } = useTheme();
-const theme = getCurrentTheme(system);
-
+  const system = useColorScheme();
+  const { getCurrentTheme } = useTheme();
 
   // Quick Actions
   useEffect(() => {
