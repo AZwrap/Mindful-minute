@@ -1,5 +1,5 @@
 import React, { useEffect } from "react";
-import { Animated, Easing, Platform } from "react-native";
+import { Platform, Animated, Easing } from "react-native";
 import * as QuickActions from "expo-quick-actions";
 
 import { NavigationContainer } from "@react-navigation/native";
@@ -11,16 +11,13 @@ import { StatusBar } from "expo-status-bar";
 import { useColorScheme } from "react-native";
 import { useTheme } from "./src/stores/themeStore";
 
-import ThemeFadeWrapper from "./src/components/ThemeFadeWrapper";
-
 export default function App() {
   const system = useColorScheme();
   const { getCurrentTheme } = useTheme();
   const currentTheme = getCurrentTheme(system);
-
   const isDark = currentTheme === "dark";
 
-  // FADE ANIM when theme changes (extra polish)
+  // fade animation
   const fadeAnim = React.useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
@@ -33,7 +30,7 @@ export default function App() {
     }).start();
   }, [currentTheme]);
 
-  // SAFE QuickActions (disabled unless available)
+  // QuickActions safe setup
   useEffect(() => {
     if (!QuickActions.setShortcutItems) return;
 
@@ -54,21 +51,18 @@ export default function App() {
   }, []);
 
   return (
-    <SafeAreaProvider>
-      <ThemeFadeWrapper>
-        {(activeTheme) => (
-          <>
-            <StatusBar
-              style={activeTheme === "dark" ? "light" : "dark"}
-              animated={true}
-            />
+<SafeAreaProvider>
+  <ThemeFadeWrapper>
+    {(activeTheme) => (
+      <>
+        <StatusBar style={activeTheme === "dark" ? "light" : "dark"} />
+        <NavigationContainer ref={navigationRef}>
+          <RootStack />
+        </NavigationContainer>
+      </>
+    )}
+  </ThemeFadeWrapper>
+</SafeAreaProvider>
 
-            <NavigationContainer ref={navigationRef}>
-              <RootStack />
-            </NavigationContainer>
-          </>
-        )}
-      </ThemeFadeWrapper>
-    </SafeAreaProvider>
   );
 }

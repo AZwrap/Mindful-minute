@@ -33,6 +33,7 @@ export default function SettingsScreen({ navigation }) {
   const { getCurrentTheme } = useTheme();
   const currentTheme = getCurrentTheme(systemScheme);
   const isDark = currentTheme === 'dark';
+  
   const loaded = useSettings((s) => s.loaded);
   const showTimer = useSettings((s) => s.showTimer);
   const durationSec = useSettings((s) => s.durationSec);
@@ -71,7 +72,6 @@ const {
 const [pickerVisible, setPickerVisible] = useState(false);
 const [activePicker, setActivePicker] = useState(null); // "sunrise" or "sunset"
 const settings = useSettings();
-  const { sunriseTime, sunsetTime } = useTheme();
 const formatTime = (date) => {
   if (!date) return null;
   const d = new Date(date);
@@ -519,7 +519,7 @@ const premiumToastStyle = {
         color: isDark ? "#E5E7EB" : "#0F172A", // ← Correct light/dark text
       }}
     >
-      {sunriseTime || "Not set"}
+      {settings.sunriseTime || "Select"}
     </Text>
   </Pressable>
 </View>
@@ -549,7 +549,7 @@ const premiumToastStyle = {
         color: isDark ? "#E5E7EB" : "#0F172A",
       }}
     >
-      {sunsetTime || "Not set"}
+      {settings.sunsetTime || "Select"}
     </Text>
   </Pressable>
 </View>

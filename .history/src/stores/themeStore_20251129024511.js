@@ -132,9 +132,9 @@ function updateDynamicThemeAndScheduleNext(set, get) {
 // --- Store ------------------------------------------------------
 
 export const useTheme = create((set, get) => ({
-  theme: "system",           // "light" | "dark" | "system" | "dynamic"
-  sunriseTime: null,         // "HH:MM"
-  sunsetTime: null,          // "HH:MM"
+  theme: "system",          // "light" | "dark" | "system" | "dynamic"
+  sunriseTime: null,        // "HH:MM"
+  sunsetTime: null,         // "HH:MM"
   currentDynamicTheme: null, // "light" | "dark" (for dynamic only)
   loaded: false,
 
@@ -158,6 +158,7 @@ export const useTheme = create((set, get) => ({
     set({ sunriseTime: value });
     AsyncStorage.setItem("sunriseTime", value);
 
+    // If we're in dynamic mode, recompute & reschedule
     if (get().theme === "dynamic") {
       updateDynamicThemeAndScheduleNext(set, get);
     }
@@ -196,13 +197,7 @@ export const useTheme = create((set, get) => ({
       sunriseTime,
       sunsetTime,
       currentDynamicTheme,
-      loaded,
     } = get();
-
-    // Before AsyncStorage loads → just use system
-    if (!loaded) {
-      return systemColorScheme === "dark" ? "dark" : "light";
-    }
 
     if (theme === "light") return "light";
     if (theme === "dark") return "dark";

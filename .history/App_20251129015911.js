@@ -1,5 +1,5 @@
 import React, { useEffect } from "react";
-import { Animated, Easing, Platform } from "react-native";
+import { Platform } from "react-native";
 import * as QuickActions from "expo-quick-actions";
 
 import { NavigationContainer } from "@react-navigation/native";
@@ -11,31 +11,18 @@ import { StatusBar } from "expo-status-bar";
 import { useColorScheme } from "react-native";
 import { useTheme } from "./src/stores/themeStore";
 
-import ThemeFadeWrapper from "./src/components/ThemeFadeWrapper";
-
 export default function App() {
   const system = useColorScheme();
   const { getCurrentTheme } = useTheme();
   const currentTheme = getCurrentTheme(system);
-
   const isDark = currentTheme === "dark";
 
-  // FADE ANIM when theme changes (extra polish)
-  const fadeAnim = React.useRef(new Animated.Value(1)).current;
-
+  // prevent crash if QuickActions not available
   useEffect(() => {
-    fadeAnim.setValue(0);
-    Animated.timing(fadeAnim, {
-      toValue: 1,
-      duration: 350,
-      easing: Easing.inOut(Easing.ease),
-      useNativeDriver: true,
-    }).start();
-  }, [currentTheme]);
-
-  // SAFE QuickActions (disabled unless available)
-  useEffect(() => {
-    if (!QuickActions.setShortcutItems) return;
+    if (!QuickActions.setShortcutItems) {
+      console.log("QuickActions is NOT available");
+      return;
+    }
 
     QuickActions.setShortcutItems([
       {
@@ -47,7 +34,10 @@ export default function App() {
     ]);
 
     const sub = QuickActions.addShortcutListener((item) => {
-      if (item.id === "new_entry") navigationRef.navigate("Write");
+      console.log("Shortcut tapped:", item);
+      if (item.id === "new_entry") {
+        navigationRef.navigate("Write");
+      }
     });
 
     return () => sub.remove();
@@ -55,20 +45,11 @@ export default function App() {
 
   return (
     <SafeAreaProvider>
-      <ThemeFadeWrapper>
-        {(activeTheme) => (
-          <>
-            <StatusBar
-              style={activeTheme === "dark" ? "light" : "dark"}
-              animated={true}
-            />
+      <StatusBar style={isDark ? "light" : "dark"} />
 
-            <NavigationContainer ref={navigationRef}>
-              <RootStack />
-            </NavigationContainer>
-          </>
-        )}
-      </ThemeFadeWrapper>
+      <NavigationContainer ref={navigationRef}>
+        <RootStack />
+      </NavigationContainer>
     </SafeAreaProvider>
   );
 }

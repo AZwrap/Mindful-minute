@@ -13,6 +13,15 @@ import { useTheme } from "./src/stores/themeStore";
 
 import ThemeFadeWrapper from "./src/components/ThemeFadeWrapper";
 
+const themeState = useTheme();
+console.log("ThemeStore:", {
+  theme: themeState.theme,
+  sunriseTime: themeState.sunriseTime,
+  sunsetTime: themeState.sunsetTime,
+  currentDynamicTheme: themeState.currentDynamicTheme,
+  loaded: themeState.loaded,
+});
+
 export default function App() {
   const system = useColorScheme();
   const { getCurrentTheme } = useTheme();

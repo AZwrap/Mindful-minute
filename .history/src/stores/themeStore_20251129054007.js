@@ -132,9 +132,9 @@ function updateDynamicThemeAndScheduleNext(set, get) {
 // --- Store ------------------------------------------------------
 
 export const useTheme = create((set, get) => ({
-  theme: "system",           // "light" | "dark" | "system" | "dynamic"
-  sunriseTime: null,         // "HH:MM"
-  sunsetTime: null,          // "HH:MM"
+  theme: "system",          // "light" | "dark" | "system" | "dynamic"
+  sunriseTime: null,        // "HH:MM"
+  sunsetTime: null,         // "HH:MM"
   currentDynamicTheme: null, // "light" | "dark" (for dynamic only)
   loaded: false,
 
@@ -152,12 +152,15 @@ export const useTheme = create((set, get) => ({
       }
       set({ currentDynamicTheme: null });
     }
-  },
+  }, 
 
   setDynamicSunrise: (value) => {
     set({ sunriseTime: value });
     AsyncStorage.setItem("sunriseTime", value);
+    updateDynamicThemeAndScheduleNext(set, get);
 
+
+    // If we're in dynamic mode, recompute & reschedule
     if (get().theme === "dynamic") {
       updateDynamicThemeAndScheduleNext(set, get);
     }
@@ -166,6 +169,8 @@ export const useTheme = create((set, get) => ({
   setDynamicSunset: (value) => {
     set({ sunsetTime: value });
     AsyncStorage.setItem("sunsetTime", value);
+    updateDynamicThemeAndScheduleNext(set, get);
+
 
     if (get().theme === "dynamic") {
       updateDynamicThemeAndScheduleNext(set, get);
@@ -184,46 +189,63 @@ export const useTheme = create((set, get) => ({
       loaded: true,
     });
 
-    if (theme === "dynamic") {
-      updateDynamicThemeAndScheduleNext(set, get);
-    }
+updateDynamicThemeAndScheduleNext(set, get);
+
   },
 
   // This is what the rest of the app should use
-  getCurrentTheme: (systemColorScheme = "light") => {
-    const {
-      theme,
-      sunriseTime,
-      sunsetTime,
-      currentDynamicTheme,
-      loaded,
-    } = get();
+getCurrentTheme: (systemColorScheme = "light") => {
+  const {
+    theme,
+    sunriseTime,
+    sunsetTime,
+    loaded,
+  } = get();
 
-    // Before AsyncStorage loads → just use system
-    if (!loaded) {
+  if (!loaded) {
+    return systemColorScheme === "dark" ? "dark" : "light";
+  }
+
+  if (theme === "light") return "light";
+  if (theme === "dark") return "dark";
+
+  if (theme === "system") {
+    return systemColorScheme === "dark" ? "dark" : "light";
+  }
+
+  if (theme === "dynamic") {
+    const now = new Date();
+
+    if (!sunriseTime || !sunsetTime) {
       return systemColorScheme === "dark" ? "dark" : "light";
     }
 
-    if (theme === "light") return "light";
-    if (theme === "dark") return "dark";
+    const isLight = isTimeInLightRange(now, sunriseTime, sunsetTime);
+    return isLight ? "light" : "dark";
+  }
 
-    if (theme === "system") {
-      return systemColorScheme === "dark" ? "dark" : "light";
-    }
-
-    if (theme === "dynamic") {
-      // Prefer the cached, timer-driven value
-      if (currentDynamicTheme) return currentDynamicTheme;
-
-      // Fallback if it hasn't been computed yet
-      const now = new Date();
-      const isLight = isTimeInLightRange(now, sunriseTime, sunsetTime);
-      return isLight ? "light" : "dark";
-    }
-
-    return "light";
-  },
+  return "light";
+},
 }));
 
 // Kick off loading (and scheduling) on startup
-useTheme.getState().loadTheme();
+useTheme.getState().loadTheme().then(() => {
+  const { theme } = useTheme.getState();
+  if (theme === "dynamic") {
+    updateDynamicThemeAndScheduleNext(
+      useTheme.setState ? useTheme.setState : useTheme.getState,
+      useTheme.getState
+    );
+  }
+});
+
+// EXTRA: Re-check dynamic theme every full minute (only at :00)
+setInterval(() => {
+  const { theme } = useTheme.getState();
+  if (theme === "dynamic") {
+    updateDynamicThemeAndScheduleNext(
+      useTheme.setState,
+      useTheme.getState
+    );
+  }
+}, 60 * 1000);

@@ -24,6 +24,10 @@ import { TouchableWithoutFeedback } from "react-native";
 import DateTimePickerModal from "react-native-modal-datetime-picker";
 import SunTimesSelector from "../components/SunTimesSelector";
 
+
+
+
+
 const PRESETS = [30, 60, 120];
 const MIN = 5;
 const MAX = 600;
@@ -33,6 +37,7 @@ export default function SettingsScreen({ navigation }) {
   const { getCurrentTheme } = useTheme();
   const currentTheme = getCurrentTheme(systemScheme);
   const isDark = currentTheme === 'dark';
+  
   const loaded = useSettings((s) => s.loaded);
   const showTimer = useSettings((s) => s.showTimer);
   const durationSec = useSettings((s) => s.durationSec);
@@ -71,7 +76,6 @@ const {
 const [pickerVisible, setPickerVisible] = useState(false);
 const [activePicker, setActivePicker] = useState(null); // "sunrise" or "sunset"
 const settings = useSettings();
-  const { sunriseTime, sunsetTime } = useTheme();
 const formatTime = (date) => {
   if (!date) return null;
   const d = new Date(date);
@@ -519,7 +523,7 @@ const premiumToastStyle = {
         color: isDark ? "#E5E7EB" : "#0F172A", // ← Correct light/dark text
       }}
     >
-      {sunriseTime || "Not set"}
+      {settings.sunriseTime || "Select"}
     </Text>
   </Pressable>
 </View>
@@ -549,7 +553,7 @@ const premiumToastStyle = {
         color: isDark ? "#E5E7EB" : "#0F172A",
       }}
     >
-      {sunsetTime || "Not set"}
+      {settings.sunsetTime || "Select"}
     </Text>
   </Pressable>
 </View>
@@ -826,19 +830,22 @@ const premiumToastStyle = {
             <DateTimePickerModal
   isVisible={pickerVisible}
   mode="time"
-onConfirm={(value) => {
-  const formatted = formatTime(value);
+onConfirm={(date) => {
+  const hh = String(date.getHours()).padStart(2, "0");
+  const mm = String(date.getMinutes()).padStart(2, "0");
+  const value = `${hh}:${mm}`;
 
-  if (activePicker === "sunrise") {
-    useTheme.getState().setDynamicSunrise(formatted);
-  } else if (activePicker === "sunset") {
-    useTheme.getState().setDynamicSunset(formatted);
-  }
+// inside onConfirm of DateTimePickerModal
+if (activePicker === "sunrise") {
+  useTheme.getState().setDynamicSunrise(value);
+} else if (activePicker === "sunset") {
+  useTheme.getState().setDynamicSunset(value);
+}
+
+
 
   setPickerVisible(false);
 }}
-
-
 
   onCancel={() => setPickerVisible(false)}
 />
