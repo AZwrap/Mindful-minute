@@ -29,7 +29,7 @@ export default function FocusWriteScreen() {
   const { date, prompt, text: initialText = '' } = route.params || {};
   
   // Get ALL possible functions from your entries store
-  const entriesStore = useEntriesStore();
+  const entriesStore = useEntries();
   
   const [text, setText] = useState(initialText);
   const [wordCount, setWordCount] = useState(0);

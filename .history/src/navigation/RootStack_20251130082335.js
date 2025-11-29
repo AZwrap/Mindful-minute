@@ -18,8 +18,6 @@ import { useTheme } from "../stores/themeStore";
 import { useColorScheme } from "react-native";
 import SharedJournalScreen from "../screens/SharedJournalScreen";
 import SharedWriteScreen from "../screens/SharedWriteScreen";
-import SharedEntryDetailScreen from "../screens/SharedEntryDetailScreen";
-
 
 
 const Stack = createNativeStackNavigator();
@@ -59,8 +57,8 @@ export default function RootStack() {
   options={{ title: "New Entry" }}
 />
 <Stack.Screen
-  name="SharedEntryDetail"
-  component={SharedEntryDetailScreen}
+  name="SharedWrite"
+  component={SharedWriteScreen}
   options={{ headerShown: false }}
 />
 

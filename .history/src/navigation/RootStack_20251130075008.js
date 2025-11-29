@@ -17,8 +17,26 @@ import WeeklyRecapScreen from "../screens/WeeklyRecapScreen";
 import { useTheme } from "../stores/themeStore";
 import { useColorScheme } from "react-native";
 import SharedJournalScreen from "../screens/SharedJournalScreen";
-import SharedWriteScreen from "../screens/SharedWriteScreen";
-import SharedEntryDetailScreen from "../screens/SharedEntryDetailScreen";
+
+
+
+
+console.log("HomeScreen:", HomeScreen);
+console.log("WriteScreen:", WriteScreen);
+console.log("FocusWriteScreen:", FocusWriteScreen);
+console.log("MoodTagScreen:", MoodTagScreen);
+console.log("EntryDetailScreen:", EntryDetailScreen);
+console.log("HistoryScreen:", HistoryScreen);
+console.log("SettingsScreen:", SettingsScreen);
+console.log("StatsScreen:", StatsScreen);
+console.log("CustomPromptScreen:", CustomPromptScreen);
+console.log("AchievementsScreen:", AchievementsScreen);
+console.log("PremiumScreen:", PremiumScreen);
+console.log("WeeklyRecapScreen:", WeeklyRecapScreen);
+console.log("StatsScreen:", StatsScreen);
+console.log("CustomPromptScreen:", CustomPromptScreen);
+console.log("AchievementsScreen:", AchievementsScreen);
+console.log("WeeklyRecapScreen:", WeeklyRecapScreen);
 
 
 
@@ -51,16 +69,6 @@ export default function RootStack() {
 <Stack.Screen
   name="SharedJournal"
   component={SharedJournalScreen}
-  options={{ headerShown: false }}
-/>
-<Stack.Screen
-  name="SharedWrite"
-  component={SharedWriteScreen}
-  options={{ title: "New Entry" }}
-/>
-<Stack.Screen
-  name="SharedEntryDetail"
-  component={SharedEntryDetailScreen}
   options={{ headerShown: false }}
 />
 

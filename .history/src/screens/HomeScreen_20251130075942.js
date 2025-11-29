@@ -28,7 +28,7 @@ export default function HomeScreen() {
   const { getCurrentTheme } = useTheme();
   const currentTheme = getCurrentTheme(systemScheme);
   const isDark = currentTheme === 'dark';
-const sharedJournals = useJournalStore((s) => s.journals || {});
+const sharedJournals = useJournalStore((s) => s.journals);
 
   const date = todayISO();
   const [today, setToday] = useState({ id: 0, text: '', isCustom: false });
@@ -43,7 +43,7 @@ const sharedJournals = useJournalStore((s) => s.journals || {});
   const [isGeneratingPrompt, setIsGeneratingPrompt] = useState(false);
 
   // Get entries for smart prompt analysis
-const map = useJournalStore((s) => s.entries || {});
+const map = useJournalStore((s) => s.map);
   const entries = useMemo(() => {
     return Object.entries(map || {})
       .sort((a, b) => (a[0] < b[0] ? 1 : -1))

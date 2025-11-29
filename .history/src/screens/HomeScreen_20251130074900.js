@@ -18,6 +18,7 @@ import { useTheme } from '../stores/themeStore';
 import { useSettings } from '../stores/settingsStore'; // ← ADD THIS
 import PremiumPressable from '../components/PremiumPressable';
 import { generateSmartPrompt, analyzeForSmartPrompts, getPromptExplanation } from '../utils/smartPrompts';
+import { useSharedJournals } from "../stores/journalStore";
 
 
 
@@ -28,7 +29,7 @@ export default function HomeScreen() {
   const { getCurrentTheme } = useTheme();
   const currentTheme = getCurrentTheme(systemScheme);
   const isDark = currentTheme === 'dark';
-const sharedJournals = useJournalStore((s) => s.journals || {});
+  const sharedJournals = useSharedJournals();
 
   const date = todayISO();
   const [today, setToday] = useState({ id: 0, text: '', isCustom: false });
@@ -43,7 +44,7 @@ const sharedJournals = useJournalStore((s) => s.journals || {});
   const [isGeneratingPrompt, setIsGeneratingPrompt] = useState(false);
 
   // Get entries for smart prompt analysis
-const map = useJournalStore((s) => s.entries || {});
+const map = useJournalStore((s) => s.map);
   const entries = useMemo(() => {
     return Object.entries(map || {})
       .sort((a, b) => (a[0] < b[0] ? 1 : -1))

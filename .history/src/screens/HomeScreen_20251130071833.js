@@ -13,7 +13,7 @@ import * as Haptics from 'expo-haptics'; // ← ADD THIS
 import { useFocusEffect, useNavigation, useRoute } from '@react-navigation/native';
 import { todayISO, promptOfDay } from '../lib/prompts';
 import { useProgress } from '../stores/progressStore';
-import { useJournalStore } from "../stores/journalStore";
+import { useEntriesStore } from "../stores/entriesStore";
 import { useTheme } from '../stores/themeStore';
 import { useSettings } from '../stores/settingsStore'; // ← ADD THIS
 import PremiumPressable from '../components/PremiumPressable';
@@ -28,8 +28,7 @@ export default function HomeScreen() {
   const { getCurrentTheme } = useTheme();
   const currentTheme = getCurrentTheme(systemScheme);
   const isDark = currentTheme === 'dark';
-const sharedJournals = useJournalStore((s) => s.journals || {});
-
+  
   const date = todayISO();
   const [today, setToday] = useState({ id: 0, text: '', isCustom: false });
   const [isScreenReaderEnabled, setIsScreenReaderEnabled] = useState(false);
@@ -43,7 +42,7 @@ const sharedJournals = useJournalStore((s) => s.journals || {});
   const [isGeneratingPrompt, setIsGeneratingPrompt] = useState(false);
 
   // Get entries for smart prompt analysis
-const map = useJournalStore((s) => s.entries || {});
+  const map = useEntries((s) => s.map);
   const entries = useMemo(() => {
     return Object.entries(map || {})
       .sort((a, b) => (a[0] < b[0] ? 1 : -1))
@@ -140,7 +139,7 @@ useEffect(() => {
     loadPrompt();
   }, [date]);
 
-const drafts = useJournalStore((s) => s.drafts);
+  const drafts = useEntries((s) => s.drafts);
   const entryToday = map?.[date] || null;
   const draftText = drafts?.[date]?.text || '';
 
@@ -433,48 +432,6 @@ const drafts = useJournalStore((s) => s.drafts);
             <Text style={[styles.bottomButtonText, { color: brand }]}>Achievements</Text>
           </PremiumPressable>
         </View>
-        {/* Shared Journals */}
-{sharedJournals.length > 0 && (
-  <View
-    style={[
-      styles.card,
-      { backgroundColor: palette.card, borderColor: palette.border },
-    ]}
-  >
-    <Text style={[styles.title, { color: palette.text }]}>
-      Shared Journals
-    </Text>
-
-    {sharedJournals.map((j) => (
-      <Pressable
-        key={j.id}
-        onPress={() =>
-          navigation.navigate("SharedJournal", { journalId: j.id })
-        }
-        style={{
-          paddingVertical: 12,
-          paddingHorizontal: 8,
-          borderBottomWidth: 1,
-          borderBottomColor: palette.border,
-        }}
-      >
-        <Text
-          style={{
-            color: palette.text,
-            fontSize: 15,
-            fontWeight: "600",
-          }}
-        >
-          {j.name}
-        </Text>
-        <Text style={{ color: palette.sub, fontSize: 12 }}>
-          {j.members.length} members
-        </Text>
-      </Pressable>
-    ))}
-  </View>
-)}
-
       </LinearGradient>
       </Animated.View>
     </LinearGradient>

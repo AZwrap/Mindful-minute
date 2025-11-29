@@ -1,4 +1,3 @@
-import 'react-native-get-random-values';
 import React, { useEffect } from "react";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { NavigationContainer } from "@react-navigation/native";
@@ -14,21 +13,11 @@ import ThemeFadeWrapper from "./src/components/ThemeFadeWrapper";
 
 import { Linking } from "react-native";
 import { joinSharedJournal } from "./src/services/syncedJournalService";
-import 'react-native-get-random-values';
-
 
 export default function App() {
 const system = useColorScheme();
 const { getCurrentTheme } = useTheme();
 const theme = getCurrentTheme(system);
-
-const handleDeepLink = ({ url }) => {
-  try {
-    joinSharedJournal(url);
-  } catch (e) {
-    console.log("Deep link error:", e);
-  }
-};
 
 useEffect(() => {
   const handleUrl = async ({ url }) => {
@@ -46,7 +35,7 @@ useEffect(() => {
   const sub = Linking.addEventListener("url", handleDeepLink);
 
   return () => {
-  sub.remove();
+  subscription.remove();
 };
 }, []);
 

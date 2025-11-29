@@ -41,7 +41,7 @@ export default function WriteScreen({ navigation, route }) {
   const { date, prompt } = route.params || {};
 
   // ===== SMART PROMPT =====
-  const map = useEntriesStore((s) => s.map);
+  const map = useEntries((s) => s.map);
   const entries = useMemo(() => {
     return Object.entries(map || {})
       .sort((a, b) => (a[0] < b[0] ? 1 : -1))
@@ -148,12 +148,12 @@ export default function WriteScreen({ navigation, route }) {
   const isScreenActive = useRef(true);
 
   // ===== STORES =====
-  const setDraft = useEntriesStore((s) => s.setDraft);
-  const getDraftTimer = useEntriesStore((s) => s.getDraftTimer);
-  const setDraftTimer = useEntriesStore((s) => s.setDraftTimer);
-  const upsert = useEntriesStore((s) => s.upsert);
-  const getDraft = useEntriesStore((s) => s.getDraft);
-  const getPomodoroState = useEntriesStore((s) => s.getPomodoroState);
+  const setDraft = useEntries((s) => s.setDraft);
+  const getDraftTimer = useEntries((s) => s.getDraftTimer);
+  const setDraftTimer = useEntries((s) => s.setDraftTimer);
+  const upsert = useEntries((s) => s.upsert);
+  const getDraft = useEntries((s) => s.getDraft);
+  const getPomodoroState = useEntries((s) => s.getPomodoroState);
 
 const {
   writeDuration,
