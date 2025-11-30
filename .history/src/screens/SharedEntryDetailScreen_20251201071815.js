@@ -7,26 +7,34 @@ import {
   Pressable,
   Alert,
 } from "react-native";
-import { useSharedPalette } from "../hooks/useSharedPalette";
-
+import { useTheme } from "../stores/themeStore";
+import { useColorScheme } from "react-native";
 import { useJournalStore } from "../stores/journalStore";
 import { useNavigation, useRoute } from "@react-navigation/native";
 
 export default function SharedEntryDetailScreen() {
-const palette = useSharedPalette();
+const systemScheme = useColorScheme();
+const { getCurrentTheme } = useTheme();
+const currentTheme = getCurrentTheme(systemScheme);
+const isDark = currentTheme === "dark";
 
+const palette = {
+  bg: isDark ? "#0F172A" : "#F8FAFC",
+  card: isDark ? "rgba(30,41,59,0.60)" : "rgba(241,245,249,0.80)",
+  text: isDark ? "#E5E7EB" : "#0F172A",
+  sub: isDark ? "#94A3B8" : "#64748B",
+  border: isDark ? "#334155" : "#E2E8F0",
+  accent: "#6366F1",
+  accentSoft: isDark ? "rgba(99,102,241,0.2)" : "rgba(99,102,241,0.1)",
+};
   const navigation = useNavigation();
   const route = useRoute();
 
   const { entryId } = route.params ?? {};
 
-const { sharedEntries, currentJournalId, removeSharedEntry } =
-  useJournalStore((s) => ({
-    sharedEntries: s.sharedEntries,
-    currentJournalId: s.currentJournalId,
-    removeSharedEntry: s.removeSharedEntry,
-  }));
-
+  const sharedEntries = useJournalStore((s) => s.sharedEntries);
+  const currentJournalId = useJournalStore((s) => s.currentJournalId);
+  const removeSharedEntry = useJournalStore((s) => s.removeSharedEntry);
 
   if (!currentJournalId) {
     return (

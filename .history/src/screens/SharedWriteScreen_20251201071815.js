@@ -9,8 +9,8 @@ import {
   Platform,
 } from "react-native";
 import { useNavigation } from "@react-navigation/native";
-import { useSharedPalette } from "../hooks/useSharedPalette";
-
+import { useTheme } from "../stores/themeStore";
+import { useColorScheme } from "react-native";
 import { useJournalStore } from "../stores/journalStore";
 import { db } from "../firebaseConfig";
 import { doc, setDoc } from "firebase/firestore";
@@ -20,14 +20,23 @@ const genId = () => "id-" + Math.random().toString(36).slice(2, 10);
 
 export default function SharedWriteScreen() {
   const navigation = useNavigation();
-const palette = useSharedPalette();
+const systemScheme = useColorScheme();
+const { getCurrentTheme } = useTheme();
+const currentTheme = getCurrentTheme(systemScheme);
+const isDark = currentTheme === "dark";
 
+const palette = {
+  bg: isDark ? "#0F172A" : "#F8FAFC",
+  card: isDark ? "rgba(30,41,59,0.60)" : "rgba(241,245,249,0.80)",
+  text: isDark ? "#E5E7EB" : "#0F172A",
+  sub: isDark ? "#94A3B8" : "#64748B",
+  border: isDark ? "#334155" : "#E2E8F0",
+  accent: "#6366F1",
+  accentSoft: isDark ? "rgba(99,102,241,0.2)" : "rgba(99,102,241,0.1)",
+};
 
-const { currentJournalId, addSharedEntryLocal } = useJournalStore((s) => ({
-  currentJournalId: s.currentJournalId,
-  addSharedEntryLocal: s.addSharedEntry,
-}));
-
+  const currentJournalId = useJournalStore((s) => s.currentJournalId);
+  const addSharedEntryLocal = useJournalStore((s) => s.addSharedEntry);
 
   const [text, setText] = useState("");
   const [saving, setSaving] = useState(false);

@@ -25,8 +25,7 @@ export const useJournalStore = create(
       // STATE
       // --------------------------------------------------
       currentJournalId: null,          // The ONLY shared journal
-      sharedEntries: {},               // { [journalId]: [...] }
-         // Entries inside the shared journal
+      sharedEntries: [],               // Entries inside the shared journal
       journalInfo: null,               // metadata of journal
       isLoading: false,
       _unsubscribe: null,              // Firestore listener cleanup
@@ -54,36 +53,6 @@ export const useJournalStore = create(
 
         return journalId;
       },
-
-      setSharedEntries: (journalId, entries) =>
-  set((state) => ({
-    sharedEntries: {
-      ...state.sharedEntries,
-      [journalId]: entries,
-    },
-  })),
-updateJournalMeta: (journalId, data) =>
-  set((state) => ({
-    journalInfo: {
-      ...(state.journalInfo || {}),
-      ...data,
-    },
-    journals: {
-      ...(state.journals || {}),
-      [journalId]: {
-        ...(state.journals?.[journalId] || {}),
-        ...data,
-      },
-    },
-  })),
-addSharedEntryList: (journalId, entries) =>
-  set((state) => ({
-    sharedEntries: {
-      ...state.sharedEntries,
-      [journalId]: entries,
-    },
-  })),
-
 
       // --------------------------------------------------
       // ACTION: Join existing journal
@@ -121,26 +90,13 @@ addSharedEntryList: (journalId, entries) =>
 
         const entriesRef = doc(db, "sharedEntries", journalId);
 
-const unsub = onSnapshot(entriesRef, (snap) => {
-  const data = snap.data();
-  const entries = data?.entries || [];
+        const unsub = onSnapshot(entriesRef, (snap) => {
+          const data = snap.data();
 
-  const prev = get().sharedEntries?.[journalId] || [];
-
-  const changed =
-    prev.length !== entries.length ||
-    JSON.stringify(prev) !== JSON.stringify(entries);
-
-  if (changed) {
-    set((state) => ({
-      sharedEntries: {
-        ...state.sharedEntries,
-        [journalId]: entries,
-      },
-    }));
-  }
-});
-
+          set({
+            sharedEntries: data?.entries || [],
+          });
+        });
 
         set({ _unsubscribe: unsub });
       },
@@ -169,56 +125,11 @@ const unsub = onSnapshot(entriesRef, (snap) => {
 
         set({
           currentJournalId: null,
-sharedEntries: {},
+          sharedEntries: [],
           journalInfo: null,
           _unsubscribe: null,
         });
       },
-
-      createSharedJournal: async (name) => {
-  const id = "j-" + Math.random().toString(36).slice(2, 10);
-
-  await setDoc(doc(db, "sharedJournals", id), {
-    name: name || "Shared Journal",
-    createdAt: Date.now(),
-    owner: "you",
-  });
-
-  set({
-    currentJournalId: id,
-    sharedEntries: {
-      ...get().sharedEntries,
-      [id]: [],
-    },
-  });
-
-  return id;
-},
-
-joinSharedJournal: async (journalId) => {
-  if (!journalId) return false;
-
-  const ref = doc(db, "sharedJournals", journalId);
-  const snap = await getDoc(ref);
-
-  if (!snap.exists()) return false;
-
-  // local: ensure journal slot exists
-  const existing = get().sharedEntries[journalId] || [];
-
-  set({
-    currentJournalId: journalId,
-    sharedEntries: {
-      ...get().sharedEntries,
-      [journalId]: existing,
-    },
-  });
-
-  return true;
-},
-
-setCurrentJournal: (id) => set({ currentJournalId: id }),
-
 
       // --------------------------------------------------
       // Cleanup on unmount (optional)
@@ -230,7 +141,7 @@ setCurrentJournal: (id) => set({ currentJournalId: id }),
 
         set({
           currentJournalId: null,
-sharedEntries: {},
+          sharedEntries: [],
           journalInfo: null,
           _unsubscribe: null,
         });

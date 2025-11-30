@@ -361,53 +361,49 @@ useEffect(() => {
           </PremiumPressable>
         )}
 
-{/* Row: Start Journaling + History (side by side) */}
-<View style={styles.row}>
+        {/* Action Buttons */}
+        <View style={styles.row}>
+          <PremiumPressable 
+            onPress={primaryPress}
+            haptic="light"
+            style={[
+              styles.btnPrimary, 
+              { 
+                backgroundColor: currentVariant.bg,
+              }
+            ]}
+            accessible={true}
+            accessibilityRole="button"
+            accessibilityLabel={primaryA11yLabel}
+            accessibilityHint="Double tap to open writing screen"
+          >
+            <Text style={[styles.btnPrimaryText, { color: currentVariant.text }]}>
+              {primaryLabel}
+            </Text>
+          </PremiumPressable>
 
-  {/* Start Journaling */}
-  <PremiumPressable 
-    onPress={primaryPress}
-    haptic="light"
-style={[
-  styles.btnPrimary,
-  { 
-    backgroundColor: currentVariant.bg,
-    flex: 1,
-    marginRight: 8,
-    minWidth: 99,      // <<< added to keep text on one line
-  }
-]}
-
-  >
-    <Text style={[styles.btnPrimaryText, { color: currentVariant.text }]}>
-      {primaryLabel}
-    </Text>
-  </PremiumPressable>
-
-  {/* History */}
-  <PremiumPressable 
-    onPress={() => navigation.navigate('History')}
-    haptic="light"
-    style={[styles.btnGhost, { flex: 1, marginLeft: 8 }]}
-  >
-    <Text style={[styles.btnGhostText, { color: brand }]}>History</Text>
-  </PremiumPressable>
-
-</View>
-
-{/* Shared Journals BELOW Start Journaling */}
-<Pressable
+          <Pressable
   onPress={() => navigation.navigate("Invite")}
-  style={[
-    styles.sharedButton,
-    { backgroundColor: palette.card, marginTop: 12 }
-  ]}
+  style={[styles.sharedButton, { backgroundColor: palette.card }]}
 >
   <Text style={{ color: palette.text, fontWeight: "600" }}>
     Shared Journals
   </Text>
 </Pressable>
 
+
+          <PremiumPressable 
+            onPress={() => navigation.navigate('History')}
+            haptic="light"
+            style={styles.btnGhost}
+            accessible={true}
+            accessibilityRole="button"
+            accessibilityLabel="View journal history"
+            accessibilityHint="Opens screen with all your previous journal entries"
+          >
+            <Text style={[styles.btnGhostText, { color: brand }]}>History</Text>
+          </PremiumPressable>
+        </View>
 
         {/* Inline toast */}
         <Animated.View

@@ -55,10 +55,6 @@ export default function RootStack() {
   component={SharedJournalScreen}
   options={{ headerShown: false }}
 />
-
-
-
-
 <Stack.Screen
   name="SharedWrite"
   component={SharedWriteScreen}

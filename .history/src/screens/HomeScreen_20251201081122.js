@@ -374,7 +374,7 @@ style={[
     backgroundColor: currentVariant.bg,
     flex: 1,
     marginRight: 8,
-    minWidth: 99,      // <<< added to keep text on one line
+    minWidth: 90,      // <<< added to keep text on one line
   }
 ]}
 

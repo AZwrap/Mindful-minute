@@ -7,26 +7,20 @@ import {
   Pressable,
   Alert,
 } from "react-native";
-import { useSharedPalette } from "../hooks/useSharedPalette";
-
+import { useThemePalette } from "../stores/themeStore";
 import { useJournalStore } from "../stores/journalStore";
 import { useNavigation, useRoute } from "@react-navigation/native";
 
 export default function SharedEntryDetailScreen() {
-const palette = useSharedPalette();
-
+  const palette = useThemePalette();
   const navigation = useNavigation();
   const route = useRoute();
 
   const { entryId } = route.params ?? {};
 
-const { sharedEntries, currentJournalId, removeSharedEntry } =
-  useJournalStore((s) => ({
-    sharedEntries: s.sharedEntries,
-    currentJournalId: s.currentJournalId,
-    removeSharedEntry: s.removeSharedEntry,
-  }));
-
+  const sharedEntries = useJournalStore((s) => s.sharedEntries);
+  const currentJournalId = useJournalStore((s) => s.currentJournalId);
+  const removeSharedEntry = useJournalStore((s) => s.removeSharedEntry);
 
   if (!currentJournalId) {
     return (

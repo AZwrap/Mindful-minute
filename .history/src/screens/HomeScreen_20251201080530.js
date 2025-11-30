@@ -361,52 +361,57 @@ useEffect(() => {
           </PremiumPressable>
         )}
 
-{/* Row: Start Journaling + History (side by side) */}
-<View style={styles.row}>
+{/* Action Buttons */}
 
-  {/* Start Journaling */}
-  <PremiumPressable 
-    onPress={primaryPress}
-    haptic="light"
-style={[
-  styles.btnPrimary,
-  { 
-    backgroundColor: currentVariant.bg,
-    flex: 1,
-    marginRight: 8,
-    minWidth: 99,      // <<< added to keep text on one line
-  }
-]}
+{/* Primary Action */}
+<PremiumPressable 
+  onPress={primaryPress}
+  haptic="light"
+  style={[
+    styles.btnPrimary, 
+    { 
+      backgroundColor: currentVariant.bg,
+      marginBottom: 12, // spacing
+    }
+  ]}
+  accessible={true}
+  accessibilityRole="button"
+  accessibilityLabel={primaryA11yLabel}
+  accessibilityHint="Double tap to open writing screen"
+>
+  <Text style={[styles.btnPrimaryText, { color: currentVariant.text }]}>
+    {primaryLabel}
+  </Text>
+</PremiumPressable>
 
-  >
-    <Text style={[styles.btnPrimaryText, { color: currentVariant.text }]}>
-      {primaryLabel}
-    </Text>
-  </PremiumPressable>
-
-  {/* History */}
-  <PremiumPressable 
-    onPress={() => navigation.navigate('History')}
-    haptic="light"
-    style={[styles.btnGhost, { flex: 1, marginLeft: 8 }]}
-  >
-    <Text style={[styles.btnGhostText, { color: brand }]}>History</Text>
-  </PremiumPressable>
-
-</View>
-
-{/* Shared Journals BELOW Start Journaling */}
+{/* Shared Journals BELOW primary */}
 <Pressable
   onPress={() => navigation.navigate("Invite")}
-  style={[
-    styles.sharedButton,
-    { backgroundColor: palette.card, marginTop: 12 }
-  ]}
+  style={{
+    backgroundColor: palette.card,
+    paddingVertical: 14,
+    borderRadius: 16,
+    alignItems: "center",
+    marginBottom: 12,
+  }}
 >
-  <Text style={{ color: palette.text, fontWeight: "600" }}>
+  <Text style={{ color: palette.text, fontWeight: "600", fontSize: 16 }}>
     Shared Journals
   </Text>
 </Pressable>
+
+{/* History stays below everything */}
+<PremiumPressable 
+  onPress={() => navigation.navigate('History')}
+  haptic="light"
+  style={styles.btnGhost}
+  accessible={true}
+  accessibilityRole="button"
+  accessibilityLabel="View journal history"
+  accessibilityHint="Opens screen with all your previous journal entries"
+>
+  <Text style={[styles.btnGhostText, { color: brand }]}>History</Text>
+</PremiumPressable>
 
 
         {/* Inline toast */}

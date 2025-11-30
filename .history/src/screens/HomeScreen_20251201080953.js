@@ -368,16 +368,10 @@ useEffect(() => {
   <PremiumPressable 
     onPress={primaryPress}
     haptic="light"
-style={[
-  styles.btnPrimary,
-  { 
-    backgroundColor: currentVariant.bg,
-    flex: 1,
-    marginRight: 8,
-    minWidth: 99,      // <<< added to keep text on one line
-  }
-]}
-
+    style={[
+      styles.btnPrimary,
+      { backgroundColor: currentVariant.bg, flex: 1, marginRight: 8 }
+    ]}
   >
     <Text style={[styles.btnPrimaryText, { color: currentVariant.text }]}>
       {primaryLabel}

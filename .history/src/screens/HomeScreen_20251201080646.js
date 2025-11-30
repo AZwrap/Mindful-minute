@@ -361,23 +361,21 @@ useEffect(() => {
           </PremiumPressable>
         )}
 
-{/* Row: Start Journaling + History (side by side) */}
+{/* Row: Start Journaling + History side by side */}
 <View style={styles.row}>
 
   {/* Start Journaling */}
   <PremiumPressable 
     onPress={primaryPress}
     haptic="light"
-style={[
-  styles.btnPrimary,
-  { 
-    backgroundColor: currentVariant.bg,
-    flex: 1,
-    marginRight: 8,
-    minWidth: 99,      // <<< added to keep text on one line
-  }
-]}
-
+    style={[
+      styles.btnPrimary, 
+      { 
+        backgroundColor: currentVariant.bg,
+        flex: 1,
+        marginRight: 8,
+      }
+    ]}
   >
     <Text style={[styles.btnPrimaryText, { color: currentVariant.text }]}>
       {primaryLabel}
@@ -388,25 +386,32 @@ style={[
   <PremiumPressable 
     onPress={() => navigation.navigate('History')}
     haptic="light"
-    style={[styles.btnGhost, { flex: 1, marginLeft: 8 }]}
+    style={[
+      styles.btnGhost,
+      { flex: 1, marginLeft: 8 }
+    ]}
   >
     <Text style={[styles.btnGhostText, { color: brand }]}>History</Text>
   </PremiumPressable>
 
 </View>
 
-{/* Shared Journals BELOW Start Journaling */}
+{/* Shared Journals BELOW Start Journaling row */}
 <Pressable
   onPress={() => navigation.navigate("Invite")}
   style={[
     styles.sharedButton,
-    { backgroundColor: palette.card, marginTop: 12 }
+    { 
+      backgroundColor: palette.card,
+      marginTop: 12 
+    }
   ]}
 >
   <Text style={{ color: palette.text, fontWeight: "600" }}>
     Shared Journals
   </Text>
 </Pressable>
+
 
 
         {/* Inline toast */}

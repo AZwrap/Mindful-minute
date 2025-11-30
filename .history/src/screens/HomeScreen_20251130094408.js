@@ -18,7 +18,6 @@ import { useTheme } from '../stores/themeStore';
 import { useSettings } from '../stores/settingsStore'; // ← ADD THIS
 import PremiumPressable from '../components/PremiumPressable';
 import { generateSmartPrompt, analyzeForSmartPrompts, getPromptExplanation } from '../utils/smartPrompts';
-import { useSharedPalette } from "../hooks/useSharedPalette";
 
 
 
@@ -26,11 +25,10 @@ export default function HomeScreen() {
   const navigation = useNavigation();
   const route = useRoute();
   const systemScheme = useColorScheme();
-const { getCurrentTheme } = useTheme();
-const currentTheme = getCurrentTheme(systemScheme);
-const isDark = currentTheme === "dark";
-const palette = useSharedPalette();
-
+  const { getCurrentTheme } = useTheme();
+  const currentTheme = getCurrentTheme(systemScheme);
+  const isDark = currentTheme === 'dark';
+const sharedJournals = useJournalStore((s) => s.journals || {});
 
   const date = todayISO();
   const [today, setToday] = useState({ id: 0, text: '', isCustom: false });
@@ -45,14 +43,7 @@ const palette = useSharedPalette();
   const [isGeneratingPrompt, setIsGeneratingPrompt] = useState(false);
 
   // Get entries for smart prompt analysis
-const sharedJournals = useJournalStore((s) => s.journals);
-const drafts = useJournalStore((s) => s.drafts);
-const map = useJournalStore((s) => s.entries);
-
-const sharedJournalsList = useMemo(() => {
-  return Object.values(sharedJournals || {});
-}, [sharedJournals]);
-
+const map = useJournalStore((s) => s.entries || {});
   const entries = useMemo(() => {
     return Object.entries(map || {})
       .sort((a, b) => (a[0] < b[0] ? 1 : -1))
@@ -149,6 +140,7 @@ useEffect(() => {
     loadPrompt();
   }, [date]);
 
+const drafts = useJournalStore((s) => s.drafts);
   const entryToday = map?.[date] || null;
   const draftText = drafts?.[date]?.text || '';
 
@@ -361,53 +353,49 @@ useEffect(() => {
           </PremiumPressable>
         )}
 
-{/* Row: Start Journaling + History (side by side) */}
-<View style={styles.row}>
+        {/* Action Buttons */}
+        <View style={styles.row}>
+          <PremiumPressable 
+            onPress={primaryPress}
+            haptic="light"
+            style={[
+              styles.btnPrimary, 
+              { 
+                backgroundColor: currentVariant.bg,
+              }
+            ]}
+            accessible={true}
+            accessibilityRole="button"
+            accessibilityLabel={primaryA11yLabel}
+            accessibilityHint="Double tap to open writing screen"
+          >
+            <Text style={[styles.btnPrimaryText, { color: currentVariant.text }]}>
+              {primaryLabel}
+            </Text>
+          </PremiumPressable>
 
-  {/* Start Journaling */}
-  <PremiumPressable 
-    onPress={primaryPress}
-    haptic="light"
-style={[
-  styles.btnPrimary,
-  { 
-    backgroundColor: currentVariant.bg,
-    flex: 1,
-    marginRight: 8,
-    minWidth: 99,      // <<< added to keep text on one line
-  }
-]}
-
-  >
-    <Text style={[styles.btnPrimaryText, { color: currentVariant.text }]}>
-      {primaryLabel}
-    </Text>
-  </PremiumPressable>
-
-  {/* History */}
-  <PremiumPressable 
-    onPress={() => navigation.navigate('History')}
-    haptic="light"
-    style={[styles.btnGhost, { flex: 1, marginLeft: 8 }]}
-  >
-    <Text style={[styles.btnGhostText, { color: brand }]}>History</Text>
-  </PremiumPressable>
-
-</View>
-
-{/* Shared Journals BELOW Start Journaling */}
-<Pressable
+          <Pressable
   onPress={() => navigation.navigate("Invite")}
-  style={[
-    styles.sharedButton,
-    { backgroundColor: palette.card, marginTop: 12 }
-  ]}
+  style={[styles.sharedButton, { backgroundColor: palette.card }]}
 >
   <Text style={{ color: palette.text, fontWeight: "600" }}>
     Shared Journals
   </Text>
 </Pressable>
 
+
+          <PremiumPressable 
+            onPress={() => navigation.navigate('History')}
+            haptic="light"
+            style={styles.btnGhost}
+            accessible={true}
+            accessibilityRole="button"
+            accessibilityLabel="View journal history"
+            accessibilityHint="Opens screen with all your previous journal entries"
+          >
+            <Text style={[styles.btnGhostText, { color: brand }]}>History</Text>
+          </PremiumPressable>
+        </View>
 
         {/* Inline toast */}
         <Animated.View
@@ -456,7 +444,7 @@ style={[
           </PremiumPressable>
         </View>
         {/* Shared Journals */}
-{sharedJournalsList.length > 0 && (
+{sharedJournals.length > 0 && (
   <View
     style={[
       styles.card,
@@ -467,7 +455,7 @@ style={[
       Shared Journals
     </Text>
 
-{sharedJournalsList.map((j) => (
+    {sharedJournals.map((j) => (
       <Pressable
         key={j.id}
         onPress={() =>

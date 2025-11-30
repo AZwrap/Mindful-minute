@@ -9,8 +9,7 @@ import {
   Platform,
 } from "react-native";
 import { useNavigation } from "@react-navigation/native";
-import { useSharedPalette } from "../hooks/useSharedPalette";
-
+import { useThemePalette } from "../stores/themeStore";
 import { useJournalStore } from "../stores/journalStore";
 import { db } from "../firebaseConfig";
 import { doc, setDoc } from "firebase/firestore";
@@ -20,14 +19,10 @@ const genId = () => "id-" + Math.random().toString(36).slice(2, 10);
 
 export default function SharedWriteScreen() {
   const navigation = useNavigation();
-const palette = useSharedPalette();
+  const palette = useThemePalette();
 
-
-const { currentJournalId, addSharedEntryLocal } = useJournalStore((s) => ({
-  currentJournalId: s.currentJournalId,
-  addSharedEntryLocal: s.addSharedEntry,
-}));
-
+  const currentJournalId = useJournalStore((s) => s.currentJournalId);
+  const addSharedEntryLocal = useJournalStore((s) => s.addSharedEntry);
 
   const [text, setText] = useState("");
   const [saving, setSaving] = useState(false);

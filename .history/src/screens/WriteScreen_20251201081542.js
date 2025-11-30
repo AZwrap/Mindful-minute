@@ -851,20 +851,10 @@ const {
                   });
                 }
               }}
-              onBlur={() => handleInputFocusAnim(0)}
-              placeholder="Take a minute to breathe and write…"
-              placeholderTextColor={isDark ? '#9CA3AF' : '#64748B'}
-
-              multiline
-              style={[
-                styles.input,
-                {
-                  color: isDark ? '#E5E7EB' : '#0F172A',
-                  backgroundColor: isDark ? '#111827' : '#FFFFFF',
-                  borderWidth: 0,
-                },
-              ]}
-              autoFocus={false}
+  onBlur={() => handleInputFocusAnim(0)}
+  placeholder="Take a minute to breathe and write…"
+  placeholderTextColor={isDark ? '#6B7280' : '#94A3B8'}   // ← FIX
+  multiline
             />
           </Animated.View>
 

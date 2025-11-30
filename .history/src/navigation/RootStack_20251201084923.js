@@ -53,10 +53,13 @@ export default function RootStack() {
 <Stack.Screen
   name="SharedJournal"
   component={SharedJournalScreen}
-  options={{ headerShown: false }}
+  options={{
+    headerShown: true,
+    title: "Shared Journals",
+    headerShadowVisible: false,        // 🔥 removes the darker line
+    headerTransparent: true,           // 🔥 matches WriteScreen look
+  }}
 />
-
-
 
 
 <Stack.Screen

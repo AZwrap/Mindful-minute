@@ -5,27 +5,38 @@ import { useJournalStore } from "../stores/journalStore";
 import { useSharedPalette } from "../hooks/useSharedPalette";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
-import ThemeFadeWrapper from "../components/ThemeFadeWrapper";
+import ThemeFadeWrapper from "../components/ThemeFadeWrapper";   // FIXED IMPORT
 
 export default function SharedJournalScreen() {
   const navigation = useNavigation();
   const palette = useSharedPalette();
 
-  const { currentJournalId, sharedEntries, createJournal } = useJournalStore((s) => ({
-    currentJournalId: s.currentJournalId,
-    sharedEntries: s.sharedEntries,
-    createJournal: s.createJournal,
-  }));
+  const { currentJournalId, sharedEntries, joinJournal, createJournal } =
+    useJournalStore((s) => ({
+      currentJournalId: s.currentJournalId,
+      sharedEntries: s.sharedEntries,
+      joinJournal: s.joinJournal,
+      createJournal: s.createJournal,
+    }));
 
   const entries = sharedEntries[currentJournalId] || [];
 
-  // If user has no shared journal
+  // Load journal if needed
+  useEffect(() => {
+    console.log("SharedJournalScreen loaded. Journal ID:", currentJournalId);
+  }, [currentJournalId]);
+
+  // ----------------------------------------------------------------------
+  // If user has NO journal → show simplified “Join or Create”
+  // ----------------------------------------------------------------------
   if (!currentJournalId) {
     return (
       <View style={[styles.center, { backgroundColor: palette.bg }]}>
         <Pressable
           style={[styles.button, { backgroundColor: palette.accent }]}
-          onPress={() => createJournal("You")}
+          onPress={() => {
+            createJournal("You");
+          }}
         >
           <Text style={styles.buttonText}>Create Shared Journal</Text>
         </Pressable>
@@ -42,40 +53,42 @@ export default function SharedJournalScreen() {
     );
   }
 
+  // ----------------------------------------------------------------------
+  // User IS in a journal → display shared entries
+  // ----------------------------------------------------------------------
   return (
     <ThemeFadeWrapper>
       <SafeAreaView style={{ flex: 1, backgroundColor: palette.bg }}>
+        <View style={[styles.container, { backgroundColor: palette.bg, paddingTop: 0 }]}>
 
-        {/* ⭐ CUSTOM HEADER EXACTLY LIKE WRITESCREEN */}
-        <View
-          style={{
-            flexDirection: "row",
-            alignItems: "center",
-            paddingHorizontal: 16,
-            paddingTop: Platform.OS === "ios" ? 12 : 8,
-            paddingBottom: 12,
-          }}
-        >
-          <Pressable
-            onPress={() => navigation.goBack()}
-            hitSlop={20}
-            style={{ paddingRight: 12 }}
-          >
-            <Feather name="arrow-left" size={28} color={palette.text} />
-          </Pressable>
-
-          <Text
+          {/* ⭐ PERFECT MATCHING HEADER (same as WriteScreen) */}
+          <View
             style={{
-              fontSize: 28,
-              fontWeight: "700",
-              color: palette.text,
+              flexDirection: "row",
+              alignItems: "center",
+              paddingHorizontal: 16,
+              paddingTop: Platform.OS === "ios" ? 12 : 8,
+              paddingBottom: 12,
             }}
           >
-            Shared Journals
-          </Text>
-        </View>
+            <Pressable
+              onPress={() => navigation.goBack()}
+              hitSlop={20}
+              style={{ paddingRight: 12 }}
+            >
+              <Feather name="arrow-left" size={28} color={palette.text} />
+            </Pressable>
 
-        <View style={[styles.container, { backgroundColor: palette.bg }]}>
+            <Text
+              style={{
+                fontSize: 28,
+                fontWeight: "700",
+                color: palette.text,
+              }}
+            >
+              Shared Journals
+            </Text>
+          </View>
 
           <Pressable
             style={[styles.newEntryBtn, { backgroundColor: palette.accent }]}

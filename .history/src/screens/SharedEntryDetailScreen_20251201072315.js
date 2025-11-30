@@ -20,13 +20,9 @@ const palette = useSharedPalette();
 
   const { entryId } = route.params ?? {};
 
-const { sharedEntries, currentJournalId, removeSharedEntry } =
-  useJournalStore((s) => ({
-    sharedEntries: s.sharedEntries,
-    currentJournalId: s.currentJournalId,
-    removeSharedEntry: s.removeSharedEntry,
-  }));
-
+  const sharedEntries = useJournalStore((s) => s.sharedEntries);
+  const currentJournalId = useJournalStore((s) => s.currentJournalId);
+  const removeSharedEntry = useJournalStore((s) => s.removeSharedEntry);
 
   if (!currentJournalId) {
     return (

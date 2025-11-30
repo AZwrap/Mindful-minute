@@ -62,27 +62,6 @@ export const useJournalStore = create(
       [journalId]: entries,
     },
   })),
-updateJournalMeta: (journalId, data) =>
-  set((state) => ({
-    journalInfo: {
-      ...(state.journalInfo || {}),
-      ...data,
-    },
-    journals: {
-      ...(state.journals || {}),
-      [journalId]: {
-        ...(state.journals?.[journalId] || {}),
-        ...data,
-      },
-    },
-  })),
-addSharedEntryList: (journalId, entries) =>
-  set((state) => ({
-    sharedEntries: {
-      ...state.sharedEntries,
-      [journalId]: entries,
-    },
-  })),
 
 
       // --------------------------------------------------
@@ -121,26 +100,13 @@ addSharedEntryList: (journalId, entries) =>
 
         const entriesRef = doc(db, "sharedEntries", journalId);
 
-const unsub = onSnapshot(entriesRef, (snap) => {
-  const data = snap.data();
-  const entries = data?.entries || [];
+        const unsub = onSnapshot(entriesRef, (snap) => {
+          const data = snap.data();
 
-  const prev = get().sharedEntries?.[journalId] || [];
-
-  const changed =
-    prev.length !== entries.length ||
-    JSON.stringify(prev) !== JSON.stringify(entries);
-
-  if (changed) {
-    set((state) => ({
-      sharedEntries: {
-        ...state.sharedEntries,
-        [journalId]: entries,
-      },
-    }));
-  }
-});
-
+          set({
+            sharedEntries: data?.entries || [],
+          });
+        });
 
         set({ _unsubscribe: unsub });
       },

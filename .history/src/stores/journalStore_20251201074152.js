@@ -25,8 +25,7 @@ export const useJournalStore = create(
       // STATE
       // --------------------------------------------------
       currentJournalId: null,          // The ONLY shared journal
-      sharedEntries: {},               // { [journalId]: [...] }
-         // Entries inside the shared journal
+      sharedEntries: [],               // Entries inside the shared journal
       journalInfo: null,               // metadata of journal
       isLoading: false,
       _unsubscribe: null,              // Firestore listener cleanup
@@ -56,27 +55,6 @@ export const useJournalStore = create(
       },
 
       setSharedEntries: (journalId, entries) =>
-  set((state) => ({
-    sharedEntries: {
-      ...state.sharedEntries,
-      [journalId]: entries,
-    },
-  })),
-updateJournalMeta: (journalId, data) =>
-  set((state) => ({
-    journalInfo: {
-      ...(state.journalInfo || {}),
-      ...data,
-    },
-    journals: {
-      ...(state.journals || {}),
-      [journalId]: {
-        ...(state.journals?.[journalId] || {}),
-        ...data,
-      },
-    },
-  })),
-addSharedEntryList: (journalId, entries) =>
   set((state) => ({
     sharedEntries: {
       ...state.sharedEntries,
@@ -121,26 +99,13 @@ addSharedEntryList: (journalId, entries) =>
 
         const entriesRef = doc(db, "sharedEntries", journalId);
 
-const unsub = onSnapshot(entriesRef, (snap) => {
-  const data = snap.data();
-  const entries = data?.entries || [];
+        const unsub = onSnapshot(entriesRef, (snap) => {
+          const data = snap.data();
 
-  const prev = get().sharedEntries?.[journalId] || [];
-
-  const changed =
-    prev.length !== entries.length ||
-    JSON.stringify(prev) !== JSON.stringify(entries);
-
-  if (changed) {
-    set((state) => ({
-      sharedEntries: {
-        ...state.sharedEntries,
-        [journalId]: entries,
-      },
-    }));
-  }
-});
-
+          set({
+            sharedEntries: data?.entries || [],
+          });
+        });
 
         set({ _unsubscribe: unsub });
       },
@@ -169,7 +134,7 @@ const unsub = onSnapshot(entriesRef, (snap) => {
 
         set({
           currentJournalId: null,
-sharedEntries: {},
+          sharedEntries: [],
           journalInfo: null,
           _unsubscribe: null,
         });
@@ -230,7 +195,7 @@ setCurrentJournal: (id) => set({ currentJournalId: id }),
 
         set({
           currentJournalId: null,
-sharedEntries: {},
+          sharedEntries: [],
           journalInfo: null,
           _unsubscribe: null,
         });

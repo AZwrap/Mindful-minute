@@ -134,7 +134,6 @@ export async function joinSharedJournal(url) {
   }
 }
 
-
 // ─────────────────────────────────────────────
 //  SYNC METADATA + ENTRIES IN REAL TIME
 // ─────────────────────────────────────────────
@@ -142,41 +141,30 @@ export function startJournalSync(journalId) {
   const journalRef = doc(db, "journals", journalId);
 
   // ───────────── METADATA LISTENER ─────────────
-onSnapshot(journalRef, (snap) => {
-  if (!snap.exists()) return;
+  onSnapshot(journalRef, (snap) => {
+    if (!snap.exists()) return;
 
-  const data = snap.data();
-
-  // Update metadata only (name, members, etc.)
-  queueMicrotask(() => {
-    useJournalStore.getState().updateJournalMeta(journalId, data);
-  });
+    const data = snap.data();
+queueMicrotask(() => {
+  useJournalStore.getState().setSharedEntries(journalId, entries);
 });
-
-
+  });
 
   // ───────────── ENTRIES LISTENER ─────────────
   const entriesRef = collection(db, "journals", journalId, "entries");
 
-onSnapshot(entriesRef, (snap) => {
-  const entries = [];
-  snap.forEach((doc) => entries.push(doc.data()));
+  onSnapshot(entriesRef, (snap) => {
+    const entries = [];
+    snap.forEach((doc) => entries.push(doc.data()));
 
-  const prev = useJournalStore.getState().sharedEntries?.[journalId] || [];
-
-  const changed =
-    prev.length !== entries.length ||
-    JSON.stringify(prev) !== JSON.stringify(entries);
-
-  if (changed) {
-    queueMicrotask(() => {
-      useJournalStore
-        .getState()
-        .addSharedEntryList(journalId, entries);
-    });
-  }
+    // NEW: attach entries directly to the correct journal
+queueMicrotask(() => {
+  useJournalStore
+    .getState()
+    .addSharedEntryList(journalId, entries);
 });
 
+  });
 }
 
 
@@ -209,13 +197,3 @@ function extractParams(url) {
     invite: parts.get("invite"),
   };
 }
-updateJournalMeta: (journalId, data) =>
-  set((state) => ({
-    journals: {
-      ...state.journals,
-      [journalId]: {
-        ...(state.journals?.[journalId] || {}),
-        ...data
-      }
-    }
-  }));

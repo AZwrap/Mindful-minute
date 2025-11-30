@@ -853,8 +853,6 @@ const {
               }}
               onBlur={() => handleInputFocusAnim(0)}
               placeholder="Take a minute to breathe and write…"
-              placeholderTextColor={isDark ? '#9CA3AF' : '#64748B'}
-
               multiline
               style={[
                 styles.input,

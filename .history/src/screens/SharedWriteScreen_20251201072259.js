@@ -23,11 +23,8 @@ export default function SharedWriteScreen() {
 const palette = useSharedPalette();
 
 
-const { currentJournalId, addSharedEntryLocal } = useJournalStore((s) => ({
-  currentJournalId: s.currentJournalId,
-  addSharedEntryLocal: s.addSharedEntry,
-}));
-
+  const currentJournalId = useJournalStore((s) => s.currentJournalId);
+  const addSharedEntryLocal = useJournalStore((s) => s.addSharedEntry);
 
   const [text, setText] = useState("");
   const [saving, setSaving] = useState(false);
