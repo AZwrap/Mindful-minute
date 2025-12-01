@@ -50,7 +50,17 @@ export default function RootStack() {
   component={FocusWriteScreen}
   options={{ headerShown: false }}
 />
-<Stack.Screen name="SharedJournal" component={SharedJournalScreen}/>
+<Stack.Screen
+  name="SharedJournal"
+  component={SharedJournalScreen}
+  options={{
+    title: "Shared Journals",
+  }}
+/>
+
+
+
+
 
 <Stack.Screen
   name="SharedWrite"
