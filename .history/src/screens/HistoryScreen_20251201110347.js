@@ -51,12 +51,9 @@ const SwipeableEntry = ({
     );
   };
 
-function formatDate(iso) {
+  function formatDate(iso) {
     if (!iso) return '';
     const d = new Date(`${iso}T00:00:00`);
-    // Check if date is valid
-    if (isNaN(d.getTime())) return 'Unsaved Draft'; 
-    
     return d.toLocaleDateString(undefined, {
       weekday: 'short',
       month: 'short',

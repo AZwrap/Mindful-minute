@@ -1,5 +1,6 @@
+// src/stores/entriesStore.js
 import { create } from "zustand";
-import { persist, createJSONStorage } from "zustand/middleware";
+import { persist, createJSONStorage } from "zustand/middleware"; // Updated import
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 export const useEntriesStore = create(
@@ -10,7 +11,7 @@ export const useEntriesStore = create(
       // ─────────────────────────────────────────────
       entries: {}, // Main storage: { "2024-01-01": { text, mood, prompt... } }
 
-      // FIXED: Now accepts a single 'newEntry' object to match MoodTagScreen
+      // FIXED: Accepts a single object 'newEntry' to match your screens
       upsert: (newEntry) => {
         const { date } = newEntry;
         if (!date) return;
@@ -19,8 +20,8 @@ export const useEntriesStore = create(
           entries: {
             ...state.entries,
             [date]: {
-              ...state.entries[date], // Keep existing data (like prompt) if merging
-              ...newEntry,            // Overwrite with new data (text, mood, isComplete)
+              ...state.entries[date], // Keep existing data if merging
+              ...newEntry,            // Overwrite with new data
             },
           },
         }));
@@ -46,12 +47,12 @@ export const useEntriesStore = create(
 
       setDraft: (date, text) => {
         set((state) => ({
-          drafts: { ...state.drafts, [date]: { text } }, // Ensure structure matches HomeScreen check
+          drafts: { ...state.drafts, [date]: text },
         }));
       },
 
       getDraft: (date) => {
-        return get().drafts?.[date]?.text || "";
+        return get().drafts?.[date] || "";
       },
 
       // ─────────────────────────────────────────────
@@ -85,7 +86,7 @@ export const useEntriesStore = create(
     }),
     {
       name: "entries-store",
-      storage: createJSONStorage(() => AsyncStorage),
+      storage: createJSONStorage(() => AsyncStorage), // Standard Zustand/AsyncStorage setup
     }
   )
 );

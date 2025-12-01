@@ -512,11 +512,11 @@ const styles = StyleSheet.create({
   container: { 
     flex: 1,
   },
-contentCard: {
+  contentCard: {
     flex: 1,
-    margin: 16,      // Reduced margin
+    margin: 20,
     marginTop: 10,
-    padding: 16,     // Reduced padding (gives buttons 16px more width)
+    padding: 24,
     borderRadius: 24,
     gap: 20,
   },
@@ -531,30 +531,29 @@ contentCard: {
     lineHeight: 24,
     textAlign: 'center',
   },
-row: { 
+  row: { 
     flexDirection: 'row', 
-    gap: 8, // Reduced gap between buttons
+    gap: 12, 
     alignItems: 'center' 
   },
-  btnPrimary: { 
-    flex: 1.3, // Give primary even more priority (60% width)
+btnPrimary: { 
+    flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: 14,
-    paddingHorizontal: 12, // Reduced side padding
+    paddingHorizontal: 16, 
     borderRadius: 16,
-    borderWidth: 1,
+    borderWidth: 1, // Added to match btnGhost height exactly
   },
   btnPrimaryText: { 
     fontWeight: '700',
     fontSize: 16,
   },
-btnGhost: { 
-    flex: 0.7, // History takes 40% width
+  btnGhost: { 
     borderWidth: 1, 
     borderColor: 'rgba(99,102,241,0.3)', 
     paddingVertical: 14, 
-    paddingHorizontal: 12, // Reduced side padding
+    paddingHorizontal: 20, 
     borderRadius: 16,
     alignItems: 'center',
   },

@@ -54,7 +54,7 @@ export default function MoodTagScreen({ navigation, route }) {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     }
   };
-
+  
 // Use entriesStore for personal entries (same as WriteScreen)
   const upsert = useEntriesStore((s) => s.upsert);
 
@@ -130,19 +130,18 @@ export default function MoodTagScreen({ navigation, route }) {
       try { await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); } catch {}
     }
     
-// FIXED: Now uses the extracted upsert function
+    // FIXED: Now uses the extracted upsert function
     if (upsert) {
       upsert({ 
         date,
         text, 
         prompt: { text: prompt?.text }, 
-        // CHANGED: 'mood' -> 'moodTag' to match what Home/History screens expect
-        moodTag: { type: selectedMood ? 'chip' : 'custom', value: mood },
+        mood: { type: selectedMood ? 'chip' : 'custom', value: mood },
         createdAt: new Date().toISOString(),
         isComplete: true
       });
     } else {
-        console.error("upsert function not found in useEntriesStore");
+        console.error("upsert function not found in useJournalStore");
     }
 
     if (result.newAchievements && result.newAchievements.length > 0) {

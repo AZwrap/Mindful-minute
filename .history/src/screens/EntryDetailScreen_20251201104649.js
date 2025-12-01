@@ -1,22 +1,21 @@
+// src/screens/EntryDetailScreen.js
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, useColorScheme, ScrollView } from 'react-native';
 import * as Sharing from 'expo-sharing';
 import * as FileSystem from 'expo-file-system';
-import * as Clipboard from 'expo-clipboard';
-import { useEntriesStore } from "../stores/entriesStore"; // <--- Ensuring this import exists
+import * as Clipboard from 'expo-clipboard'; // 👈 NEW
 import { useTheme } from '../stores/themeStore';
 import { LinearGradient } from 'expo-linear-gradient';
 import PremiumPressable from '../components/PremiumPressable';
 
 function formatDate(iso) {
-  if (!iso) return 'Unknown Date';
   const d = new Date(`${iso}T00:00:00`);
   return d.toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' });
 }
 
 function formatTime(entry) {
-  if (entry?.createdAt) {
-    const d = new Date(entry.createdAt);
+  if (entry.createdAt) {
+    const d = new Date(entry.createdAt); // This works with ISO strings
     return d.toLocaleTimeString(undefined, { 
       hour: 'numeric', 
       minute: '2-digit'
@@ -30,9 +29,8 @@ export default function EntryDetailScreen({ route }) {
   const { getCurrentTheme } = useTheme();
   const currentTheme = getCurrentTheme(systemScheme);
   const isDark = currentTheme === 'dark';
-  const { date } = route.params || {};
-
-  // FIXED: Using the correct store and direct object access
+const { date } = route.params || {};
+  // FIXED: Use correct store name and select directly from 'entries' object
   const entry = useEntriesStore((s) => s.entries[date]);
 
   const gradients = {
@@ -49,7 +47,7 @@ export default function EntryDetailScreen({ route }) {
   const currentGradient = gradients[currentTheme] || gradients.light;
 
   const [themeLoaded, setThemeLoaded] = useState(false);
-  const [copied, setCopied] = useState(false);
+  const [copied, setCopied] = useState(false); // 👈 NEW
 
   useEffect(() => {
     setThemeLoaded(true);
@@ -61,8 +59,8 @@ export default function EntryDetailScreen({ route }) {
 
   if (!entry) {
     return (
-      <View style={[styles.container, { backgroundColor: isDark ? '#0F172A' : '#F8FAFC', justifyContent: 'center', alignItems: 'center' }]}>
-        <Text style={{ color: isDark ? '#E5E7EB' : '#0F172A', fontSize: 16 }}>Entry not found.</Text>
+      <View style={[styles.container, { backgroundColor: isDark ? '#0F172A' : '#F8FAFC' }]}>
+        <Text style={{ color: isDark ? '#E5E7EB' : '#0F172A' }}>Entry not found.</Text>
       </View>
     );
   }
@@ -75,7 +73,7 @@ export default function EntryDetailScreen({ route }) {
   const buildExportText = () => `
 MINDFUL MINUTE ENTRY
 Date: ${formattedDate}
-Prompt: ${entry.prompt?.text || entry.promptText || 'No Prompt'}
+Prompt: ${entry.promptText}
 
 Your Entry:
 ${entry.text}
@@ -131,7 +129,7 @@ Mood: ${entry.moodTag?.value || 'Not specified'}
           <Text style={[styles.time, { color: textSub }]}>{formatTime(entry)}</Text>
 
           <Text style={[styles.label, { color: textSub }]}>Prompt</Text>
-          <Text style={[styles.prompt, { color: textMain }]}>{entry.prompt?.text || entry.promptText}</Text>
+          <Text style={[styles.prompt, { color: textMain }]}>{entry.promptText}</Text>
 
           <Text style={[styles.label, { color: textSub }]}>Your Reflection</Text>
           <Text style={[styles.entry, { color: textMain }]}>{entry.text}</Text>
@@ -158,29 +156,30 @@ Mood: ${entry.moodTag?.value || 'Not specified'}
 
           {/* Buttons row */}
           <View style={styles.buttonsRow}>
-            <PremiumPressable
-              onPress={copyToClipboard}
-              haptic="light"
-              style={[
-                styles.copyBtn,
-                {
-                  borderColor: isDark
-                    ? "rgba(99,102,241,0.4)"
-                    : "rgba(99,102,241,0.3)",
-                },
-              ]}
-            >
-              <Text
-                style={[
-                  styles.copyBtnText,
-                  {
-                    color: "#6366F1",
-                  },
-                ]}
-              >
-                {copied ? "✓ Copied!" : "Copy to Clipboard"}
-              </Text>
-            </PremiumPressable>
+<PremiumPressable
+  onPress={copyToClipboard}
+  haptic="light"
+  style={[
+    styles.copyBtn,
+    {
+      borderColor: isDark
+        ? "rgba(99,102,241,0.4)"
+        : "rgba(99,102,241,0.3)",
+    },
+  ]}
+>
+  <Text
+    style={[
+      styles.copyBtnText,
+      {
+        color: "#6366F1",
+      },
+    ]}
+  >
+    {copied ? "✓ Copied!" : "Copy to Clipboard"}
+  </Text>
+</PremiumPressable>
+
 
             <PremiumPressable
               onPress={exportEntry}
@@ -256,6 +255,19 @@ const styles = StyleSheet.create({
     gap: 10,
     marginTop: 8,
   },
+  secondaryBtn: {
+    flex: 1,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 16,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  secondaryText: {
+    fontWeight: '700',
+    fontSize: 14,
+  },
   exportBtn: {
     flex: 1,
     paddingVertical: 14,
@@ -284,16 +296,19 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   copyBtn: {
-    flex: 1,
-    paddingVertical: 14,
-    borderRadius: 16,
-    borderWidth: 1,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  copyBtnText: {
-    fontSize: 15,
-    fontWeight: "700",
-    textAlign: "center",
-  },
+  flex: 1,
+  paddingVertical: 14,
+  borderRadius: 16,
+  borderWidth: 1,
+  justifyContent: "center",
+  alignItems: "center",
+},
+
+copyBtnText: {
+  fontSize: 15,
+  fontWeight: "700",
+  textAlign: "center",
+},
+
 });
+

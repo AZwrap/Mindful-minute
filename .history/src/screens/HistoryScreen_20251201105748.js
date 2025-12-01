@@ -35,28 +35,26 @@ const SwipeableEntry = ({
 }) => {
   const swipeableRef = useRef(null);
 
-  const renderRightActions = (progress, dragX) => {
-    return (
-      <View style={styles.deleteButtonWrapper}>
-        <Pressable
-          style={styles.deleteButton}
-          onPress={() => {
-            onDelete(entry);
-            swipeableRef.current?.close();
-          }}
-        >
-          <Text style={styles.swipeActionText}>Delete</Text>
-        </Pressable>
-      </View>
-    );
-  };
+  const scaleAnim = useRef(new Animated.Value(0.8)).current;
 
-function formatDate(iso) {
-    if (!iso) return '';
+const renderRightActions = (progress, dragX) => {
+  return (
+    <View style={styles.deleteButtonWrapper}>
+      <Pressable
+        style={styles.deleteButton}
+        onPress={() => {
+          onDelete(entry);
+          swipeableRef.current?.close();
+        }}
+      >
+        <Text style={styles.swipeActionText}>Delete</Text>
+      </Pressable>
+    </View>
+  );
+};
+
+  function formatDate(iso) {
     const d = new Date(`${iso}T00:00:00`);
-    // Check if date is valid
-    if (isNaN(d.getTime())) return 'Unsaved Draft'; 
-    
     return d.toLocaleDateString(undefined, {
       weekday: 'short',
       month: 'short',
@@ -69,8 +67,7 @@ function formatDate(iso) {
       style={[
         styles.entryWrapper,
         {
-          // FIXED: Transparent wrapper so we don't see a box behind the item
-          backgroundColor: 'transparent', 
+          backgroundColor: isDark ? '#FFFFFF' : '#FFFFFF',
           borderColor,
         },
       ]}
@@ -86,11 +83,7 @@ function formatDate(iso) {
           onPress={onPress}
           style={({ pressed }) => [
             styles.entryItem,
-            { 
-              opacity: pressed ? 0.8 : 1,
-              // FIXED: Theme-aware semi-transparent backgrounds
-              backgroundColor: isDark ? 'rgba(30, 41, 59, 0.6)' : 'rgba(255, 255, 255, 0.7)',
-            },
+            { opacity: pressed ? 0.8 : 1 },
           ]}
         >
           <View style={styles.entryHeader}>
@@ -103,7 +96,7 @@ function formatDate(iso) {
             style={[styles.entryPrompt, { color: textSub }]}
             numberOfLines={2}
           >
-            {entry.promptText || entry.prompt?.text}
+            {entry.promptText}
           </Text>
 
           {entry.text && (
@@ -527,11 +520,16 @@ entryWrapper: {
   marginBottom: 8,
 },
 
+  // keep the “card” padding etc, but remove border/radius from here
 entryItem: {
-    padding: 12,
-    minHeight: 100,
-    // FIXED: Removed 'white' background so the transparent one above works
-  },
+  padding: 12,
+  minHeight: 100,
+  backgroundColor: 'white',
+  // ❌ NO borderRadius
+  // ❌ NO overflow
+},
+
+
   swipeableContainer: {
     marginBottom: 8, // you can rerove this if using entryWrapper marginBottom
   },
