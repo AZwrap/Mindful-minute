@@ -55,8 +55,13 @@ export default function MoodTagScreen({ navigation, route }) {
     }
   };
 
-// FIXED: Select only 'upsert' directly to avoid object-creation infinite loop
-  const upsert = useJournalStore((s) => s.upsert);
+  // Fixed: Added upsert to destructuring
+  const { addEntry, updateEntry, entries, upsert } = useJournalStore((s) => ({
+    addEntry: s.addEntry,
+    updateEntry: s.updateEntry,
+    entries: s.entries,
+    upsert: s.upsert, // <--- Added this to fix ReferenceError
+  })); // Removed shallow to be safe if not installed, regular comparison is fine here
 
   const hapticsEnabled = useSettings((s) => s.hapticsEnabled);
 

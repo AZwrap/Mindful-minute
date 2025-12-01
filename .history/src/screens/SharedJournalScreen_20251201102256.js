@@ -1,14 +1,18 @@
-import React, { useLayoutEffect } from "react";
+// src/screens/SharedJournalScreen.js
+
+import React, { useLayoutEffect } from "react"; // - Added useLayoutEffect
 import {
   View,
   Text,
   FlatList,
   Pressable,
   StyleSheet,
+  Platform,
 } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import { useJournalStore } from "../stores/journalStore";
 import { useSharedPalette } from "../hooks/useSharedPalette";
+// Removed Feather import as it's no longer needed for the custom header
 import ThemeFadeWrapper from "../components/ThemeFadeWrapper";
 
 export default function SharedJournalScreen() {
@@ -22,25 +26,17 @@ export default function SharedJournalScreen() {
 
   const entries = Object.values(sharedEntries || {});
 
-  // 1. Set the Standard Navigation Header (Matches WriteScreen)
+  // Set the standard navigation header title
   useLayoutEffect(() => {
     navigation.setOptions({
-      title: "Shared Journals", // Sets the text in the standard header
-      headerShown: true,        // Ensures the standard header is visible
-      headerStyle: {
-        backgroundColor: palette.bg, // Matches your screen background
-      },
-      headerTintColor: palette.text, // Matches your text color
-      headerShadowVisible: false,    // Optional: removes the line for a cleaner look
+      title: "Shared Journals",
     });
-  }, [navigation, palette]);
+  }, [navigation]);
 
   return (
     <ThemeFadeWrapper>
       <View style={[styles.container, { backgroundColor: palette.bg }]}>
-        
-        {/* 2. REMOVED the manual <View> header here completely. 
-               We now rely on the system header configured above. */}
+        {/* REMOVED CUSTOM HEADER BLOCK */}
 
         {/* LIST */}
         <FlatList

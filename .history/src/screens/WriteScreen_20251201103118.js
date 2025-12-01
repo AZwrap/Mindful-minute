@@ -577,7 +577,11 @@ export default function WriteScreen({ navigation, route }) {
   };
 
   // ===== TEXT CHANGE =====
-  const handleTextChange = (newText) => {    
+  const handleTextChange = (newText) => {
+    // REMOVED: navigation.setParams({ text: newText ... }) 
+    // This was causing infinite loops and heavy rendering.
+    // We already persist to 'text' state and 'setDraft' store.
+    
     setText(newText);
 
     const words = newText
