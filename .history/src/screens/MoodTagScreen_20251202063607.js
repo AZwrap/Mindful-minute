@@ -13,9 +13,6 @@ import { useTheme } from '../stores/themeStore';
 import PremiumPressable from '../components/PremiumPressable';
 import { shallow } from 'zustand/shallow'; // Ensure shallow is imported if available, or handled below
 
-// --- ADD THIS ABOVE THE COMPONENT ---
-const moodOptions = ['calm','grateful','anxious','focused','happy','reflective','tired','energized','optimistic','overwhelmed'];
-
 export default function MoodTagScreen({ navigation, route }) {
   const systemScheme = useColorScheme();
   const { getCurrentTheme } = useTheme();
@@ -34,22 +31,22 @@ export default function MoodTagScreen({ navigation, route }) {
 
 // Defined at the top so we can use it for initialization logic
 
-// SIMPLE STATE - INTELLIGENT INITIALIZATION
+  // SIMPLE STATE - INTELLIGENT INITIALIZATION
   const [selectedMood, setSelectedMood] = useState(() => {
+    // If the suggested mood is one of our standard bubbles, select the bubble
     if (suggestedMood && moodOptions.includes(suggestedMood.toLowerCase())) {
       return suggestedMood.toLowerCase();
     }
     return '';
   });
 
-const [customMood, setCustomMood] = useState(() => {
-    // If we have a suggestion but it's NOT a standard bubble, fill the text box (Capitalized)
+  const [customMood, setCustomMood] = useState(() => {
+    // If we have a suggestion but it's NOT a standard bubble, fill the text box
     if (suggestedMood && !moodOptions.includes(suggestedMood.toLowerCase())) {
-      return suggestedMood.charAt(0).toUpperCase() + suggestedMood.slice(1);
+      return suggestedMood;
     }
     return '';
   });
-
   const fadeAnim = useRef(new Animated.Value(0.4)).current;
 
   const [achievementQueue, setAchievementQueue] = useState([]);
@@ -75,6 +72,8 @@ const [customMood, setCustomMood] = useState(() => {
   const upsert = useEntriesStore((s) => s.upsert);
 
   const hapticsEnabled = useSettings((s) => s.hapticsEnabled);
+
+  const moodOptions = ['calm','grateful','anxious','focused','happy','reflective','tired','energized','optimistic','overwhelmed'];
 
   const calculateXP = (mood, isCustom) => {
     let xp = 10; 

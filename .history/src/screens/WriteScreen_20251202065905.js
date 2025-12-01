@@ -848,6 +848,7 @@ export default function WriteScreen({ navigation, route }) {
               ]}
             >
               <View style={[styles.coachBubble, { backgroundColor: isDark ? 'rgba(99, 102, 241, 0.15)' : '#EEF2FF' }]}>
+                <Text style={{ fontSize: 14 }}>✨</Text>
                 <Text style={[styles.coachText, { color: isDark ? '#A5B4FC' : '#4F46E5' }]}>
                   {coachMessage}
                 </Text>
@@ -870,7 +871,7 @@ export default function WriteScreen({ navigation, route }) {
           >
             <TextInput
               ref={inputRef}
-              value={text}
+              value={route.params?.text || text}
               onChangeText={handleTextChange}
               onFocus={() => {
                 handleInputFocusAnim(1);

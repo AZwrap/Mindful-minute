@@ -239,7 +239,7 @@ export default function HistoryScreen({ navigation }) {
       <Animated.View style={{ opacity: contentFadeAnim, flex: 1 }}>
         <View style={styles.contentCard}>
 
-{/* 1. STATS SUMMARY WIDGET */}
+          {/* 1. STATS SUMMARY WIDGET */}
           <PremiumPressable
             onPress={() => navigation.navigate('Stats', { initialMood: selectedMood })}
             haptic="light"
@@ -248,32 +248,24 @@ export default function HistoryScreen({ navigation }) {
               { 
                 backgroundColor: isDark ? 'rgba(99, 102, 241, 0.1)' : '#EEF2FF',
                 borderColor: isDark ? 'rgba(99, 102, 241, 0.3)' : '#C7D2FE',
-                justifyContent: 'space-around' // Use space-around to center the groups nicely
               }
             ]}
           >
-            {/* Current Streak */}
-            <View style={{ alignItems: 'center' }}> 
+            <View>
               <Text style={[styles.statsLabel, { color: textSub }]}>Current Streak</Text>
               <Text style={[styles.statsValue, { color: '#6366F1' }]}>
-                {streak} Day{streak !== 1 ? 's' : ''}
+                 {streak} Day{streak !== 1 ? 's' : ''}
               </Text>
             </View>
             
-            {/* Vertical Divider (Optional, keeps them separated visually) */}
-            <View style={{ width: 1, height: '80%', backgroundColor: borderColor, opacity: 0.5 }} />
-
-            {/* Total Entries */}
-            <View style={{ alignItems: 'center' }}> 
+            <View style={{ alignItems: 'flex-end' }}>
               <Text style={[styles.statsLabel, { color: textSub }]}>Total Entries</Text>
                <Text style={[styles.statsValue, { color: textMain }]}>
-                {entries.length}
+                {entries.length} 
               </Text>
             </View>
             
-            {/* Arrow removed or kept minimal? kept it as requested in previous iterations but maybe distinct enough now. 
-               Let's keep the arrow but push it to the far right if needed, or remove it for cleaner look. 
-               I'll remove the separate arrow text since the whole card is pressable and space-around handles layout better. */}
+            <Text style={{ color: '#6366F1', opacity: 0.5, marginLeft: 8 }}>→</Text>
           </PremiumPressable>
 
           {/* Mood Filter */}
@@ -386,10 +378,10 @@ const styles = StyleSheet.create({
     padding: 12,
     borderRadius: 24,
   },
-statsWidget: {
+  statsWidget: {
     flexDirection: 'row',
     alignItems: 'center',
-    // justifyContent: 'space-between', <--- Overridden inline to 'space-around' for better centering
+    justifyContent: 'space-between',
     padding: 16,
     borderRadius: 16,
     borderWidth: 1,

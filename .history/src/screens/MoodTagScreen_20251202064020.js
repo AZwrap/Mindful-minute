@@ -42,14 +42,13 @@ export default function MoodTagScreen({ navigation, route }) {
     return '';
   });
 
-const [customMood, setCustomMood] = useState(() => {
-    // If we have a suggestion but it's NOT a standard bubble, fill the text box (Capitalized)
+  const [customMood, setCustomMood] = useState(() => {
     if (suggestedMood && !moodOptions.includes(suggestedMood.toLowerCase())) {
-      return suggestedMood.charAt(0).toUpperCase() + suggestedMood.slice(1);
+      return suggestedMood;
     }
     return '';
   });
-
+  
   const fadeAnim = useRef(new Animated.Value(0.4)).current;
 
   const [achievementQueue, setAchievementQueue] = useState([]);

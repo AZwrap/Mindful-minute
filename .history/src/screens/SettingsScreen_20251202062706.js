@@ -10,7 +10,6 @@ import {
   Animated,
   ScrollView,
   Alert,
-  NativeModules,
 } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import { useSettings } from "../stores/settingsStore";
@@ -266,123 +265,36 @@ const toggleDropdown = () => {
     }
   };
 
-  // Generate a clinical-style report for the last 30 days
-  const generateTherapistReport = async () => {
-    try {
-      const now = new Date();
-      const thirtyDaysAgo = new Date();
-      thirtyDaysAgo.setDate(now.getDate() - 30);
-
-      // 1. Filter Entries
-      const recentEntries = entries.filter(e => {
-        const entryDate = new Date(e.date);
-        return entryDate >= thirtyDaysAgo && entryDate <= now;
-      });
-
-      if (recentEntries.length === 0) {
-        Alert.alert("No Data", "No entries found in the last 30 days to report.");
-        return;
-      }
-
-      // 2. Calculate Stats
-      const moodCounts = {};
-      recentEntries.forEach(e => {
-        if (e.moodTag?.value) {
-          const m = e.moodTag.value;
-          moodCounts[m] = (moodCounts[m] || 0) + 1;
-        }
-      });
-      
-      const topMoods = Object.entries(moodCounts)
-        .sort((a, b) => b[1] - a[1])
-        .map(([m, c]) => `${m} (${c})`)
-        .join(', ');
-
-      // 3. Build Report Content
-      let content = `CLINICAL SUMMARY REPORT\n`;
-      content += `Patient: User\n`;
-      content += `Period: ${thirtyDaysAgo.toLocaleDateString()} - ${now.toLocaleDateString()}\n`;
-      content += `Generated: ${now.toLocaleString()}\n`;
-      content += `\n----------------------------------------\n`;
-      content += `OVERVIEW\n`;
-      content += `Total Entries: ${recentEntries.length}\n`;
-      content += `Mood Overview: ${topMoods || 'No moods recorded'}\n`;
-      content += `\n----------------------------------------\n`;
-      content += `JOURNAL LOG (Chronological)\n\n`;
-
-      // Sort oldest to newest for reading flow
-      recentEntries.reverse().forEach((entry) => {
-        const date = new Date(entry.date).toLocaleDateString();
-        const time = entry.createdAt ? new Date(entry.createdAt).toLocaleTimeString() : 'Unknown Time';
-        
-        content += `[${date} at ${time}]\n`;
-        content += `Mood: ${entry.moodTag?.value ? entry.moodTag.value.toUpperCase() : 'N/A'}\n`;
-        content += `Prompt: ${entry.promptText || 'Free Write'}\n`;
-        content += `Content: ${entry.text}\n`;
-        content += `\n---\n\n`;
-      });
-
-      // 4. Save and Share
-      const fileName = `Therapist_Report_${now.toISOString().split('T')[0]}.txt`;
-      const fileUri = FileSystem.documentDirectory + fileName;
-      
-      await FileSystem.writeAsStringAsync(fileUri, content);
-      
-      if (await Sharing.isAvailableAsync()) {
-        await Sharing.shareAsync(fileUri, {
-          mimeType: 'text/plain',
-          dialogTitle: 'Share Therapist Report',
-        });
-      }
-    } catch (error) {
-      console.log('Report generation error:', error);
-      Alert.alert("Error", "Could not generate report.");
-    }
-  };
-
   function formatDate(iso) {
     const d = new Date(`${iso}T00:00:00`);
     return d.toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' });
   }
 
-// DANGER: Wipes all data and restarts the app
-  const handleFactoryReset = () => {
+  // DANGER: Wipes all data and restarts the app
+  const handleFactoryReset = async () => {
     Alert.alert(
       "Factory Reset",
-      "This will permanently delete ALL entries, settings, and stats. Are you sure?",
+      "This will permanently delete ALL entries, settings, and stats. The app will restart as if it's new. Are you sure?",
       [
         { text: "Cancel", style: "cancel" },
         {
           text: "Reset Everything",
           style: "destructive",
+          // FIXED: Removed 'async' from onPress to prevent Native Bridge errors.
+          // We trigger the async chain inside instead.
           onPress: () => {
-            // 1. Perform the Wipe
-            AsyncStorage.clear()
-              .then(() => {
-                // 2. Try to Restart (Success Path)
-                try {
-                  // Attempt Expo reload
-                  Updates.reloadAsync().catch(() => {
-                    // Fallback for Expo Go / Dev Client if Updates fails
-                    if (NativeModules.DevSettings) {
-                      NativeModules.DevSettings.reload();
-                    } else {
-                      throw new Error("Manual restart required");
-                    }
-                  });
-                } catch (e) {
-                  // If restart fails entirely, just tell the user
-                  Alert.alert(
-                    "Reset Complete", 
-                    "Data has been wiped. Please close and reopen the app to finish."
-                  );
-                }
-              })
-              .catch((e) => {
-                // 3. Handle Wipe Failure (Real Error)
-                console.error("AsyncStorage clear failed", e);
-                Alert.alert("Error", "Could not wipe data. Please uninstall the app.");
-              });
+            // Define the logic
+            const performReset = async () => {
+              try {
+                await AsyncStorage.clear(); // Wipes storage
+                await Updates.reloadAsync(); // Restarts app
+              } catch (e) {
+                console.error("Reset failed", e);
+                Alert.alert("Error", "Reset failed. Please reinstall the app.");
+              }
+            };
+            // Execute it
+            performReset();
           }
         }
       ]
@@ -920,25 +832,6 @@ onValueChange={setGratitudeModeEnabled}
               >
                 <Text style={[styles.exportText, { color: 'white' }]}>
                   Export All Entries
-                </Text>
-              </PremiumPressable>
-
-              {/* ADD THIS NEW BUTTON */}
-              <PremiumPressable
-                onPress={generateTherapistReport}
-                haptic="medium"
-                style={[
-                  styles.exportBtn,
-                  { 
-                    backgroundColor: 'transparent',
-                    borderColor: palette.accent,
-                    borderWidth: 1,
-                    marginTop: 8
-                  }
-                ]}
-              >
-                <Text style={[styles.exportText, { color: palette.accent }]}>
-                  📄 Share Therapist Report (30 Days)
                 </Text>
               </PremiumPressable>
               

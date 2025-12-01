@@ -870,7 +870,7 @@ export default function WriteScreen({ navigation, route }) {
           >
             <TextInput
               ref={inputRef}
-              value={text}
+              value={route.params?.text || text}
               onChangeText={handleTextChange}
               onFocus={() => {
                 handleInputFocusAnim(1);
