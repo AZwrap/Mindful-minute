@@ -276,22 +276,17 @@ const toggleDropdown = () => {
       "This will permanently delete ALL entries, settings, and stats. The app will restart as if it's new. Are you sure?",
       [
         { text: "Cancel", style: "cancel" },
-{
+        {
           text: "Reset Everything",
           style: "destructive",
-          // FIXED: This structure explicitly calls a zero-argument function, preventing the native error.
-          onPress: () => { 
-            const runReset = async () => {
-              try {
-                await AsyncStorage.clear(); // Wipes all Zustand stores
-                await Updates.reloadAsync(); // Restarts the app immediately
-              } catch (e) {
-                console.error("Reset failed", e);
-                Alert.alert("Error", "Could not reset data. Please uninstall and reinstall the app.");
-              }
-            };
-            // Execute the async function immediately
-            runReset();
+          onPress: async () => {
+            try {
+              await AsyncStorage.clear(); 
+              await Updates.reloadAsync(); 
+            } catch (e) {
+              console.error("Reset failed", e);
+              Alert.alert("Error", "Could not reset data. Please uninstall and reinstall the app.");
+            }
           }
         }
       ]
@@ -858,8 +853,8 @@ onConfirm={(value) => {
 {/* DANGER ZONE */}
             <View style={{ marginTop: 24, marginBottom: 20 }}>
               <Text style={[styles.title, { color: palette.warn }]}>Danger Zone</Text>
-<PremiumPressable
-                onPress={() => handleFactoryReset()} // <-- FIXED: Wrapped function call
+              <PremiumPressable
+                onPress={handleFactoryReset}
                 style={{
                   backgroundColor: isDark ? 'rgba(239, 68, 68, 0.1)' : '#FEF2F2',
                   borderColor: isDark ? 'rgba(239, 68, 68, 0.3)' : '#FCA5A5',

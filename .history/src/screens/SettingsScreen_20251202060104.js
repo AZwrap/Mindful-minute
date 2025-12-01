@@ -245,7 +245,29 @@ const toggleDropdown = () => {
         content += '='.repeat(50) + '\n\n';
       });
 
-
+      // DANGER: Wipes all data and restarts the app
+  const handleFactoryReset = async () => {
+    Alert.alert(
+      "Factory Reset",
+      "This will permanently delete ALL entries, settings, and stats. The app will restart as if it's new. Are you sure?",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Reset Everything",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              await AsyncStorage.clear(); // Wipes all Zustand stores
+              await Updates.reloadAsync(); // Restarts the app immediately
+            } catch (e) {
+              console.error("Reset failed", e);
+              Alert.alert("Error", "Could not reset data. Please uninstall and reinstall the app.");
+            }
+          }
+        }
+      ]
+    );
+  };
 
       const fileUri = FileSystem.documentDirectory + `mindful-minute-export-${Date.now()}.txt`;
       
@@ -269,34 +291,6 @@ const toggleDropdown = () => {
     const d = new Date(`${iso}T00:00:00`);
     return d.toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' });
   }
-
-  const handleFactoryReset = async () => {
-    Alert.alert(
-      "Factory Reset",
-      "This will permanently delete ALL entries, settings, and stats. The app will restart as if it's new. Are you sure?",
-      [
-        { text: "Cancel", style: "cancel" },
-{
-          text: "Reset Everything",
-          style: "destructive",
-          // FIXED: This structure explicitly calls a zero-argument function, preventing the native error.
-          onPress: () => { 
-            const runReset = async () => {
-              try {
-                await AsyncStorage.clear(); // Wipes all Zustand stores
-                await Updates.reloadAsync(); // Restarts the app immediately
-              } catch (e) {
-                console.error("Reset failed", e);
-                Alert.alert("Error", "Could not reset data. Please uninstall and reinstall the app.");
-              }
-            };
-            // Execute the async function immediately
-            runReset();
-          }
-        }
-      ]
-    );
-  };
 
   const [toastMsg, setToastMsg] = useState('');
   const toastAnim = useRef(new Animated.Value(0)).current;
@@ -858,8 +852,8 @@ onConfirm={(value) => {
 {/* DANGER ZONE */}
             <View style={{ marginTop: 24, marginBottom: 20 }}>
               <Text style={[styles.title, { color: palette.warn }]}>Danger Zone</Text>
-<PremiumPressable
-                onPress={() => handleFactoryReset()} // <-- FIXED: Wrapped function call
+              <PremiumPressable
+                onPress={handleFactoryReset}
                 style={{
                   backgroundColor: isDark ? 'rgba(239, 68, 68, 0.1)' : '#FEF2F2',
                   borderColor: isDark ? 'rgba(239, 68, 68, 0.3)' : '#FCA5A5',

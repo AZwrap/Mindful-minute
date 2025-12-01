@@ -32,6 +32,7 @@
     "expo-sharing": "~14.0.7",
     "expo-sqlite": "~16.0.9",
     "expo-status-bar": "~3.0.8",
+    "expo-updates": "~29.0.13",
     "firebase": "^12.6.0",
     "lucide-react-native": "^0.553.0",
     "react": "19.1.0",

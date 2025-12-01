@@ -279,19 +279,15 @@ const toggleDropdown = () => {
 {
           text: "Reset Everything",
           style: "destructive",
-          // FIXED: This structure explicitly calls a zero-argument function, preventing the native error.
-          onPress: () => { 
-            const runReset = async () => {
-              try {
-                await AsyncStorage.clear(); // Wipes all Zustand stores
-                await Updates.reloadAsync(); // Restarts the app immediately
-              } catch (e) {
-                console.error("Reset failed", e);
-                Alert.alert("Error", "Could not reset data. Please uninstall and reinstall the app.");
-              }
-            };
-            // Execute the async function immediately
-            runReset();
+          onPress: async (value) => { // <-- ADDED (value) to consume the argument
+            try {
+              // Now AsyncStorage.clear() and Updates.reloadAsync() are safely called without arguments
+              await AsyncStorage.clear(); 
+              await Updates.reloadAsync(); 
+            } catch (e) {
+              console.error("Reset failed", e);
+              Alert.alert("Error", "Could not reset data. Please uninstall and reinstall the app.");
+            }
           }
         }
       ]
