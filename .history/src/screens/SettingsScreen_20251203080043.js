@@ -222,20 +222,16 @@ const toggleDropdown = () => {
   const textMain = isDark ? '#E5E7EB' : '#0F172A';
   const textSub = isDark ? '#CBD5E1' : '#334155';
 
-const getPalette = () => {
+  const getPalette = () => {
     const currentScheme = currentTheme || 'light';
-    const activeColor = accentColor || '#6366F1'; // Uses your selected color
-
     return {
       bg: currentScheme === 'dark' ? '#0F172A' : '#F8FAFC',
       card: currentScheme === 'dark' ? '#111827' : '#FFFFFF',
       border: currentScheme === 'dark' ? '#1F2937' : '#E2E8F0',
       text: currentScheme === 'dark' ? '#E5E7EB' : '#0F172A',
       sub: currentScheme === 'dark' ? '#CBD5E1' : '#334155',
-      
-      // DYNAMIC COLORS
-      accent: activeColor,
-      accentSoft: activeColor + '20', // Adds 12% opacity to your color
+      accent: '#6366F1',
+      accentSoft: 'rgba(99,102,241,0.12)',
       warn: currentScheme === 'dark' ? '#FCA5A5' : '#B91C1C',
     };
   };
@@ -597,7 +593,7 @@ onValueChange={setShowTimer}
                 Accent Color
               </Text>
               
-<View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 12 }}>
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 12 }}>
                 {APP_COLORS.map((color) => (
                   <Pressable
                     key={color}
@@ -606,22 +602,22 @@ onValueChange={setShowTimer}
                       if (hapticsEnabled) Haptics.selectionAsync();
                     }}
                     style={{
-                      width: 32,        // Reduced size
-                      height: 32,       // Reduced size
-                      borderRadius: 16, // Half of width
+                      width: 42,
+                      height: 42,
+                      borderRadius: 21,
                       backgroundColor: color,
                       alignItems: 'center',
                       justifyContent: 'center',
-                      borderWidth: 2,   // Thinner border
+                      borderWidth: 3,
                       borderColor: accentColor === color ? palette.text : 'transparent',
                       shadowColor: color,
                       shadowOpacity: 0.3,
-                      shadowRadius: 3,
+                      shadowRadius: 4,
                       shadowOffset: { width: 0, height: 2 },
                     }}
                   >
                     {accentColor === color && (
-                      <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: 'white' }} />
+                      <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: 'white' }} />
                     )}
                   </Pressable>
                 ))}

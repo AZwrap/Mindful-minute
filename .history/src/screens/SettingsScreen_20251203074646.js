@@ -31,14 +31,6 @@ import * as Updates from 'expo-updates';
 const PRESETS = [30, 60, 120];
 const MIN = 5;
 const MAX = 600;
-const APP_COLORS = [
-  '#6366F1', // Indigo (Default)
-  '#EC4899', // Pink
-  '#10B981', // Emerald
-  '#F59E0B', // Amber
-  '#06B6D4', // Cyan
-  '#8B5CF6', // Violet
-];
 
 export default function SettingsScreen({ navigation }) {
   const systemScheme = useColorScheme();
@@ -80,8 +72,6 @@ const {
   dynamicSunset,
   setDynamicSunrise,
   setDynamicSunset,
-  accentColor,      // <--- ADD THIS
-    setAccentColor
 } = useTheme();
 const [pickerVisible, setPickerVisible] = useState(false);
 const [activePicker, setActivePicker] = useState(null); // "sunrise" or "sunset"
@@ -222,20 +212,16 @@ const toggleDropdown = () => {
   const textMain = isDark ? '#E5E7EB' : '#0F172A';
   const textSub = isDark ? '#CBD5E1' : '#334155';
 
-const getPalette = () => {
+  const getPalette = () => {
     const currentScheme = currentTheme || 'light';
-    const activeColor = accentColor || '#6366F1'; // Uses your selected color
-
     return {
       bg: currentScheme === 'dark' ? '#0F172A' : '#F8FAFC',
       card: currentScheme === 'dark' ? '#111827' : '#FFFFFF',
       border: currentScheme === 'dark' ? '#1F2937' : '#E2E8F0',
       text: currentScheme === 'dark' ? '#E5E7EB' : '#0F172A',
       sub: currentScheme === 'dark' ? '#CBD5E1' : '#334155',
-      
-      // DYNAMIC COLORS
-      accent: activeColor,
-      accentSoft: activeColor + '20', // Adds 12% opacity to your color
+      accent: '#6366F1',
+      accentSoft: 'rgba(99,102,241,0.12)',
       warn: currentScheme === 'dark' ? '#FCA5A5' : '#B91C1C',
     };
   };
@@ -592,40 +578,6 @@ onValueChange={setShowTimer}
   Dynamic Theme Times
 </Text>
 
-{/* Accent Color Picker */}
-              <Text style={[styles.label, { color: palette.text, marginTop: 20, marginBottom: 12 }]}>
-                Accent Color
-              </Text>
-              
-<View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 12 }}>
-                {APP_COLORS.map((color) => (
-                  <Pressable
-                    key={color}
-                    onPress={() => {
-                      setAccentColor(color);
-                      if (hapticsEnabled) Haptics.selectionAsync();
-                    }}
-                    style={{
-                      width: 32,        // Reduced size
-                      height: 32,       // Reduced size
-                      borderRadius: 16, // Half of width
-                      backgroundColor: color,
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      borderWidth: 2,   // Thinner border
-                      borderColor: accentColor === color ? palette.text : 'transparent',
-                      shadowColor: color,
-                      shadowOpacity: 0.3,
-                      shadowRadius: 3,
-                      shadowOffset: { width: 0, height: 2 },
-                    }}
-                  >
-                    {accentColor === color && (
-                      <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: 'white' }} />
-                    )}
-                  </Pressable>
-                ))}
-              </View>
 
 <View style={{ flexDirection: "row", gap: 12 }}>
 

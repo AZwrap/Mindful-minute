@@ -10,10 +10,12 @@ import {
   Platform,
   ScrollView,
   Alert,
+  Animated
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
 import { useTheme } from '../stores/themeStore';
+// Ensure your src/lib/prompts.js has these new functions from the previous step!
 import { 
   setCustomPrompt, 
   clearCustomPrompt, 
@@ -22,6 +24,7 @@ import {
   removeFromLibrary 
 } from '../lib/prompts'; 
 import PremiumPressable from '../components/PremiumPressable';
+import { Trash2, Plus, Save } from 'lucide-react-native'; // Assuming you have lucide, or use vector-icons
 
 export default function CustomPromptScreen({ navigation, route }) {
   const systemScheme = useColorScheme();
@@ -54,7 +57,7 @@ export default function CustomPromptScreen({ navigation, route }) {
     if (!text.trim()) return;
     
     setIsLoading(true);
-    if (true) { 
+    if (true) { // Force haptics for now
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     }
     
@@ -143,7 +146,7 @@ export default function CustomPromptScreen({ navigation, route }) {
               multiline
               maxLength={200}
               style={[styles.input, { color: palette.text }]}
-              autoFocus={!isCustom} 
+              autoFocus={!isCustom} // Only auto-focus if creating new
             />
             
             <View style={styles.cardFooter}>
@@ -259,16 +262,15 @@ const styles = StyleSheet.create({
   header: {
     marginBottom: 24,
   },
-title: {
-    fontSize: 18,        // Much more understated
-    fontWeight: '600',   // Lighter weight is "classier"
-    marginBottom: 4,
-    letterSpacing: 0.5,  // Slight spacing adds elegance
+  title: {
+    fontSize: 28,
+    fontWeight: '800',
+    marginBottom: 8,
+    letterSpacing: -0.5,
   },
   subtitle: {
-    fontSize: 15,
-    lineHeight: 22,
-    opacity: 0.8,
+    fontSize: 16,
+    lineHeight: 24,
   },
   card: {
     borderRadius: 24,
@@ -280,9 +282,9 @@ title: {
     shadowRadius: 12,
     elevation: 3,
   },
-input: {
-    fontSize: 14,        // Discrete and minimal
-    lineHeight: 22,
+  input: {
+    fontSize: 18,
+    lineHeight: 28,
     minHeight: 100,
     textAlignVertical: 'top',
     marginBottom: 12,
@@ -342,12 +344,12 @@ input: {
     paddingBottom: 40,
   },
   sectionTitle: {
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: '700',
     textTransform: 'uppercase',
-    letterSpacing: 1.5,
+    letterSpacing: 1.2,
     marginBottom: 16,
-    opacity: 0.6,
+    opacity: 0.8,
   },
   libraryGrid: {
     gap: 12,

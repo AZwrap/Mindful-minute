@@ -259,11 +259,11 @@ const styles = StyleSheet.create({
   header: {
     marginBottom: 24,
   },
-title: {
-    fontSize: 18,        // Much more understated
-    fontWeight: '600',   // Lighter weight is "classier"
-    marginBottom: 4,
-    letterSpacing: 0.5,  // Slight spacing adds elegance
+  title: {
+    fontSize: 22, // Reduced from 28
+    fontWeight: '700', // Reduced from 800
+    marginBottom: 6,
+    letterSpacing: -0.3,
   },
   subtitle: {
     fontSize: 15,
@@ -280,9 +280,9 @@ title: {
     shadowRadius: 12,
     elevation: 3,
   },
-input: {
-    fontSize: 14,        // Discrete and minimal
-    lineHeight: 22,
+  input: {
+    fontSize: 16, // Reduced from 18 for a classier look
+    lineHeight: 24,
     minHeight: 100,
     textAlignVertical: 'top',
     marginBottom: 12,
