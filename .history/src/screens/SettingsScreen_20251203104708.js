@@ -32,7 +32,6 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import * as DocumentPicker from 'expo-document-picker';
 import { Trash2, Plus, Save, FileText, Database, RotateCcw, Share } from 'lucide-react-native';
 
-
 const PRESETS = [30, 60, 120];
 const MIN = 5;
 const MAX = 600;
@@ -443,7 +442,7 @@ const getPalette = () => {
   }
 
 // DANGER: Wipes all data and restarts the app
-const handleFactoryReset = () => {
+  const handleFactoryReset = () => {
     Alert.alert(
       "Factory Reset",
       "This will permanently delete ALL entries, settings, and stats. Are you sure?",
@@ -452,28 +451,29 @@ const handleFactoryReset = () => {
         {
           text: "Reset Everything",
           style: "destructive",
-          onPress: () => {
-             // Isolate the async operation
-             const performWipe = async () => {
-               try {
-                 await AsyncStorage.clear();
-                 // Try Expo Reload first
-                 try {
-                   await Updates.reloadAsync();
-                 } catch {
-                   // Fallback to Native DevSettings (Works in dev client/Expo Go)
-                   if (NativeModules.DevSettings) {
-                      NativeModules.DevSettings.reload();
-                   } else {
-                      Alert.alert("Success", "App data wiped. Please restart the app manually.");
-                   }
-                 }
-               } catch (e) {
-                 console.error(e);
-                 Alert.alert("Error", "Failed to wipe data.");
-               }
-             };
-             performWipe();
+          onPress: () => { // This is a synchronous function called by Alert
+            const performReset = async () => {
+              try {
+                // This line is safe because it is called cleanly within the async block
+                await AsyncStorage.clear(); 
+                
+                // Attempt to restart the app
+                await Updates.reloadAsync();
+              } catch (e) {
+                console.error("Reset failed", e);
+                // Fallback to NativeModules or user instruction if Expo Updates fails
+                if (NativeModules.DevSettings) {
+                    NativeModules.DevSettings.reload();
+                } else {
+                    Alert.alert(
+                        "Reset Complete", 
+                        "Data has been wiped successfully, but the app could not restart automatically. Please close and reopen the app manually."
+                    );
+                }
+              }
+            };
+            // Execute the async function immediately
+            performReset(); 
           }
         }
       ]

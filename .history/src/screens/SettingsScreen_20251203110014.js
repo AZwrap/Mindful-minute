@@ -31,7 +31,7 @@ import * as Updates from 'expo-updates';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as DocumentPicker from 'expo-document-picker';
 import { Trash2, Plus, Save, FileText, Database, RotateCcw, Share } from 'lucide-react-native';
-
+import { NativeModules } from 'react-native';
 
 const PRESETS = [30, 60, 120];
 const MIN = 5;
