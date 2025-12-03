@@ -6,7 +6,6 @@ import {
   Pressable,
   StyleSheet,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context"; // <--- NEW IMPORT
 import { useNavigation, useRoute } from "@react-navigation/native";
 import { useJournalStore } from "../stores/journalStore";
 import { useSharedPalette } from "../hooks/useSharedPalette";
@@ -21,19 +20,21 @@ export default function SharedJournalScreen() {
   // Get the specific Journal ID passed from Home
   const { journalId } = route.params || {};
 
-  const { 
+const { 
     sharedEntries, 
-    createJournal, 
-    subscribeToJournal,
-    isLoading
+    journalInfo, 
+    subscribeToJournal, 
+    leaveJournal,
+    isLoading // <--- Added
   } = useJournalStore((s) => ({
     sharedEntries: s.sharedEntries,
-    createJournal: s.createJournal,
+    journalInfo: s.journalInfo,
     subscribeToJournal: s.subscribeToJournal,
-    isLoading: s.isLoading,
+    leaveJournal: s.leaveJournal,
+    isLoading: s.isLoading, // <--- Added
   }));
 
-  // STEP 1: Trigger Real-Time Sync on Mount
+  // STEP 12: Trigger Real-Time Sync on Mount
   useEffect(() => {
     if (journalId) {
       console.log("🔌 Subscribing to journal:", journalId);
@@ -41,7 +42,20 @@ export default function SharedJournalScreen() {
     }
   }, [journalId]);
 
-  // Select entries ONLY for this journal ID
+  // STEP 1: Trigger Real-Time Sync on Mount
+  useEffect(() => {
+    // ... existing code ...
+  }, [journalId]);
+
+  // STEP 1.5: Show Loader while fetching
+  // We only show loader if we have NO data yet. 
+  // If we have cached data, we show that while refreshing silently.
+  if (isLoading && entries.length === 0) {
+    return <ScreenLoader />;
+  }
+
+  // FIXED: Select entries ONLY for this journal ID
+  // (Old code 'Object.values' was returning an array of arrays, which breaks FlatList)
   const entries = sharedEntries[journalId] || [];
 
   // 1. Set the Standard Navigation Header
@@ -57,17 +71,9 @@ export default function SharedJournalScreen() {
     });
   }, [navigation, palette]);
 
-  // STEP 2: Show Loader
-  if (isLoading && entries.length === 0) {
-    return <ScreenLoader />;
-  }
-
   return (
     <ThemeFadeWrapper>
-      <SafeAreaView 
-        style={[styles.container, { backgroundColor: palette.bg }]}
-        edges={['bottom', 'left', 'right']} // <--- Fixes iPhone Home Indicator overlap
-      >
+      <View style={[styles.container, { backgroundColor: palette.bg }]}>
         
         {/* LIST */}
         <FlatList
@@ -100,7 +106,7 @@ export default function SharedJournalScreen() {
           }
         />
 
-        {/* CREATE NEW SHARED ENTRY BUTTON */}
+        {/* CREATE NEW SHARED ENTRY BUTTON (Fixed Context) */}
         <Pressable
           onPress={() => navigation.navigate("SharedWrite", { journalId })}
           style={[
@@ -110,7 +116,7 @@ export default function SharedJournalScreen() {
         >
           <Text style={styles.createButtonText}>Write New Entry</Text>
         </Pressable>
-      </SafeAreaView>
+      </View>
     </ThemeFadeWrapper>
   );
 }

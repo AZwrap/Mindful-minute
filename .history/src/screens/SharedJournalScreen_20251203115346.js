@@ -6,12 +6,11 @@ import {
   Pressable,
   StyleSheet,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context"; // <--- NEW IMPORT
 import { useNavigation, useRoute } from "@react-navigation/native";
 import { useJournalStore } from "../stores/journalStore";
 import { useSharedPalette } from "../hooks/useSharedPalette";
 import ThemeFadeWrapper from "../components/ThemeFadeWrapper";
-import ScreenLoader from "../components/ScreenLoader";
+import ScreenLoader from "../components/ScreenLoader"; // <--- Import added
 
 export default function SharedJournalScreen() {
   const navigation = useNavigation();
@@ -25,7 +24,7 @@ export default function SharedJournalScreen() {
     sharedEntries, 
     createJournal, 
     subscribeToJournal,
-    isLoading
+    isLoading // <--- Get loading state
   } = useJournalStore((s) => ({
     sharedEntries: s.sharedEntries,
     createJournal: s.createJournal,
@@ -57,17 +56,14 @@ export default function SharedJournalScreen() {
     });
   }, [navigation, palette]);
 
-  // STEP 2: Show Loader
+  // STEP 2: Show Loader (Must be BEFORE the return statement)
   if (isLoading && entries.length === 0) {
     return <ScreenLoader />;
   }
 
   return (
     <ThemeFadeWrapper>
-      <SafeAreaView 
-        style={[styles.container, { backgroundColor: palette.bg }]}
-        edges={['bottom', 'left', 'right']} // <--- Fixes iPhone Home Indicator overlap
-      >
+      <View style={[styles.container, { backgroundColor: palette.bg }]}>
         
         {/* LIST */}
         <FlatList
@@ -110,7 +106,7 @@ export default function SharedJournalScreen() {
         >
           <Text style={styles.createButtonText}>Write New Entry</Text>
         </Pressable>
-      </SafeAreaView>
+      </View>
     </ThemeFadeWrapper>
   );
 }
