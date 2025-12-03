@@ -9,7 +9,6 @@ import {
   Animated,
   Alert,
   RefreshControl,
-  Platform,
   FlatList,
   TextInput,
 } from 'react-native';
@@ -23,13 +22,11 @@ import { Swipeable } from 'react-native-gesture-handler';
 import { Search, X , Trash2 } from 'lucide-react-native'; // <--- ADD THIS
 import { SafeAreaView } from 'react-native-safe-area-context';
 import PropTypes from 'prop-types'; // <--- NEW IMPORT
-import { exportSingleEntry } from '../utils/exportHelper';
 
 const SwipeableEntry = ({
   entry,
   onDelete,
   onPress,
-  onLongPress,
   isDark,
   textMain,
   textSub,
@@ -100,9 +97,6 @@ const renderRightActions = (progress, dragX) => {
       >
         <Pressable
           onPress={onPress}
-          onLongPress={onLongPress} // <--- Add this line
-        delayLongPress={200} // <--- Reduced to 200ms for better responsiveness
-          hitSlop={8}
           style={({ pressed }) => [
             styles.entryItem,
             { 
@@ -208,33 +202,6 @@ export default function HistoryScreen({ navigation }) {
   const [refreshing, setRefreshing] = useState(false);
   const [deletedEntries, setDeletedEntries] = useState({});
 
-  // Export Handler (Context Menu)
-  const handleLongPressEntry = (entry) => {
-    const options = [
-      { text: "Export as CSV", onPress: () => exportSingleEntry(entry, 'csv') },
-      { text: "Export as PDF", onPress: () => exportSingleEntry(entry, 'pdf') },
-      { text: "Export as JSON", onPress: () => exportSingleEntry(entry, 'json') },
-      { text: "Cancel", style: "cancel" }
-    ];
-
-    if (Platform.OS === 'android') {
-        // Android Alert supports max 3 buttons (Title + 2 actions + Cancel usually tricky)
-        // So we simplify or use a custom modal. For native Alert, let's stick to 2 main choices + cancel.
-        Alert.alert(
-            "Export Entry",
-            "Choose a format",
-            [
-                { text: "Cancel", style: "cancel" },
-                { text: "CSV", onPress: () => exportSingleEntry(entry, 'csv') },
-                { text: "PDF", onPress: () => exportSingleEntry(entry, 'pdf') },
-            ]
-        );
-    } else {
-        // iOS supports infinite buttons
-        Alert.alert("Export Entry", "Choose a format", options);
-    }
-  };
-
 // Handle entry deletion
   const handleDeleteEntry = (date) => { // <--- Changed param from 'entry' to 'date'
     Alert.alert(
@@ -262,8 +229,6 @@ export default function HistoryScreen({ navigation }) {
     await new Promise(resolve => setTimeout(resolve, 1000));
     setRefreshing(false);
   };
-
-
 
   useEffect(() => {
     if (entries.length > 0 || map) {
@@ -497,7 +462,6 @@ export default function HistoryScreen({ navigation }) {
                 entry={item}
                 onDelete={handleDeleteEntry}
                 onPress={() => navigation.navigate('EntryDetail', { date: item.date })}
-                onLongPress={() => handleLongPressEntry(item)}
                 isDark={isDark}
                 textMain={textMain}
                 textSub={textSub}

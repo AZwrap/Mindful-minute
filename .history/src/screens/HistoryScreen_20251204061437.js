@@ -101,8 +101,7 @@ const renderRightActions = (progress, dragX) => {
         <Pressable
           onPress={onPress}
           onLongPress={onLongPress} // <--- Add this line
-        delayLongPress={200} // <--- Reduced to 200ms for better responsiveness
-          hitSlop={8}
+        delayLongPress={500}      // Optional: 500ms delay
           style={({ pressed }) => [
             styles.entryItem,
             { 

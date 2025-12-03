@@ -9,7 +9,6 @@ import {
   Animated,
   Alert,
   RefreshControl,
-  Platform,
   FlatList,
   TextInput,
 } from 'react-native';
@@ -101,8 +100,7 @@ const renderRightActions = (progress, dragX) => {
         <Pressable
           onPress={onPress}
           onLongPress={onLongPress} // <--- Add this line
-        delayLongPress={200} // <--- Reduced to 200ms for better responsiveness
-          hitSlop={8}
+        delayLongPress={500}      // Optional: 500ms delay
           style={({ pressed }) => [
             styles.entryItem,
             { 
@@ -208,33 +206,6 @@ export default function HistoryScreen({ navigation }) {
   const [refreshing, setRefreshing] = useState(false);
   const [deletedEntries, setDeletedEntries] = useState({});
 
-  // Export Handler (Context Menu)
-  const handleLongPressEntry = (entry) => {
-    const options = [
-      { text: "Export as CSV", onPress: () => exportSingleEntry(entry, 'csv') },
-      { text: "Export as PDF", onPress: () => exportSingleEntry(entry, 'pdf') },
-      { text: "Export as JSON", onPress: () => exportSingleEntry(entry, 'json') },
-      { text: "Cancel", style: "cancel" }
-    ];
-
-    if (Platform.OS === 'android') {
-        // Android Alert supports max 3 buttons (Title + 2 actions + Cancel usually tricky)
-        // So we simplify or use a custom modal. For native Alert, let's stick to 2 main choices + cancel.
-        Alert.alert(
-            "Export Entry",
-            "Choose a format",
-            [
-                { text: "Cancel", style: "cancel" },
-                { text: "CSV", onPress: () => exportSingleEntry(entry, 'csv') },
-                { text: "PDF", onPress: () => exportSingleEntry(entry, 'pdf') },
-            ]
-        );
-    } else {
-        // iOS supports infinite buttons
-        Alert.alert("Export Entry", "Choose a format", options);
-    }
-  };
-
 // Handle entry deletion
   const handleDeleteEntry = (date) => { // <--- Changed param from 'entry' to 'date'
     Alert.alert(
@@ -263,7 +234,33 @@ export default function HistoryScreen({ navigation }) {
     setRefreshing(false);
   };
 
-
+  // Handle Export (Long Press)
+  const handleLongPressEntry = (entry) => {
+    if (Platform.OS === 'ios') {
+        // iOS can show more options
+        Alert.alert(
+            "Export Entry",
+            "Choose a format",
+            [
+                { text: "PDF Document", onPress: () => exportSingleEntry(entry, 'pdf') },
+                { text: "CSV (Excel)", onPress: () => exportSingleEntry(entry, 'csv') },
+                { text: "JSON Data", onPress: () => exportSingleEntry(entry, 'json') },
+                { text: "Cancel", style: "cancel" }
+            ]
+        );
+    } else {
+        // Android limited to 3 buttons, so we prioritize PDF and CSV
+        Alert.alert(
+            "Export Entry",
+            "Choose a format",
+            [
+                { text: "Cancel", style: "cancel" },
+                { text: "CSV", onPress: () => exportSingleEntry(entry, 'csv') },
+                { text: "PDF", onPress: () => exportSingleEntry(entry, 'pdf') },
+            ]
+        );
+    }
+  };
 
   useEffect(() => {
     if (entries.length > 0 || map) {
