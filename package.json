@@ -66,7 +66,7 @@
     ],
     "testPathIgnorePatterns": [
       "<rootDir>/node_modules/",
-      "<rootDir>/.history/" 
+      "<rootDir>/.history/"
     ],
     "setupFiles": [
       "./jest.setup.js"
