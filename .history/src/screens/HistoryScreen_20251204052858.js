@@ -35,7 +35,7 @@ const SwipeableEntry = ({
   const swipeableRef = useRef(null);
 
 const renderRightActions = (progress, dragX) => {
-    // Animation: Fade in, but stay strictly BEHIND the card
+    // Fix for flash: Force button to be invisible when not swiping
     const opacity = progress.interpolate({
       inputRange: [0, 0.1],
       outputRange: [0, 1],
@@ -43,14 +43,11 @@ const renderRightActions = (progress, dragX) => {
     });
 
     return (
-      <Animated.View 
-        style={[
-          styles.deleteButtonWrapper, 
-          { opacity, zIndex: -1 } // <--- Force it to the back layer
-        ]}
-      >
+      <Animated.View style={[styles.deleteButtonWrapper, { opacity }]}>
         <Pressable
+          style={styles.deleteButton}
           onPress={() => {
+            // Close swipeable first
             swipeableRef.current?.close();
             onDelete(entry.date);
           }}
@@ -102,8 +99,6 @@ const renderRightActions = (progress, dragX) => {
             { 
               opacity: pressed ? 0.8 : 1,
               backgroundColor: isDark ? '#1E293B' : '#FFFFFF',
-              zIndex: 10,      // <--- Force it to the front layer
-            elevation: 5,    // <--- Force Android layering
             },
           ]}
         >

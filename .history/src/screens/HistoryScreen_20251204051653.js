@@ -19,7 +19,7 @@ import MoodDropdown from '../components/MoodDropdown';
 import { useTheme } from '../stores/themeStore';
 import PremiumPressable from '../components/PremiumPressable';
 import { Swipeable } from 'react-native-gesture-handler';
-import { Search, X , Trash2 } from 'lucide-react-native'; // <--- ADD THIS
+import { Search, X, Trash2 } from 'lucide-react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import PropTypes from 'prop-types'; // <--- NEW IMPORT
 
@@ -35,34 +35,31 @@ const SwipeableEntry = ({
   const swipeableRef = useRef(null);
 
 const renderRightActions = (progress, dragX) => {
-    // Animation: Fade in, but stay strictly BEHIND the card
-    const opacity = progress.interpolate({
-      inputRange: [0, 0.1],
-      outputRange: [0, 1],
+    // Animation: Button fades in and scales up as you swipe
+    const opacity = dragX.interpolate({
+      inputRange: [-100, -50, 0],
+      outputRange: [1, 0.5, 0],
+      extrapolate: 'clamp',
+    });
+
+    const scale = dragX.interpolate({
+      inputRange: [-100, -50, 0],
+      outputRange: [1, 0.8, 0.5],
       extrapolate: 'clamp',
     });
 
     return (
-      <Animated.View 
-        style={[
-          styles.deleteButtonWrapper, 
-          { opacity, zIndex: -1 } // <--- Force it to the back layer
-        ]}
-      >
-        <Pressable
-          onPress={() => {
-            swipeableRef.current?.close();
-            onDelete(entry.date);
-          }}
-          style={({ pressed }) => [
-            styles.deleteButton,
-            { backgroundColor: pressed ? '#DC2626' : '#EF4444' }
-          ]}
-        >
-          <Trash2 size={24} color="white" />
-          <Text style={styles.swipeActionText}>Delete</Text>
-        </Pressable>
-      </Animated.View>
+      <View style={styles.rightActionContainer}>
+        <Animated.View style={[styles.deleteButton, { opacity, transform: [{ scale }] }]}>
+          <PremiumPressable
+            onPress={() => onDelete(entry.date)}
+            style={styles.deleteTouchArea}
+            haptic="medium"
+          >
+            <Trash2 size={22} color="white" />
+          </PremiumPressable>
+        </Animated.View>
+      </View>
     );
   };
 
@@ -101,9 +98,7 @@ const renderRightActions = (progress, dragX) => {
             styles.entryItem,
             { 
               opacity: pressed ? 0.8 : 1,
-              backgroundColor: isDark ? '#1E293B' : '#FFFFFF',
-              zIndex: 10,      // <--- Force it to the front layer
-            elevation: 5,    // <--- Force Android layering
+              backgroundColor: isDark ? 'rgba(30, 41, 59, 0.6)' : 'rgba(255, 255, 255, 0.7)',
             },
           ]}
         >
@@ -608,15 +603,13 @@ statsWidget: {
     borderBottomLeftRadius: 0,
     overflow: 'hidden',   
   },
-  deleteButton: {
-    flex: 1,
+deleteButton: {
+    backgroundColor: '#EF4444',
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#EF4444',
-    borderTopLeftRadius: 0,
-    borderBottomLeftRadius: 0,
-    borderTopRightRadius: 12,
-    borderBottomRightRadius: 12,
+    width: 60, // Specific button width
+    height: '100%', // Fill the container height
+    borderRadius: 16,
   },
   swipeActionText: {
     color: 'white',
@@ -648,5 +641,18 @@ statsWidget: {
     paddingVertical: 10,
     fontSize: 14,
     marginBottom: 16,
+  },
+  rightActionContainer: {
+    width: 80, // Matches the swipe threshold usually
+    marginVertical: 6, // Matches entry card margin
+    marginRight: 20, // Matches screen padding
+    justifyContent: 'center',
+    alignItems: 'flex-end',
+  },
+  deleteTouchArea: {
+    width: '100%',
+    height: '100%',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
 });

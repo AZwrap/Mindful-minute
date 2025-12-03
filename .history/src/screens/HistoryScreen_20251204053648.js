@@ -56,7 +56,7 @@ const renderRightActions = (progress, dragX) => {
           }}
           style={({ pressed }) => [
             styles.deleteButton,
-            { backgroundColor: pressed ? '#DC2626' : '#EF4444' }
+            { backgroundColor: pressed ? '#DC2626' : '#EF4444' },
           ]}
         >
           <Trash2 size={24} color="white" />
@@ -65,18 +65,6 @@ const renderRightActions = (progress, dragX) => {
       </Animated.View>
     );
   };
-
-  function formatDate(iso) {
-    if (!iso) return '';
-    const d = new Date(`${iso}T00:00:00`);
-    if (isNaN(d.getTime())) return 'Unsaved Draft'; 
-    
-    return d.toLocaleDateString(undefined, {
-      weekday: 'short',
-      month: 'short',
-      day: 'numeric',
-    });
-  }
 
   return (
     <View
@@ -102,8 +90,7 @@ const renderRightActions = (progress, dragX) => {
             { 
               opacity: pressed ? 0.8 : 1,
               backgroundColor: isDark ? '#1E293B' : '#FFFFFF',
-              zIndex: 10,      // <--- Force it to the front layer
-            elevation: 5,    // <--- Force Android layering
+              
             },
           ]}
         >

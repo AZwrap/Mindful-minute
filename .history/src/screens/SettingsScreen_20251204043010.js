@@ -214,43 +214,10 @@ export default function SettingsScreen({ navigation }) {
      } catch (e) { Alert.alert("Error", "Failed to restore data."); }
   };
 
-const handleFactoryReset = () => {
+  const handleFactoryReset = () => {
     Alert.alert(
-      "Factory Reset",
-      "This will permanently delete ALL entries. Are you sure?",
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Reset Everything",
-          style: "destructive",
-          onPress: async () => {
-             try {
-               // 1. Clear Disk Storage
-               await AsyncStorage.clear();
-               
-               // 2. Clear Memory State (Zustand)
-               useEntriesStore.setState({ entries: {}, drafts: {} });
-               useSettings.setState({ hasOnboarded: false, isBiometricsEnabled: false });
-               useJournalStore.setState({ sharedEntries: {}, journalInfo: null });
-               
-               // 3. Force Reload
-               try {
-                 await Updates.reloadAsync();
-               } catch (e) {
-                 // Fallback for Expo Go if Updates fails
-                 if (NativeModules.DevSettings) {
-                    NativeModules.DevSettings.reload();
-                 } else {
-                    // Final fallback: just go to onboarding manually
-                    navigation.reset({ index: 0, routes: [{ name: 'Onboarding' }] });
-                 }
-               }
-             } catch (e) {
-               Alert.alert("Error", "Failed to reset data. Please reinstall the app.");
-             }
-          }
-        }
-      ]
+      "Factory Reset", "Permanently delete ALL entries?",
+      [{ text: "Cancel", style: "cancel" }, { text: "Reset", style: "destructive", onPress: async () => { await AsyncStorage.clear(); Updates.reloadAsync(); } }]
     );
   };
 
@@ -482,7 +449,7 @@ const handleFactoryReset = () => {
                 
                 {/* New Caption */}
                 <Text style={[styles.description, { color: palette.sub, marginBottom: 16 }]}>
-                  Custom durations must be between 5s (min) and 600s (max).
+                  Customize your timer. Custom durations must be between 5s (min) and 600s (max).
                 </Text>
 
                 <Text style={[styles.label, { color: palette.sub, marginBottom: 8 }]}>Writing Duration</Text>

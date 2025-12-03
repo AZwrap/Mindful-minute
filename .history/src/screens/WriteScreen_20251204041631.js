@@ -38,7 +38,7 @@ import { getCoachingTip } from '../utils/coachingEngine';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function WriteScreen({ navigation, route }) {
-  // 1. MOUNT REF
+  // 1. MOUNT REF (Defined first to avoid ReferenceError)
   const mounted = useRef(false);
   const isScreenActive = useRef(true);
 
@@ -132,9 +132,7 @@ export default function WriteScreen({ navigation, route }) {
   const [toastMessage, setToastMessage] = useState('');
   const gratitudeModeEnabled = useSettings((s) => s.gratitudeModeEnabled);
   const [isGratitudeExpanded, setIsGratitudeExpanded] = useState(false);
-
   const [keyboardHeight, setKeyboardHeight] = useState(0);
-
   const [running, setRunning] = useState(true);
   const [timerCompleted, setTimerCompleted] = useState(false);
   const [isInitialLoad, setIsInitialLoad] = useState(true);
@@ -144,7 +142,6 @@ export default function WriteScreen({ navigation, route }) {
   );
   const [suggestedMoods, setSuggestedMoods] = useState([]);
   const [selectedSuggestedMood, setSelectedSuggestedMood] = useState(null);
-
   const inputRef = useRef(null);
 
   // COACHING STATE
@@ -220,8 +217,8 @@ export default function WriteScreen({ navigation, route }) {
     const initializeTimer = async () => {
       await new Promise((resolve) => setTimeout(resolve, 100));
       const storedTimer = preserveTimerProgress ? getDraftTimer(date) : null;
-      const draftText = getDraft(date);
       const storedPomodoroState = preserveTimerProgress ? getPomodoroState(date) : null;
+      const draftText = getDraft(date);
 
       if (preserveTimerProgress && storedTimer !== null && storedTimer > 0) {
         setRemaining(storedTimer);
@@ -290,19 +287,25 @@ export default function WriteScreen({ navigation, route }) {
 
   // ===== SAFE TIMER TICK =====
   const handleTick = (t) => {
+    // Safety Check: If component unmounted, do nothing
     if (!mounted.current) return;
     
+    // We do NOT set state here if it's just a tick to avoid render loop issues
+    // But we DO need to update remaining for visual.
+    // We rely on Timer calling this.
     requestAnimationFrame(() => {
         if (!isScreenActive.current) return;
         
         setRemaining(t);
 
+        // Save progress
         if (preserveTimerProgress) {
            setDraftTimer(date, t, { phase, currentCycle, skipBreakAvailable, totalCycles });
         } else {
            setDraftTimer(date, t);
         }
 
+        // Handle Phase Switches
         if (t <= 0) {
           if (phase === 'writing') {
             setPhase('break');
@@ -405,21 +408,16 @@ export default function WriteScreen({ navigation, route }) {
     light: { primary: ['#F8FAFC', '#F1F5F9', '#E2E8F0'], card: ['rgba(241, 245, 249, 0.8)', 'rgba(248, 250, 252, 0.9)'] },
   };
   const currentGradient = gradients[currentTheme] || gradients.light;
-  const promptColor = palette.text; // <--- FIXED: FORCE BLACK/WHITE TEXT
+  const promptColor = palette.subtleText;
 
   const content = (
     <LinearGradient colors={currentGradient.primary} style={styles.container} start={{ x: 0, y: 0 }} end={{ x: 0, y: 1 }}>
       <SafeAreaView style={{ flex: 1 }} edges={['top']}>
         <ScrollView ref={scrollRef} style={styles.container} contentContainerStyle={[styles.scrollContent, { paddingBottom: 20 + keyboardHeight }]} keyboardShouldPersistTaps="handled">
           <View style={styles.contentCard}>
-            {/* PROMPT */}
-            <Text style={[styles.prompt, { color: promptColor }]}>
+            <Text style={[styles.prompt, { color: palette.subtleText }]}>
               {currentPrompt?.text}
-              {currentPrompt?.explanation && (
-                <Text style={{ fontSize: 12, color: palette.subtleText, fontStyle: 'italic' }}>
-                  {'\n'}💡 {currentPrompt.explanation}
-                </Text>
-              )}
+              {currentPrompt?.explanation && <Text style={{ fontSize: 12, color: palette.subtleText, fontStyle: 'italic' }}>{'\n'}💡 {currentPrompt.explanation}</Text>}
             </Text>
 
             <Animated.View style={[{ opacity: fade }, styles.timerContainer]}>
@@ -527,83 +525,18 @@ export default function WriteScreen({ navigation, route }) {
             <View style={styles.wordCountContainer}><Text style={[styles.wordCount, { color: palette.subtleText }]}>{wordCount} word{wordCount !== 1 ? 's' : ''}</Text></View>
           </View>
 
-          {/* FOCUS MODE */}
-          <PremiumPressable
-            onPress={() => navigation.navigate('FocusWrite', { date, prompt: currentPrompt, text })}
-            haptic="light"
-            style={[styles.focusButton, { backgroundColor: palette.accent + '10', borderColor: palette.accent + '30' }]}
-          >
-            <Text style={[styles.focusButtonText, { color: palette.accent }]}>Enter Focus Mode</Text>
-          </PremiumPressable>
-
-          {/* GRATITUDE SECTION */}
-          {(gratitudeModeEnabled || currentPrompt?.text?.toLowerCase().includes('grateful') || currentPrompt?.text?.toLowerCase().includes('thankful')) && (
-            <View
-              style={[
-                styles.gratitudeContainer,
-                { backgroundColor: palette.card, borderColor: palette.border },
-              ]}
-              onLayout={(e) => {
-                const layoutY = e.nativeEvent.layout.y;
-                setSectionPositions((prev) => ({ ...prev, gratitude: layoutY }));
-              }}
-            >
-              <Pressable
-                onPress={() => {
-                  setIsGratitudeExpanded((prev) => !prev);
-                  if (!isGratitudeExpanded && scrollRef.current) {
-                    scrollRef.current.scrollTo({ y: Math.max(0, sectionPositions.gratitude - 40), animated: true });
-                  }
-                }}
-                style={styles.gratitudeHeader}
-              >
-                <Text style={[styles.gratitudeTitle, { color: palette.accent }]}>
-                  Gratitude Practice {isGratitudeExpanded ? '▲' : '▼'}
-                </Text>
-                <Text style={[styles.gratitudeSubtitle, { color: palette.subtleText }]}>+10 XP bonus available</Text>
-              </Pressable>
-
-              {isGratitudeExpanded && (
-                <>
-                  <Text style={[styles.gratitudeDescription, { color: palette.subtleText }]}>List 3 specific things you're grateful for today:</Text>
-                  {[1, 2, 3].map((num, index) => (
-                    <View key={num} style={styles.gratitudeInputRow}>
-                      <Text style={[styles.gratitudeNumber, { color: palette.accent }]}>{num}.</Text>
-                      <TextInput
-                        style={[styles.gratitudeInput, { color: palette.text, backgroundColor: palette.bg, borderColor: palette.border }]}
-                        placeholder={`Gratitude #${num}...`}
-                        placeholderTextColor={palette.subtleText}
-                        value={gratitudeEntries[index] || ''}
-                        onChangeText={(txt) => {
-                          const next = [...gratitudeEntries];
-                          next[index] = txt;
-                          setGratitudeEntries(next);
-                        }}
-                      />
-                    </View>
-                  ))}
-                </>
-              )}
-            </View>
-          )}
-
-          {/* ACTIONS */}
+{/* ACTIONS */}
           <View style={{ flexDirection: 'row', gap: 8, marginTop: 16 }}>
-            <PremiumPressable onPress={() => setRunning((r) => !r)} style={[styles.btnGhost, { borderColor: palette.subtleText }]}>
+            {/* Restored Pause Button */}
+            <PremiumPressable onPress={() => setRunning((r) => !r)} style={[styles.btnGhost, { borderColor: palette.border }]}>
               <Text style={[styles.btnGhostText, { color: palette.text }]}>{running ? 'Pause' : 'Resume'}</Text>
             </PremiumPressable>
 
             <PremiumPressable onPress={saveAndExit} style={[styles.btnGhost, { borderColor: palette.accent }]}><Text style={[styles.btnGhostText, { color: palette.accent }]}>Save & Exit</Text></PremiumPressable>
             <PremiumPressable onPress={continueToMood} style={[styles.btnPrimary, { backgroundColor: palette.accent }]}><Text style={styles.btnPrimaryText}>Continue</Text></PremiumPressable>
           </View>
-        </View>
-
-        {toastMessage && (
-          <View style={[styles.toast, { backgroundColor: palette.accent }]}>
-            <Text style={[styles.toastText, { color: 'white' }]}>{toastMessage}</Text>
           </View>
-        )}
-      </ScrollView>
+        </ScrollView>
       </SafeAreaView>
     </LinearGradient>
   );
