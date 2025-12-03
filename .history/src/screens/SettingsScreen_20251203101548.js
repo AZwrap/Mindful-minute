@@ -1178,7 +1178,7 @@ const styles = StyleSheet.create({
 scrollContent: {
     padding: 16,
     gap: 14,
-    paddingBottom: 40, // <--- Too small for floating tabs
+    paddingBottom: 120, // <--- Increased to clear the floating tab bar
   },
   card: { borderWidth: 1, borderRadius: 16, padding: 12 },
   title: { fontSize: 16, fontWeight: '600', marginBottom: 8 },

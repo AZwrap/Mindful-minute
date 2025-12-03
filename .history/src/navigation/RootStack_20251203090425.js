@@ -22,7 +22,6 @@ import SharedEntryDetailScreen from "../screens/SharedEntryDetailScreen";
 import InviteScreen from "../screens/InviteScreen";
 import OnboardingScreen from '../screens/OnboardingScreen';
 import { useSettings } from '../stores/settingsStore'; // Import store
-import TabNavigator from './TabNavigator';
 
 const Stack = createNativeStackNavigator();
 
@@ -30,33 +29,31 @@ export default function RootStack() {
   const hasOnboarded = useSettings((s) => s.hasOnboarded);
 
 return (
-<Stack.Navigator
-      initialRouteName={hasOnboarded ? "MainTabs" : "Onboarding"}
-      screenOptions={{ headerShown: false }}
+    <Stack.Navigator
+      initialRouteName={hasOnboarded ? "Home" : "Onboarding"}
+      // FIXED: Removed global 'headerShown: false' so headers appear by default
     >
-      {/* 1. Onboarding (Independent) */}
-      <Stack.Screen name="Onboarding" component={OnboardingScreen} />
-
-      {/* 2. MAIN APP (The Tab Bar) */}
-      <Stack.Screen name="MainTabs" component={TabNavigator} />
-
-      {/* 3. MODALS & DETAILS (Cover the tabs) */}
-      <Stack.Screen name="Write" component={WriteScreen} />
-      <Stack.Screen name="FocusWrite" component={FocusWriteScreen} />
+      {/* Screens that NEED the header hidden */}
+      <Stack.Screen name="Onboarding" component={OnboardingScreen} options={{ headerShown: false }} />
+      <Stack.Screen name="Home" component={HomeScreen}  />
+      <Stack.Screen name="Write" component={WriteScreen}  />
+      <Stack.Screen name="FocusWrite" component={FocusWriteScreen} options={{ headerShown: false }} />
       <Stack.Screen name="MoodTag" component={MoodTagScreen} />
+
+      {/* Screens that SHOULD have a header (System Default) */}
+      <Stack.Screen name="Stats" component={StatsScreen} />
+      <Stack.Screen name="History" component={HistoryScreen} />
+      <Stack.Screen name="Settings" component={SettingsScreen} />
       <Stack.Screen name="EntryDetail" component={EntryDetailScreen} />
+      <Stack.Screen name="Premium" component={PremiumScreen} />
       <Stack.Screen name="WeeklyRecap" component={WeeklyRecapScreen} />
       <Stack.Screen name="CustomPrompt" component={CustomPromptScreen} />
-      <Stack.Screen name="Premium" component={PremiumScreen} />
-      
-      {/* Shared Journal Flow */}
       <Stack.Screen name="Invite" component={InviteScreen} />
-      <Stack.Screen name="SharedWrite" component={SharedWriteScreen} />
+      
+      {/* Shared Journal Screens (They usually manage their own headers, but defaults are safe) */}
+      <Stack.Screen name="SharedWrite" component={SharedWriteScreen} options={{ headerShown: false }} />
       <Stack.Screen name="SharedJournal" component={SharedJournalScreen} />
       <Stack.Screen name="SharedEntryDetail" component={SharedEntryDetailScreen} />
-      
-      {/* NOTE: 'Home', 'History', 'Stats', 'Settings' are removed here 
-          because they are now inside 'MainTabs' */}
     </Stack.Navigator>
   );
 }

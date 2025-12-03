@@ -414,6 +414,7 @@ export default function HistoryScreen({ navigation }) {
                 </Text>
               </View>
             }
+            contentContainerStyle={{ paddingBottom: 100 }}
             renderItem={({ item }) => (
               <SwipeableEntry
                 key={item.date}

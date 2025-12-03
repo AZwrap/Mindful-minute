@@ -29,7 +29,6 @@ import { useWritingSettings } from "../stores/writingSettingsStore";
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Updates from 'expo-updates';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import * as DocumentPicker from 'expo-document-picker';
 
 const PRESETS = [30, 60, 120];
 const MIN = 5;
@@ -388,51 +387,6 @@ const getPalette = () => {
       console.error("Backup failed", error);
       Alert.alert("Error", "Could not create backup file.");
     }
-  };
-
-  const handleRestore = async () => {
-    Alert.alert(
-      "Restore Data",
-      "This will OVERWRITE your current journal entries with the backup file. Are you sure?",
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Select Backup File",
-          onPress: async () => {
-            try {
-              // 1. Pick the file
-              const result = await DocumentPicker.getDocumentAsync({
-                type: 'application/json',
-                copyToCacheDirectory: true,
-              });
-
-              if (result.canceled) return;
-
-              // 2. Read the file
-              const fileUri = result.assets[0].uri;
-              const fileContent = await FileSystem.readAsStringAsync(fileUri);
-              const backupData = JSON.parse(fileContent);
-
-              // 3. Basic Validation (Check for 'version' or 'data' fields)
-              if (!backupData.data || !backupData.timestamp) {
-                throw new Error("Invalid backup file format.");
-              }
-
-              // 4. Restore
-              useEntriesStore.getState().replaceEntries(backupData.data);
-              
-              // 5. Success
-              if (hapticsEnabled) Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-              Alert.alert("Success", "Your journal history has been restored.");
-              
-            } catch (error) {
-              console.error("Restore failed", error);
-              Alert.alert("Error", "Failed to restore data. Ensure you selected a valid Mindful Minute backup file.");
-            }
-          }
-        }
-      ]
-    );
   };
 
   function formatDate(iso) {
@@ -1066,25 +1020,6 @@ onValueChange={setGratitudeModeEnabled}
                 </Text>
               </PremiumPressable>
 
-              <PremiumPressable
-                onPress={handleRestore}
-                haptic="medium"
-                style={[
-                  styles.exportBtn,
-                  { 
-                    backgroundColor: 'transparent',
-                    borderColor: palette.text, // Distinct from "Action" buttons
-                    borderWidth: 1,
-                    marginTop: 8,
-                    borderStyle: 'dashed', // Visual cue that this is an 'input' action
-                  }
-                ]}
-              >
-                <Text style={[styles.exportText, { color: palette.text }]}>
-                   Restore from Backup
-                </Text>
-              </PremiumPressable>
-
               {/* ADD THIS NEW BUTTON */}
               <PremiumPressable
                 onPress={generateTherapistReport}
@@ -1175,10 +1110,10 @@ onConfirm={(value) => {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-scrollContent: {
+  scrollContent: {
     padding: 16,
     gap: 14,
-    paddingBottom: 40, // <--- Too small for floating tabs
+    paddingBottom: 40,
   },
   card: { borderWidth: 1, borderRadius: 16, padding: 12 },
   title: { fontSize: 16, fontWeight: '600', marginBottom: 8 },

@@ -22,41 +22,69 @@ import SharedEntryDetailScreen from "../screens/SharedEntryDetailScreen";
 import InviteScreen from "../screens/InviteScreen";
 import OnboardingScreen from '../screens/OnboardingScreen';
 import { useSettings } from '../stores/settingsStore'; // Import store
-import TabNavigator from './TabNavigator';
+
+
+
 
 const Stack = createNativeStackNavigator();
 
 export default function RootStack() {
+    const system = useColorScheme();
+  const { getCurrentTheme } = useTheme();
+  const currentTheme = getCurrentTheme(system);
+  const isDark = currentTheme === "dark";
   const hasOnboarded = useSettings((s) => s.hasOnboarded);
-
-return (
-<Stack.Navigator
-      initialRouteName={hasOnboarded ? "MainTabs" : "Onboarding"}
-      screenOptions={{ headerShown: false }}
+  
+  return (
+    
+    <Stack.Navigator
+    initialRouteName={hasOnboarded ? "Home" : "Onboarding"}
+      screenOptions={{
+        headerShown: false,
+        animation: "fade",
+        headerStyle: {
+          backgroundColor: isDark ? "#0F172A" : "#FFFFFF",
+        },
+        headerTintColor: isDark ? "#E5E7EB" : "#0F172A", // back button + title
+      }}
     >
-      {/* 1. Onboarding (Independent) */}
       <Stack.Screen name="Onboarding" component={OnboardingScreen} />
-
-      {/* 2. MAIN APP (The Tab Bar) */}
-      <Stack.Screen name="MainTabs" component={TabNavigator} />
-
-      {/* 3. MODALS & DETAILS (Cover the tabs) */}
+      <Stack.Screen name="Home" component={HomeScreen} />
+      <Stack.Screen name="Home" component={HomeScreen} />
       <Stack.Screen name="Write" component={WriteScreen} />
-      <Stack.Screen name="FocusWrite" component={FocusWriteScreen} />
+<Stack.Screen
+  name="FocusWrite"
+  component={FocusWriteScreen}
+  options={{ headerShown: false }}
+/>
+<Stack.Screen name="SharedJournal" component={SharedJournalScreen}/>
+
+<Stack.Screen
+  name="SharedWrite"
+  component={SharedWriteScreen}
+  options={{ title: "New Entry" }}
+/>
+<Stack.Screen
+  name="SharedEntryDetail"
+  component={SharedEntryDetailScreen}
+  options={{ headerShown: false }}
+/>
+<Stack.Screen
+  name="Invite"
+  component={InviteScreen}
+  options={{ headerShown: false }}
+/>
+
+
       <Stack.Screen name="MoodTag" component={MoodTagScreen} />
       <Stack.Screen name="EntryDetail" component={EntryDetailScreen} />
-      <Stack.Screen name="WeeklyRecap" component={WeeklyRecapScreen} />
-      <Stack.Screen name="CustomPrompt" component={CustomPromptScreen} />
+      <Stack.Screen name="History" component={HistoryScreen} />
+      <Stack.Screen name="Settings" component={SettingsScreen} />
       <Stack.Screen name="Premium" component={PremiumScreen} />
-      
-      {/* Shared Journal Flow */}
-      <Stack.Screen name="Invite" component={InviteScreen} />
-      <Stack.Screen name="SharedWrite" component={SharedWriteScreen} />
-      <Stack.Screen name="SharedJournal" component={SharedJournalScreen} />
-      <Stack.Screen name="SharedEntryDetail" component={SharedEntryDetailScreen} />
-      
-      {/* NOTE: 'Home', 'History', 'Stats', 'Settings' are removed here 
-          because they are now inside 'MainTabs' */}
+        <Stack.Screen name="Stats" component={StatsScreen} />
+  <Stack.Screen name="CustomPrompt" component={CustomPromptScreen} />
+  <Stack.Screen name="Achievements" component={AchievementsScreen} />
+  <Stack.Screen name="WeeklyRecap" component={WeeklyRecapScreen} />
     </Stack.Navigator>
   );
 }

@@ -1175,10 +1175,10 @@ onConfirm={(value) => {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-scrollContent: {
+  scrollContent: {
     padding: 16,
     gap: 14,
-    paddingBottom: 40, // <--- Too small for floating tabs
+    paddingBottom: 40,
   },
   card: { borderWidth: 1, borderRadius: 16, padding: 12 },
   title: { fontSize: 16, fontWeight: '600', marginBottom: 8 },

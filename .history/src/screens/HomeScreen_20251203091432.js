@@ -21,7 +21,7 @@ import { Users } from 'lucide-react-native';
 import { generateSmartPrompt, analyzeForSmartPrompts, getPromptExplanation } from '../utils/smartPrompts';
 import { useSharedPalette } from "../hooks/useSharedPalette";
 import { useEntriesStore } from '../stores/entriesStore';
-import { SafeAreaView } from 'react-native-safe-area-context';
+
 
 export default function HomeScreen() {
   const navigation = useNavigation();
@@ -270,7 +270,6 @@ useEffect(() => {
       accessibilityRole="header"
       accessibilityLabel="Mindful Minute Home Screen"
     >
-      <SafeAreaView style={{ flex: 1 }} edges={['top']}>
       <Animated.View style={{ opacity: contentFadeAnim, flex: 1 }}>
       <LinearGradient
         colors={currentGradient.card}
@@ -527,7 +526,6 @@ useEffect(() => {
 
       </LinearGradient>
       </Animated.View>
-      </SafeAreaView>
     </LinearGradient>
   );
 }

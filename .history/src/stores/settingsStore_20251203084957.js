@@ -68,7 +68,6 @@ setGratitudeModeEnabled: (v) => {
   set({ gratitudeModeEnabled: v });
   get().save();
 },
-setHasOnboarded: (val) => set({ hasOnboarded: val }), // <--- NEW ACTION
   // Save helper
   save: async () => {
     const s = get();

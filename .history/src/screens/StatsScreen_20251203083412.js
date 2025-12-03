@@ -20,7 +20,6 @@ import PremiumPressable from '../components/PremiumPressable';
 import { analyzeMoodTrends, getMoodInsights } from '../utils/moodTrends';
 import { analyzeWritingInsights, getWritingInsights } from '../utils/writingInsights';
 import { analyzeMoodCorrelations, getMoodCorrelationSummary } from '../utils/moodAnalysis';
-import { SafeAreaView } from 'react-native-safe-area-context';
 
 // Gratitude analytics helper
 const analyzeGratitudePractice = (entries) => {
@@ -289,7 +288,6 @@ export default function StatsScreen({ navigation, route }) {
       start={{ x: 0, y: 0 }}
       end={{ x: 0, y: 1 }}
     >
-      <SafeAreaView style={{ flex: 1 }} edges={['top']}>
       {/* LOADING STATE */}
       {!isReady ? (
         <View style={styles.loadingContainer}>
@@ -567,7 +565,6 @@ export default function StatsScreen({ navigation, route }) {
           </ScrollView>
         </Animated.View>
       )}
-      </SafeAreaView>
     </LinearGradient>
   );
 }

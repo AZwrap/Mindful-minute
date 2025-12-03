@@ -21,7 +21,7 @@ import { Users } from 'lucide-react-native';
 import { generateSmartPrompt, analyzeForSmartPrompts, getPromptExplanation } from '../utils/smartPrompts';
 import { useSharedPalette } from "../hooks/useSharedPalette";
 import { useEntriesStore } from '../stores/entriesStore';
-import { SafeAreaView } from 'react-native-safe-area-context';
+
 
 export default function HomeScreen() {
   const navigation = useNavigation();
@@ -270,7 +270,6 @@ useEffect(() => {
       accessibilityRole="header"
       accessibilityLabel="Mindful Minute Home Screen"
     >
-      <SafeAreaView style={{ flex: 1 }} edges={['top']}>
       <Animated.View style={{ opacity: contentFadeAnim, flex: 1 }}>
       <LinearGradient
         colors={currentGradient.card}
@@ -402,37 +401,29 @@ useEffect(() => {
 
         </View>
 
-{/* Shared Journals - Minimalist List Item */}
+{/* Shared Journals BELOW Start Journaling */}
         <PremiumPressable
           onPress={() => navigation.navigate("Invite")}
           haptic="light"
-          style={{
-            flexDirection: 'row',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            paddingVertical: 16,    // Comfortable touch target
-            paddingHorizontal: 4,   // Align with text above
-            marginTop: 8,
-            borderTopWidth: 1,      // Subtle divider
-            borderTopColor: palette.border,
-          }}
+          style={[
+            styles.sharedButton,
+            { 
+              backgroundColor: palette.card, 
+              borderColor: palette.border,
+            }
+          ]}
         >
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-            {/* Simple Icon (No background box) */}
-            <Users size={20} color={palette.subtleText} />
-            
-            <Text style={{ 
-              color: palette.text, 
-              fontSize: 15, 
-              fontWeight: '600' 
-            }}>
+          <View style={styles.sharedContentLeft}>
+            <View style={[styles.iconContainer, { backgroundColor: palette.accentSoft }]}>
+              <Users size={20} color={palette.accent} />
+            </View>
+            <Text style={[styles.sharedButtonText, { color: palette.text }]}>
               Shared Journals
             </Text>
           </View>
           
-          {/* Subtle Chevron instead of text */}
-          <Text style={{ color: palette.subtleText, fontSize: 18, opacity: 0.5 }}>
-            ›
+          <Text style={{ color: palette.subtleText, fontSize: 12, fontWeight: '500' }}>
+            Join / Create →
           </Text>
         </PremiumPressable>
 
@@ -527,7 +518,6 @@ useEffect(() => {
 
       </LinearGradient>
       </Animated.View>
-      </SafeAreaView>
     </LinearGradient>
   );
 }

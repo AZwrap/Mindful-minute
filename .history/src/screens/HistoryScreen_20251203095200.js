@@ -20,7 +20,6 @@ import { useTheme } from '../stores/themeStore';
 import PremiumPressable from '../components/PremiumPressable';
 import { Swipeable } from 'react-native-gesture-handler';
 import { Search, X } from 'lucide-react-native'; // <--- ADD THIS
-import { SafeAreaView } from 'react-native-safe-area-context';
 
 const SwipeableEntry = ({
   entry,
@@ -256,7 +255,6 @@ export default function HistoryScreen({ navigation }) {
       start={{ x: 0, y: 0 }}
       end={{ x: 0, y: 1 }}
     >
-      <SafeAreaView style={{ flex: 1 }} edges={['top']}>
       <Animated.View style={{ opacity: contentFadeAnim, flex: 1 }}>
         <View style={styles.contentCard}>
 
@@ -429,7 +427,6 @@ export default function HistoryScreen({ navigation }) {
           />
         </View>
       </Animated.View>
-      </SafeAreaView>
     </LinearGradient>
   );
 }
