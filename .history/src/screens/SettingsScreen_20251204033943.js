@@ -33,9 +33,10 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import * as DocumentPicker from 'expo-document-picker';
 import { 
   Trash2, Plus, Save, FileText, Database, RotateCcw, Share, 
-ChevronDown, ChevronUp, Palette, Cloud, CloudDownload // <--- FIXED: Merged all icons here
+  ChevronDown, ChevronUp, Palette, Cloud, CloudDownload // <--- Added Icons
 } from 'lucide-react-native';
-import { saveBackupToCloud, restoreBackupFromCloud } from '../services/cloudBackupService'; // <--- Added Serviceimport { Cloud, CloudDownload } from 'lucide-react-native'; // Add icons
+import { saveBackupToCloud, restoreBackupFromCloud } from '../services/cloudBackupService'; // <--- Added Service
+import { Cloud, CloudDownload } from 'lucide-react-native'; // Add icons
 
 // Enable LayoutAnimation for Android
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
