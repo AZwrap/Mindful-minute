@@ -11,7 +11,6 @@ import {
   ScrollView,
   Alert,
   NativeModules,
-  TouchableWithoutFeedback,
   Platform,
   LayoutAnimation,
   UIManager
@@ -77,7 +76,7 @@ export default function SettingsScreen({ navigation }) {
   const map = useJournalStore((s) => s.entries);
 
   // Local UI State
-  const [themeDropdownOpen, setThemeDropdownOpen] = useState(false); 
+  const [themeDropdownOpen, setThemeDropdownOpen] = useState(false); // Renamed for clarity
   const [accentDropdownOpen, setAccentDropdownOpen] = useState(false);
   const [pickerVisible, setPickerVisible] = useState(false);
   const [activePicker, setActivePicker] = useState(null);
@@ -282,8 +281,7 @@ export default function SettingsScreen({ navigation }) {
                                         backgroundColor: pressed ? (isDark ? '#374151' : '#E5E7EB') : 'transparent'
                                     })}
                                 >
-                                    {/* ADDED FONTWEIGHT: 600 HERE */}
-                                    <Text style={{ fontSize: 14, fontWeight: '600', color: palette.text }}>
+                                    <Text style={{ fontSize: 14, color: palette.text }}>
                                         {opt.charAt(0).toUpperCase() + opt.slice(1)}
                                     </Text>
                                 </Pressable>
@@ -310,62 +308,31 @@ export default function SettingsScreen({ navigation }) {
 
                 {/* --- ACCENT COLOR DROPDOWN (Hidden if Dynamic) --- */}
                 {theme !== "dynamic" && (
-                  <View style={{ marginTop: 16, zIndex: 10 }}>
+                  <View style={{ marginTop: 16 }}>
+                    <Text style={[styles.label, { color: palette.text, marginBottom: 8 }]}>Customization</Text>
                     <Pressable 
                       onPress={toggleAccentDropdown}
-                      style={[
-                        styles.dropdownHeader,
-                        {
-                          backgroundColor: isDark ? "#1F2937" : "#F3F4F6",
-                          borderColor: palette.border, // Consistent border
-                          flexDirection: 'row', 
-                          justifyContent: 'space-between', 
-                          alignItems: 'center'
-                        },
-                      ]}
+                      style={[styles.dropdownHeader, { backgroundColor: isDark ? "#1F2937" : "#F3F4F6", borderColor: palette.border, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }]}
                     >
                       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
                         <Palette size={16} color={palette.sub} />
-                        <Text style={{ fontSize: 15, fontWeight: "600", color: palette.text }}>
-                          Accent Color
-                        </Text>
+                        <Text style={{ fontSize: 15, fontWeight: "600", color: palette.text }}>Accent Color</Text>
                       </View>
                       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                         {!accentDropdownOpen && (
-                            <View style={{ width: 12, height: 12, borderRadius: 6, backgroundColor: accentColor || '#6366F1' }} />
-                         )}
+                         {!accentDropdownOpen && <View style={{ width: 12, height: 12, borderRadius: 6, backgroundColor: accentColor || '#6366F1' }} />}
                          {accentDropdownOpen ? <ChevronUp size={16} color={palette.sub} /> : <ChevronDown size={16} color={palette.sub} />}
                       </View>
                     </Pressable>
 
                     {accentDropdownOpen && (
-                      <View style={{ 
-                          marginTop: 8, 
-                          padding: 12, 
-                          backgroundColor: isDark ? "#1E293B" : "#F9FAFB",
-                          borderRadius: 12,
-                          borderWidth: 1,
-                          borderColor: palette.border,
-                          flexDirection: 'row', 
-                          flexWrap: 'wrap', 
-                          gap: 12,
-                          justifyContent: 'center'
-                      }}>
+                      <View style={{ marginTop: 8, padding: 12, borderRadius: 12, borderWidth: 1, borderColor: palette.border, flexDirection: 'row', flexWrap: 'wrap', gap: 12, justifyContent: 'center' }}>
                         {APP_COLORS.map((color) => (
                           <Pressable
                             key={color}
-                            onPress={() => {
-                              setAccentColor(color);
-                              if (hapticsEnabled) Haptics.selectionAsync();
-                            }}
+                            onPress={() => { setAccentColor(color); if (hapticsEnabled) Haptics.selectionAsync(); }}
                             style={{
-                              width: 40, height: 40,
-                              borderRadius: 20,
-                              backgroundColor: color,
-                              alignItems: 'center', justifyContent: 'center',
-                              borderWidth: 3,
-                              borderColor: accentColor === color ? palette.text : 'transparent',
-                              shadowColor: color, shadowOpacity: 0.3, shadowRadius: 4, shadowOffset: { width: 0, height: 2 }
+                              width: 40, height: 40, borderRadius: 20, backgroundColor: color, alignItems: 'center', justifyContent: 'center',
+                              borderWidth: 3, borderColor: accentColor === color ? palette.text : 'transparent',
                             }}
                           >
                             {accentColor === color && <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: 'white' }} />}
@@ -391,7 +358,6 @@ export default function SettingsScreen({ navigation }) {
                     thumbColor={'white'}
                   />
                 </View>
-
               </View>
 
               {/* 2. FEEDBACK */}
