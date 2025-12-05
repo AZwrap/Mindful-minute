@@ -45,9 +45,10 @@ const palette = useSharedPalette();
   });
   const [isGeneratingPrompt, setIsGeneratingPrompt] = useState(false);
 
+// Get entries for smart prompt analysis
 // Keep sharedJournals pointing to journalStore
-  // FIXED: Select raw value to prevent infinite loop (new object ref on every render)
-  const sharedJournals = useJournalStore((s) => s.journals);
+  // Optimization: Default to empty object to prevent undefined checks later
+  const sharedJournals = useJournalStore((s) => s.journals || {}); 
   
   // FIXED: Point drafts and entries to the personal entriesStore
   const drafts = useEntriesStore((s) => s.drafts);
