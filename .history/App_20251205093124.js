@@ -24,8 +24,8 @@ import * as Notifications from 'expo-notifications'; // <--- Import this
 // 🟢 Configure how notifications behave when the app is OPEN
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
-    shouldShowAlert: true,
-    shouldPlaySound: true,
+    shouldShowAlert: true, // <--- Changed to FALSE: No pop-up if app is open
+    shouldPlaySound: true, // <--- Optional: Set to true if you still want the "Ding" sound
     shouldSetBadge: false,
   }),
 });

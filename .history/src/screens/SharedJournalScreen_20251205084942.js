@@ -28,6 +28,7 @@ export default function SharedJournalScreen() {
   
   // 🟢 FIXED: Proper Theme Resolution (Handles 'System')
   const systemScheme = useColorScheme();
+  const { getCurrentTheme } = useTheme();
   const currentTheme = getCurrentTheme(systemScheme);
   const isDark = currentTheme === 'dark';
 

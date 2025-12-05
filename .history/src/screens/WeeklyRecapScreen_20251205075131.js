@@ -249,7 +249,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
 contentCard: {
-    marginTop: 50, // Added clearance for status bar
+    marginTop: 60, // Added clearance for status bar
     marginHorizontal: 16,
     marginBottom: 20,
     padding: 20,

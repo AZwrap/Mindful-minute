@@ -37,11 +37,7 @@ import {
 } from 'lucide-react-native';
 import { saveBackupToCloud, restoreBackupFromCloud } from '../services/cloudBackupService';
 import { analyzeWritingAnalytics } from '../constants/writingAnalytics';
-import { 
-  scheduleSmartReminder, 
-  cancelNotifications, 
-  runNotificationTest // <--- Added
-} from '../lib/notifications';
+import { scheduleSmartReminder, cancelNotifications } from '../lib/notifications';
 
 // Enable LayoutAnimation for Android
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
@@ -537,7 +533,7 @@ const handleFactoryReset = () => {
               </View>
 
                             {/* 4. NOTIFICATIONS (Smart Reminders) */}
-              <View style={[styles.card, { backgroundColor: palette.card, borderColor: palette.border, }]}>
+              <View style={[styles.card, { backgroundColor: palette.card, borderColor: palette.border, marginTop: 14 }]}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8 }}>
                   <Bell size={18} color={palette.accent} />
                   <Text style={[styles.title, { color: palette.text, marginBottom: 0 }]}>Notifications</Text>
@@ -559,34 +555,6 @@ const handleFactoryReset = () => {
                     }
                   }} 
                 />
-                {/* Test Button (Only show if enabled) */}
-                {smartRemindersEnabled && (
-                  <View style={{ marginTop: 12, borderTopWidth: 1, borderTopColor: palette.border, paddingTop: 12 }}>
-                    <PremiumPressable
-                      onPress={async () => {
-                        await runNotificationTest();
-                        showToast("Notification scheduled in 2s!");
-                      }}
-                      style={{ 
-                        flexDirection: 'row', 
-                        alignItems: 'center', 
-                        justifyContent: 'center',
-                        padding: 12,
-                        backgroundColor: palette.accent + '10', // 10% opacity accent
-                        borderRadius: 12,
-                        gap: 8
-                      }}
-                    >
-                      <Bell size={16} color={palette.accent} />
-                      <Text style={{ color: palette.accent, fontWeight: '600', fontSize: 14 }}>
-                        Test Instant Notification
-                      </Text>
-                    </PremiumPressable>
-                    <Text style={{ textAlign: 'center', color: palette.sub, fontSize: 11, marginTop: 8 }}>
-                      (Close the app or lock screen to see it appear)
-                    </Text>
-                  </View>
-                )}
               </View>
 
 {/* 5. DATA & PRIVACY */}

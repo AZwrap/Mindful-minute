@@ -28,6 +28,7 @@ export default function SharedJournalScreen() {
   
   // 🟢 FIXED: Proper Theme Resolution (Handles 'System')
   const systemScheme = useColorScheme();
+  const { getCurrentTheme } = useTheme();
   const currentTheme = getCurrentTheme(systemScheme);
   const isDark = currentTheme === 'dark';
 
@@ -147,16 +148,11 @@ return (
         styles.contentCard, 
         { backgroundColor: isDark ? 'rgba(30,41,59,0.3)' : 'rgba(255,255,255,0.5)' }
       ]}>
-{/* 🟢 Glass Card Container */}
-        <View style={[
-          styles.contentCard, 
-          { backgroundColor: isDark ? 'rgba(30,41,59,0.3)' : 'rgba(255,255,255,0.5)' }
-        ]}>
-          <FlatList
-            data={entries}
-            keyExtractor={(item, index) => item.id || String(index)}
-            contentContainerStyle={{ padding: 16 }}
-            renderItem={({ item }) => (
+        <FlatList
+          data={entries}
+          keyExtractor={(item, index) => item.id || String(index)}
+          contentContainerStyle={{ padding: 16 }}
+          renderItem={({ item }) => (
             <Pressable
               onPress={() =>
                 navigation.navigate("SharedEntryDetail", { entryId: item.id })
@@ -181,7 +177,6 @@ return (
             </Text>
           }
         />
-              </View>
       </View>
 
         {/* CREATE NEW SHARED ENTRY BUTTON */}

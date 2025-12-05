@@ -33,15 +33,11 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import * as DocumentPicker from 'expo-document-picker';
 import { 
   Trash2, Plus, Save, FileText, Database, RotateCcw, Share, 
-  ChevronDown, ChevronUp, Palette, Cloud, CloudDownload, Bell 
+  ChevronDown, ChevronUp, Palette, Cloud, CloudDownload 
 } from 'lucide-react-native';
 import { saveBackupToCloud, restoreBackupFromCloud } from '../services/cloudBackupService';
 import { analyzeWritingAnalytics } from '../constants/writingAnalytics';
-import { 
-  scheduleSmartReminder, 
-  cancelNotifications, 
-  runNotificationTest // <--- Added
-} from '../lib/notifications';
+import { scheduleSmartReminder, cancelNotifications } from '../lib/notifications';
 
 // Enable LayoutAnimation for Android
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
@@ -68,16 +64,13 @@ export default function SettingsScreen({ navigation }) {
   // Store Hooks
   const showTimer = useWritingSettings((s) => s.showTimer);
   const setShowTimer = useWritingSettings((s) => s.setShowTimer);
-  const setPreserveTimerProgress = useSettings((s) => s.setPreserveTimerProgress);
-  const { 
-    isBiometricsEnabled, setIsBiometricsEnabled,
-    smartRemindersEnabled, setSmartRemindersEnabled 
-  } = useSettings();
   const { 
     hapticsEnabled, setHapticsEnabled,
     soundEnabled, setSoundEnabled,
-    preserveTimerProgress, 
-    gratitudeModeEnabled, setGratitudeModeEnabled, 
+    preserveTimerProgress, setPreserveTimerProgress,
+    gratitudeModeEnabled, setGratitudeModeEnabled,
+    isBiometricsEnabled, setIsBiometricsEnabled,
+    smartRemindersEnabled, setSmartRemindersEnabled, // <--- Added
   } = useSettings();
   const entriesMap = useEntriesStore((s) => s.entries);
   const {
@@ -485,8 +478,6 @@ const handleFactoryReset = () => {
                 <SettingRow label="Gratitude Mode" description="Always show gratitude prompts" value={gratitudeModeEnabled} onValueChange={setGratitudeModeEnabled} />
               </View>
 
-
-
 {/* 4. SESSION SETTINGS */}
               <View style={[styles.card, { backgroundColor: palette.card, borderColor: palette.border }]}>
                 <Text style={[styles.title, { color: palette.text }]}>Session</Text>
@@ -536,59 +527,6 @@ const handleFactoryReset = () => {
                 </View>
               </View>
 
-                            {/* 4. NOTIFICATIONS (Smart Reminders) */}
-              <View style={[styles.card, { backgroundColor: palette.card, borderColor: palette.border, }]}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-                  <Bell size={18} color={palette.accent} />
-                  <Text style={[styles.title, { color: palette.text, marginBottom: 0 }]}>Notifications</Text>
-                </View>
-                
-                <SettingRow 
-                  label="Smart Reminders" 
-                  description="Auto-schedule based on your peak writing time" 
-                  value={smartRemindersEnabled} 
-                  onValueChange={async (val) => {
-                    setSmartRemindersEnabled(val);
-                    if (val) {
-                      const entriesList = Object.values(map || {});
-                      const analytics = analyzeWritingAnalytics(entriesList);
-                      await scheduleSmartReminder(analytics);
-                      Alert.alert("Smart Scheduler Active", "We've analyzed your history and set a reminder for your most productive time.");
-                    } else {
-                      await cancelNotifications();
-                    }
-                  }} 
-                />
-                {/* Test Button (Only show if enabled) */}
-                {smartRemindersEnabled && (
-                  <View style={{ marginTop: 12, borderTopWidth: 1, borderTopColor: palette.border, paddingTop: 12 }}>
-                    <PremiumPressable
-                      onPress={async () => {
-                        await runNotificationTest();
-                        showToast("Notification scheduled in 2s!");
-                      }}
-                      style={{ 
-                        flexDirection: 'row', 
-                        alignItems: 'center', 
-                        justifyContent: 'center',
-                        padding: 12,
-                        backgroundColor: palette.accent + '10', // 10% opacity accent
-                        borderRadius: 12,
-                        gap: 8
-                      }}
-                    >
-                      <Bell size={16} color={palette.accent} />
-                      <Text style={{ color: palette.accent, fontWeight: '600', fontSize: 14 }}>
-                        Test Instant Notification
-                      </Text>
-                    </PremiumPressable>
-                    <Text style={{ textAlign: 'center', color: palette.sub, fontSize: 11, marginTop: 8 }}>
-                      (Close the app or lock screen to see it appear)
-                    </Text>
-                  </View>
-                )}
-              </View>
-
 {/* 5. DATA & PRIVACY */}
               <View style={[styles.section, { marginTop: 8 }]}>
                 <Text style={[styles.sectionTitle, { color: palette.sub }]}>Data & Privacy</Text>
@@ -615,6 +553,33 @@ const handleFactoryReset = () => {
                     </View>
                     <Text style={{ color: palette.subtleText }}>›</Text>
                   </PremiumPressable>
+
+                  {/* Smart Reminders Toggle */}
+          <View style={[styles.optionRow, { marginTop: 12 }]}>
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.optionLabel, { color: palette.text }]}>Smart Reminders 🧠</Text>
+              <Text style={[styles.optionSubLabel, { color: palette.subtleText }]}>
+                Auto-schedule based on when you write most
+              </Text>
+            </View>
+            <Switch
+              value={smartRemindersEnabled}
+              onValueChange={async (val) => {
+                setSmartRemindersEnabled(val);
+                if (val) {
+                  // Calculate analytics on the fly and schedule
+                  const entriesList = Object.values(entriesMap || {});
+                  const analytics = analyzeWritingAnalytics(entriesList);
+                  await scheduleSmartReminder(analytics);
+                  Alert.alert("Smart Scheduler Active", "We've set your reminder to your most productive time.");
+                } else {
+                  await cancelNotifications();
+                }
+              }}
+              trackColor={{ false: palette.border, true: palette.accent }}
+              thumbColor={'white'}
+            />
+          </View>
 
                   {/* THERAPIST REPORT */}
                   <PremiumPressable onPress={generateTherapistReport} style={[styles.menuItem, { borderBottomWidth: 1, borderBottomColor: palette.border }]}>

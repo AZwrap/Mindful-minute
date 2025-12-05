@@ -19,23 +19,21 @@ import { leaveSharedJournal } from "../services/syncedJournalService";
 import { useSharedPalette } from "../hooks/useSharedPalette";
 import ThemeFadeWrapper from "../components/ThemeFadeWrapper";
 import ScreenLoader from "../components/ScreenLoader";
-import { useColorScheme } from "react-native";
 
 export default function SharedJournalScreen() {
-  const navigation = useNavigation();
+const navigation = useNavigation();
   const route = useRoute();
   const palette = useSharedPalette();
   
-  // 🟢 FIXED: Proper Theme Resolution (Handles 'System')
-  const systemScheme = useColorScheme();
-  const currentTheme = getCurrentTheme(systemScheme);
-  const isDark = currentTheme === 'dark';
+  // 🟢 Theme & Gradient Setup (Matches WriteScreen)
+  const { theme } = useTheme();
+  const isDark = theme === 'dark'; // Simplified check
 
   const gradients = {
     dark: { primary: ['#0F172A', '#1E293B', '#334155'] },
     light: { primary: ['#F8FAFC', '#F1F5F9', '#E2E8F0'] },
   };
-  const currentGradient = gradients[currentTheme] || gradients.light;
+  const currentGradient = gradients[theme] || gradients.light;
 
   // Get the specific Journal ID passed from Home
   
@@ -111,6 +109,10 @@ text: "Leave",
   // Select entries ONLY for this journal ID
   const entries = sharedEntries[journalId] || [];
 
+// 🟢 Theme & Gradient Setup (Matches Home/History)
+  const { getCurrentTheme } = useTheme();
+
+
   // STEP 2: Show Loader
   if (isLoading && entries.length === 0) {
     return <ScreenLoader />;
@@ -142,21 +144,11 @@ return (
         </View>
         
         {/* LIST */}
-{/* 🟢 Content Card Container (Glass Effect) */}
-      <View style={[
-        styles.contentCard, 
-        { backgroundColor: isDark ? 'rgba(30,41,59,0.3)' : 'rgba(255,255,255,0.5)' }
-      ]}>
-{/* 🟢 Glass Card Container */}
-        <View style={[
-          styles.contentCard, 
-          { backgroundColor: isDark ? 'rgba(30,41,59,0.3)' : 'rgba(255,255,255,0.5)' }
-        ]}>
-          <FlatList
-            data={entries}
-            keyExtractor={(item, index) => item.id || String(index)}
-            contentContainerStyle={{ padding: 16 }}
-            renderItem={({ item }) => (
+        <FlatList
+          data={entries}
+          keyExtractor={(item, index) => item.id || String(index)}
+          contentContainerStyle={{ padding: 16 }}
+          renderItem={({ item }) => (
             <Pressable
               onPress={() =>
                 navigation.navigate("SharedEntryDetail", { entryId: item.id })
@@ -181,8 +173,6 @@ return (
             </Text>
           }
         />
-              </View>
-      </View>
 
         {/* CREATE NEW SHARED ENTRY BUTTON */}
 <Pressable

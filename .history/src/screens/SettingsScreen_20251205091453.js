@@ -40,7 +40,7 @@ import { analyzeWritingAnalytics } from '../constants/writingAnalytics';
 import { 
   scheduleSmartReminder, 
   cancelNotifications, 
-  runNotificationTest // <--- Added
+  testInstantNotification // <--- Added
 } from '../lib/notifications';
 
 // Enable LayoutAnimation for Android
@@ -564,7 +564,7 @@ const handleFactoryReset = () => {
                   <View style={{ marginTop: 12, borderTopWidth: 1, borderTopColor: palette.border, paddingTop: 12 }}>
                     <PremiumPressable
                       onPress={async () => {
-                        await runNotificationTest();
+                        await testInstantNotification();
                         showToast("Notification scheduled in 2s!");
                       }}
                       style={{ 

@@ -10,6 +10,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useEntriesStore } from '../stores/entriesStore';
 import { useTheme } from '../stores/themeStore';
 import PremiumPressable from '../components/PremiumPressable';
+import { Feather } from '@expo/vector-icons';
 import { generateWeeklyRecap, getPreviousWeekBoundaries, getWeekBoundaries } from '../utils/weeklyRecap';
 
 export default function WeeklyRecapScreen({ navigation }) {
@@ -52,14 +53,26 @@ const map = useEntriesStore((s) => s.entries);
     return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
   };
 
-  return (
+return (
     <LinearGradient
       colors={currentGradient.primary}
       style={styles.container}
       start={{ x: 0, y: 0 }}
       end={{ x: 0, y: 1 }}
     >
-      <ScrollView style={styles.scrollView}>
+      {/* 🟢 Custom Standard Header */}
+      <View style={styles.header}>
+        <PremiumPressable 
+          onPress={() => navigation.goBack()} 
+          hitSlop={20} 
+          style={styles.backButton}
+        >
+          <Feather name="arrow-left" size={28} color={textMain} />
+        </PremiumPressable>
+        <Text style={[styles.headerTitle, { color: textMain }]}>Weekly Recap</Text>
+      </View>
+
+      <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
         <View style={styles.contentCard}>
           
           {/* Week Selector */}
@@ -245,13 +258,31 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
+  // 🟢 New Header Styles
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingTop: 60, // Safe area for Status Bar
+    paddingBottom: 10,
+    paddingHorizontal: 20,
+  },
+  backButton: {
+    padding: 4,
+    marginRight: 12,
+  },
+  headerTitle: {
+    fontSize: 28,
+    fontWeight: '700',
+  },
   scrollView: {
     flex: 1,
   },
-contentCard: {
-    marginTop: 50, // Added clearance for status bar
+  scrollContent: {
+    paddingBottom: 40, // Bottom breathing room
+  },
+  contentCard: {
     marginHorizontal: 16,
-    marginBottom: 20,
+    marginTop: 10,
     padding: 20,
     borderRadius: 24,
   },

@@ -115,8 +115,8 @@ export async function scheduleSmartReminder(analytics) {
   });
 }
 // 🟢 NEW: Instant Test
-export async function runNotificationTest() {
-    // Check permissions first
+export async function testInstantNotification() {
+  // Check permissions first
   const { status } = await Notifications.getPermissionsAsync();
   if (status !== 'granted') {
     const { status: newStatus } = await Notifications.requestPermissionsAsync();

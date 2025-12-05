@@ -1,7 +1,6 @@
 import React, { useLayoutEffect, useEffect, useState } from "react"; 
 import { Feather } from "@expo/vector-icons";
 import { LinearGradient } from 'expo-linear-gradient'; // <--- Added
-import { useTheme } from '../stores/themeStore';
 import {
   View,
   Text,
@@ -19,23 +18,21 @@ import { leaveSharedJournal } from "../services/syncedJournalService";
 import { useSharedPalette } from "../hooks/useSharedPalette";
 import ThemeFadeWrapper from "../components/ThemeFadeWrapper";
 import ScreenLoader from "../components/ScreenLoader";
-import { useColorScheme } from "react-native";
 
 export default function SharedJournalScreen() {
-  const navigation = useNavigation();
+const navigation = useNavigation();
   const route = useRoute();
   const palette = useSharedPalette();
   
-  // 🟢 FIXED: Proper Theme Resolution (Handles 'System')
-  const systemScheme = useColorScheme();
-  const currentTheme = getCurrentTheme(systemScheme);
-  const isDark = currentTheme === 'dark';
+  // 🟢 Theme & Gradient Setup (Matches WriteScreen)
+  const { theme } = useTheme();
+  const isDark = theme === 'dark'; // Simplified check
 
   const gradients = {
     dark: { primary: ['#0F172A', '#1E293B', '#334155'] },
     light: { primary: ['#F8FAFC', '#F1F5F9', '#E2E8F0'] },
   };
-  const currentGradient = gradients[currentTheme] || gradients.light;
+  const currentGradient = gradients[theme] || gradients.light;
 
   // Get the specific Journal ID passed from Home
   
@@ -111,6 +108,29 @@ text: "Leave",
   // Select entries ONLY for this journal ID
   const entries = sharedEntries[journalId] || [];
 
+// 1. Set the Standard Navigation Header
+  useLayoutEffect(() => {
+    navigation.setOptions({
+      title: currentJournal?.name || "Shared Journal",
+      headerShown: true,
+headerStyle: {
+        backgroundColor: isDark ? '#0F172A' : '#F8FAFC', // Matches top of gradient
+      },
+      headerTintColor: palette.text,
+      headerShadowVisible: false,
+      // Settings Button
+      headerRight: () => (
+        <Pressable 
+          onPress={() => setShowSettings(true)} 
+          hitSlop={20}
+          style={{ paddingRight: 16 }}
+        >
+          <Feather name="settings" size={24} color={palette.text} />
+        </Pressable>
+      ),
+    });
+  }, [navigation, palette, currentJournal]);
+
   // STEP 2: Show Loader
   if (isLoading && entries.length === 0) {
     return <ScreenLoader />;
@@ -118,45 +138,24 @@ text: "Leave",
 
 return (
     <ThemeFadeWrapper>
-<LinearGradient
-      colors={currentGradient.primary}
-      style={styles.container}
-      start={{ x: 0, y: 0 }}
-      end={{ x: 0, y: 1 }}
-    >
-<SafeAreaView style={styles.container} edges={['top', 'bottom', 'left', 'right']}>
-
-  {/* 🟢 Custom Header (Matches Design System) */}
-        <View style={styles.customHeader}>
-          <View style={styles.headerLeft}>
-            <Pressable onPress={() => navigation.goBack()} hitSlop={10} style={styles.backButton}>
-              <Feather name="arrow-left" size={24} color={palette.text} />
-            </Pressable>
-            <Text style={[styles.headerTitle, { color: palette.text }]}>
-              {currentJournal?.name || "Shared Journal"}
-            </Text>
-          </View>
-          <Pressable onPress={() => setShowSettings(true)} hitSlop={10} style={styles.settingsButton}>
-            <Feather name="settings" size={24} color={palette.text} />
-          </Pressable>
-        </View>
+      {/* 🟢 Gradient Background */}
+      <LinearGradient
+        colors={currentGradient.primary}
+        style={styles.container}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 0, y: 1 }}
+      >
+        <SafeAreaView 
+          style={styles.container} 
+          edges={['bottom', 'left', 'right']}
+        >
         
         {/* LIST */}
-{/* 🟢 Content Card Container (Glass Effect) */}
-      <View style={[
-        styles.contentCard, 
-        { backgroundColor: isDark ? 'rgba(30,41,59,0.3)' : 'rgba(255,255,255,0.5)' }
-      ]}>
-{/* 🟢 Glass Card Container */}
-        <View style={[
-          styles.contentCard, 
-          { backgroundColor: isDark ? 'rgba(30,41,59,0.3)' : 'rgba(255,255,255,0.5)' }
-        ]}>
-          <FlatList
-            data={entries}
-            keyExtractor={(item, index) => item.id || String(index)}
-            contentContainerStyle={{ padding: 16 }}
-            renderItem={({ item }) => (
+        <FlatList
+          data={entries}
+          keyExtractor={(item, index) => item.id || String(index)}
+          contentContainerStyle={{ padding: 16 }}
+          renderItem={({ item }) => (
             <Pressable
               onPress={() =>
                 navigation.navigate("SharedEntryDetail", { entryId: item.id })
@@ -181,8 +180,6 @@ return (
             </Text>
           }
         />
-              </View>
-      </View>
 
         {/* CREATE NEW SHARED ENTRY BUTTON */}
 <Pressable
@@ -265,36 +262,7 @@ return (
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-  },
-  // 🟢 New Header & Card Styles
-  customHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-  },
-  headerLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  headerTitle: {
-    fontSize: 20,
-    fontWeight: '700',
-  },
-  contentCard: {
-    flex: 1,
-    marginHorizontal: 12,
-    marginBottom: 10,
-    borderRadius: 24,
-    overflow: 'hidden', // Ensures list doesn't bleed out
-  },
-  backButton: {
-    padding: 4,
-  },
-  settingsButton: {
-    padding: 4,
+    // backgroundColor removed to let Gradient show
   },
   entryCard: {
     padding: 14,

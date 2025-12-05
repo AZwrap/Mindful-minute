@@ -10,6 +10,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useEntriesStore } from '../stores/entriesStore';
 import { useTheme } from '../stores/themeStore';
 import PremiumPressable from '../components/PremiumPressable';
+import { Feather } from '@expo/vector-icons';
 import { generateWeeklyRecap, getPreviousWeekBoundaries, getWeekBoundaries } from '../utils/weeklyRecap';
 
 export default function WeeklyRecapScreen({ navigation }) {
@@ -248,10 +249,8 @@ const styles = StyleSheet.create({
   scrollView: {
     flex: 1,
   },
-contentCard: {
-    marginTop: 50, // Added clearance for status bar
-    marginHorizontal: 16,
-    marginBottom: 20,
+  contentCard: {
+    margin: 16,
     padding: 20,
     borderRadius: 24,
   },
