@@ -103,7 +103,7 @@ export async function scheduleSmartReminder(analytics) {
   // 3. Schedule daily
   await Notifications.scheduleNotificationAsync({
     content: {
-      title: "It's your time to write ",
+      title: "It's your time to write ✍️",
       body: `You are usually most productive in the ${bestSlot.toLowerCase()}. Ready to capture your thoughts?`,
       sound: true,
     },
@@ -113,4 +113,17 @@ export async function scheduleSmartReminder(analytics) {
       repeats: true,
     },
   });
+}
+
+// 🟢 NEW: Instant Test
+export async function runNotificationTest() {
+  console.log("❌ Notifications disabled due to Expo Go SDK 53 limitations.");
+  alert("Notifications are disabled in this version of Expo Go.");
+  
+  /* // DISABLED to prevent crashes/loops in Expo Go
+  await Notifications.scheduleNotificationAsync({
+    content: { title: "It Works!", body: "Test", sound: true },
+    trigger: { seconds: 2 },
+  });
+  */
 }

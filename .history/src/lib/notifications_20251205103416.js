@@ -103,7 +103,7 @@ export async function scheduleSmartReminder(analytics) {
   // 3. Schedule daily
   await Notifications.scheduleNotificationAsync({
     content: {
-      title: "It's your time to write ",
+      title: "It's your time to write ✍️",
       body: `You are usually most productive in the ${bestSlot.toLowerCase()}. Ready to capture your thoughts?`,
       sound: true,
     },
@@ -113,4 +113,36 @@ export async function scheduleSmartReminder(analytics) {
       repeats: true,
     },
   });
+}
+
+export async function runNotificationTest() {
+  console.log("🔍 DEBUG: runNotificationTest was called!");
+
+  // Check permissions first
+  const { status } = await Notifications.getPermissionsAsync();
+  if (status !== 'granted') {
+    const { status: newStatus } = await Notifications.requestPermissionsAsync();
+    if (newStatus !== 'granted') {
+      alert("Permission not granted!");
+      return;
+    }
+  }
+
+  // 🛑 DISABLED to stop phantom notifications on startup
+  /*
+  console.log("Scheduling test notification for 2 seconds from now...");
+  await Notifications.scheduleNotificationAsync({
+    content: {
+      title: "🔔 It Works!",
+      body: "This is a test of your Smart Reminder system.",
+      sound: true,
+    },
+    trigger: {
+      seconds: 2, 
+    },
+  });
+  */
+  
+  // Only show a toast/alert so you know the button works, without the system notification
+  alert("Test function executed (Notification disabled to prevent loop)");
 }

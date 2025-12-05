@@ -19,11 +19,41 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import SecurityGate from './src/components/SecurityGate';
 import { ErrorBoundary } from "./src/components/ErrorBoundary";
 import './src/utils/ignoreWarnings';
+import * as Notifications from 'expo-notifications'; // <--- Import this
+
+// 🟢 Configure how notifications behave when the app is OPEN
+Notifications.setNotificationHandler({
+  handleNotification: async () => ({
+    shouldShowAlert: true,
+    shouldPlaySound: true,
+    shouldSetBadge: false,
+  }),
+});
 
 export default function App() {
 const system = useColorScheme();
+
+// TEMPORARY DEBUG: Clear notifications and log it
+useEffect(() => {
+  Notifications.cancelAllScheduledNotificationsAsync().then(() => {
+     console.log("🔥🔥🔥 SYSTEM: All scheduled notifications have been WIPED.");
+  });
+}, []);
+
 const { getCurrentTheme } = useTheme();
+
+// 🛑 FORCE CLEANUP: Cancel all lingering notifications on startup
+  useEffect(() => {
+    const cleanUp = async () => {
+      await Notifications.cancelAllScheduledNotificationsAsync();
+      console.log("🧹 All notifications cleared on startup");
+    };
+    cleanUp();
+  }, []);
+
 const theme = getCurrentTheme(system);
+
+
 
 const handleDeepLink = ({ url }) => {
   try {

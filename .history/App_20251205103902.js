@@ -19,6 +19,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import SecurityGate from './src/components/SecurityGate';
 import { ErrorBoundary } from "./src/components/ErrorBoundary";
 import './src/utils/ignoreWarnings';
+import * as Notifications from 'expo-notifications'; // <--- Import this
 
 export default function App() {
 const system = useColorScheme();
