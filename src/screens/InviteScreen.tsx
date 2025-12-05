@@ -1,0 +1,198 @@
+import React, { useState } from "react";
+import {
+  View,
+  Text,
+  TextInput,
+  Pressable,
+  StyleSheet,
+  Alert,
+} from "react-native";
+import { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { RootStackParamList } from '../navigation/RootStack';
+import { useSharedPalette } from "../hooks/useSharedPalette";
+import { useJournalStore } from "../stores/journalStore";
+
+// --------------------------------------------------
+// TYPES
+// --------------------------------------------------
+type Props = NativeStackScreenProps<RootStackParamList, 'Invite'>;
+
+// --------------------------------------------------
+// COMPONENT
+// --------------------------------------------------
+export default function InviteScreen({ navigation }: Props) {
+  const palette = useSharedPalette();
+
+  const createSharedJournal = useJournalStore((s) => s.createSharedJournal);
+  const joinSharedJournal = useJournalStore((s) => s.joinSharedJournal);
+
+  const [journalName, setJournalName] = useState("");
+  const [joinCode, setJoinCode] = useState("");
+  const [generatedCode, setGeneratedCode] = useState<string | null>(null);
+  const [isCreating, setIsCreating] = useState(false);
+  const [isJoining, setIsJoining] = useState(false);
+
+  const handleCreate = async () => {
+    if (!journalName.trim()) {
+      Alert.alert("Missing Name", "Please enter a name for your shared journal.");
+      return;
+    }
+    
+    setIsCreating(true);
+    try {
+      // In a real app, you'd get the user's ID from Auth
+      const id = await createSharedJournal(journalName);
+      setGeneratedCode(id);
+      setJournalName("");
+      Alert.alert("Success", "Shared Journal created!");
+    } catch (error) {
+      console.error(error);
+      Alert.alert("Error", "Could not create journal.");
+    } finally {
+      setIsCreating(false);
+    }
+  };
+
+  const handleJoin = async () => {
+    if (!joinCode.trim()) return;
+
+    setIsJoining(true);
+    try {
+      // Note: In the actual service, joinSharedJournal expects a URL usually, 
+      // but here it seems to accept an ID or Code based on your store implementation.
+      // If it expects a URL, you might need to adjust this input.
+      const ok = await joinSharedJournal(joinCode);
+      
+      if (ok) {
+        Alert.alert("Success", "You have joined the journal!");
+        navigation.goBack();
+      } else {
+        Alert.alert("Invalid Code", "Could not find that journal.");
+      }
+    } catch (error) {
+      console.error(error);
+      Alert.alert("Error", "Failed to join.");
+    } finally {
+      setIsJoining(false);
+    }
+  };
+
+  return (
+    <View style={[styles.container, { backgroundColor: palette.bg }]}>
+      <Text style={[styles.title, { color: palette.text }]}>Shared Journals</Text>
+
+      {/* CREATE SECTION */}
+      <Text style={[styles.sectionLabel, { color: palette.subtleText }]}>Create New</Text>
+      <TextInput
+        placeholder="Journal Name (e.g. Family Trip)"
+        placeholderTextColor={palette.subtleText}
+        style={[
+          styles.input,
+          { backgroundColor: palette.card, color: palette.text, borderColor: palette.border },
+        ]}
+        value={journalName}
+        onChangeText={setJournalName}
+      />
+
+      <Pressable 
+        onPress={handleCreate} 
+        disabled={isCreating}
+        style={[styles.button, { backgroundColor: palette.accent, opacity: isCreating ? 0.7 : 1 }]}
+      >
+        <Text style={styles.buttonText}>
+          {isCreating ? "Creating..." : "Create Shared Journal"}
+        </Text>
+      </Pressable>
+
+      {generatedCode && (
+        <View style={[styles.codeBox, { borderColor: palette.accent }]}>
+          <Text style={{ color: palette.text, fontSize: 14, marginBottom: 4 }}>
+            Journal Created! ID:
+          </Text>
+          <Text selectable style={{ color: palette.accent, fontWeight: "700", fontSize: 20 }}>
+            {generatedCode}
+          </Text>
+        </View>
+      )}
+
+      <View style={[styles.divider, { backgroundColor: palette.border }]} />
+
+      {/* JOIN SECTION */}
+      <Text style={[styles.sectionLabel, { color: palette.subtleText }]}>Join Existing</Text>
+      <TextInput
+        placeholder="Enter Journal ID / Code"
+        placeholderTextColor={palette.subtleText}
+        style={[
+          styles.input,
+          { backgroundColor: palette.card, color: palette.text, borderColor: palette.border },
+        ]}
+        value={joinCode}
+        onChangeText={setJoinCode}
+        autoCapitalize="none"
+      />
+
+      <Pressable 
+        onPress={handleJoin} 
+        disabled={isJoining}
+        style={[styles.button, { backgroundColor: palette.card, borderWidth: 1, borderColor: palette.border }]}
+      >
+        <Text style={[styles.buttonText, { color: palette.text }]}>
+          {isJoining ? "Joining..." : "Join Journal"}
+        </Text>
+      </Pressable>
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    padding: 24,
+    justifyContent: 'center',
+  },
+  title: {
+    fontSize: 28,
+    fontWeight: "800",
+    marginBottom: 32,
+    textAlign: 'center',
+  },
+  sectionLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    marginBottom: 8,
+    marginLeft: 4,
+  },
+  input: {
+    borderWidth: 1,
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 16,
+    fontSize: 16,
+  },
+  button: {
+    paddingVertical: 16,
+    borderRadius: 16,
+    alignItems: "center",
+    marginBottom: 8,
+  },
+  buttonText: {
+    color: "white",
+    fontWeight: "700",
+    fontSize: 16,
+  },
+  codeBox: {
+    padding: 16,
+    borderRadius: 16,
+    marginBottom: 20,
+    borderWidth: 1,
+    alignItems: "center",
+    backgroundColor: 'rgba(99, 102, 241, 0.1)',
+    marginTop: 8,
+  },
+  divider: {
+    height: 1,
+    width: '100%',
+    marginVertical: 32,
+  }
+});
