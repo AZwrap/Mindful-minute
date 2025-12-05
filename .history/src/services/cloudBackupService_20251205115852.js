@@ -8,7 +8,6 @@ import { useSettings } from "../stores/settingsStore";
 import { useTheme } from "../stores/themeStore";
 import { useProgress } from "../stores/progressStore";
 import { useWritingSettings } from "../stores/writingSettingsStore";
-import { useJournalStore } from "../stores/journalStore";
 
 // Get user ID, signing in anonymously if necessary
 export const ensureAuth = async () => {
@@ -34,7 +33,6 @@ export const saveBackupToCloud = async () => {
       theme: sanitize(useTheme.getState()),
       progress: sanitize(useProgress.getState()),
       writingSettings: sanitize(useWritingSettings.getState()),
-      journal: sanitize(useJournalStore.getState()),
       version: 1
     };
 
@@ -69,11 +67,6 @@ if (!snap.exists()) {
     if (data.theme) useTheme.setState(data.theme);
     if (data.progress) useProgress.setState(data.progress);
     if (data.writingSettings) useWritingSettings.setState(data.writingSettings);
-
-    // Restore Shared Journals state
-    if (data.journal) {
-      useJournalStore.setState(data.journal);
-    }
 
     return { success: true, timestamp: new Date(data.timestamp) };
   } catch (error) {

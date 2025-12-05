@@ -580,12 +580,13 @@ statsWidget: {
     lineHeight: 20,
     marginBottom: 8,
   },
-  moodTag: {
-    alignSelf: 'flex-start',
+moodTag: {
+    alignSelf: 'flex-start', // Shrinks to fit content exactly
     borderWidth: 1,
     borderRadius: 12,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
+    paddingHorizontal: 12,   // Comfortable padding around text
+    paddingVertical: 6,
+    marginBottom: 4,         // Adds a tiny bit of space below
   },
 moodText: {
     fontSize: 12,

@@ -580,12 +580,15 @@ statsWidget: {
     lineHeight: 20,
     marginBottom: 8,
   },
-  moodTag: {
+moodTag: {
     alignSelf: 'flex-start',
     borderWidth: 1,
     borderRadius: 12,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
+    paddingHorizontal: 14, // <--- Increased from 8 to 14 prevents clipping
+    paddingVertical: 6,    // <--- Increased from 4 for better breathing room
+    minWidth: 60,          // <--- Ensures even short words look substantial
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 moodText: {
     fontSize: 12,
@@ -611,11 +614,11 @@ moodText: {
     flexWrap: 'wrap',
     gap: 6,
   },
-  recentMoodChip: {
+recentMoodChip: {
     borderWidth: 1,
     borderRadius: 16,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
+    paddingHorizontal: 16, // <--- Increased from 10 to 16
+    paddingVertical: 8,    // <--- Increased from 6
   },
 recentMoodText: {
     fontSize: 12,

@@ -14,6 +14,7 @@ import ThemeFadeWrapper from "./src/components/ThemeFadeWrapper";
 
 import { Linking } from "react-native";
 import { joinSharedJournal } from "./src/services/syncedJournalService";
+import 'react-native-get-random-values';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import SecurityGate from './src/components/SecurityGate';
 import { ErrorBoundary } from "./src/components/ErrorBoundary";
@@ -43,28 +44,33 @@ const settingsLoaded = useSettings((s) => s.loaded);
   // Don't render the app structure until settings are ready
   if (!settingsLoaded) return null;
 
-// Handle Deep Links (Both Cold Start & Background)
-  useEffect(() => {
-    const handleDeepLink = ({ url }) => {
-      if (url) joinSharedJournal(url);
-    };
+const handleDeepLink = ({ url }) => {
+  try {
+    joinSharedJournal(url);
+  } catch (e) {
+    console.log("Deep link error:", e);
+  }
+};
 
-    // 1. Check if app was opened via link (Cold Start)
-    const checkInitialUrl = async () => {
+useEffect(() => {
+  const handleUrl = async ({ url }) => {
+    if (url.includes("invite/journal/")) {
+      const journalId = url.split("invite/journal/")[1];
       try {
-        const initialUrl = await Linking.getInitialURL();
-        if (initialUrl) handleDeepLink({ url: initialUrl });
+        const joined = await joinSharedJournal(journalId);
+        console.log("Joined shared journal:", joined.title);
       } catch (e) {
-        console.log("Deep link error:", e);
+        console.log("Failed to join", e);
       }
-    };
-    checkInitialUrl();
+    }
+  };
 
-    // 2. Listen for new links while app is open
-    const sub = Linking.addEventListener("url", handleDeepLink);
+  const sub = Linking.addEventListener("url", handleDeepLink);
 
-    return () => sub.remove();
-  }, []);
+  return () => {
+  sub.remove();
+};
+}, []);
 
 
   // Quick Actions

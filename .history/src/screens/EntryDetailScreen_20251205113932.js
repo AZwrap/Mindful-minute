@@ -249,10 +249,9 @@ moodTag: {
     flexDirection: 'row',    // <--- Ensures consistent layout width
     alignItems: 'center',    
   },
-moodText: {
+  moodText: {
     fontSize: 14,
     fontWeight: '600',
-    textTransform: 'capitalize', // <--- Fixes the capitalization
   },
   buttonsRow: {
     flexDirection: 'row',
