@@ -8,16 +8,14 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 interface ProgressState {
   streak: number;
   totalEntries: number;
-  lastEntryDate: string | null; 
-  unlockedIds: string[]; // Track unlocked IDs
+  lastEntryDate: string | null; // ISO Date string YYYY-MM-DD
 }
 
 interface ProgressActions {
   updateStreak: (date: string) => void;
   incrementTotalEntries: () => void;
   resetProgress: () => void;
-  getAchievements: () => any;
-  applyDailySave: (data: { date: string; mood: string; wordCount: number; [key: string]: any }) => { newAchievements: any[] };
+  getAchievements: () => any; // Returns formatted achievement data
 }
 
 // Combined Store Type
@@ -29,11 +27,10 @@ type ProgressStore = ProgressState & ProgressActions;
 export const useProgress = create<ProgressStore>()(
   persist(
     (set, get) => ({
-// STATE
+      // STATE
       streak: 0,
       totalEntries: 0,
       lastEntryDate: null,
-      unlockedIds: [],
 
       // ACTIONS
       updateStreak: (date: string) => {
@@ -68,34 +65,11 @@ export const useProgress = create<ProgressStore>()(
         set({ streak: newStreak, lastEntryDate: date });
       },
 
-incrementTotalEntries: () => {
+      incrementTotalEntries: () => {
         set((state) => ({ totalEntries: state.totalEntries + 1 }));
       },
 
-      applyDailySave: (data) => {
-        const { date } = data;
-        
-        // 1. Update Stats
-        get().updateStreak(date);
-        get().incrementTotalEntries();
-
-        // 2. Check Achievements
-        // Ensure getAchievements exists (from previous step)
-        const { unlocked } = get().getAchievements(); 
-        const currentUnlockedIds = get().unlockedIds || [];
-        
-        // Find which ones are NEW
-        const newAchievements = unlocked.filter((a: any) => !currentUnlockedIds.includes(a.id));
-        
-        // 3. Persist new unlocks
-        if (newAchievements.length > 0) {
-            set({ unlockedIds: [...currentUnlockedIds, ...newAchievements.map((a: any) => a.id)] });
-        }
-        
-        return { newAchievements };
-      },
-
-      resetProgress: () => {
+resetProgress: () => {
         set({ streak: 0, totalEntries: 0, lastEntryDate: null });
       },
 

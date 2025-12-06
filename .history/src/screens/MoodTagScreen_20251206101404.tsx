@@ -147,13 +147,16 @@ const [customMood, setCustomMood] = useState(() => {
       try { await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); } catch {}
     }
     
-// FIXED: Only update the mood. Do NOT send text/prompt to avoid overwriting existing data.
-    if (upsert) {
+// FIXED: Now uses the extracted upsert function
+if (upsert) {
       upsert({ 
         date,
-        // We do not send 'text' or 'prompt' here. The store will merge these fields 
-        // into the existing entry created by WriteScreen.
+        text, 
+        // Fix: prompt is passed as a string string from WriteScreen
+        prompt: { text: typeof prompt === 'string' ? prompt : prompt?.text }, 
+        // CHANGED: 'mood' -> 'moodTag' to match what Home/History screens expect
         moodTag: { type: selectedMood ? 'chip' : 'custom', value: mood },
+        createdAt: new Date().toISOString(),
         isComplete: true
       });
     } else {

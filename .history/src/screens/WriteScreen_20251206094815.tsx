@@ -12,6 +12,7 @@ import {
   Platform,
   Keyboard,
   Alert,
+  TextInputProps,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
@@ -160,7 +161,7 @@ export default function WriteScreen({ navigation, route }: Props) {
         setSmartPrompt({ text: newSmartPrompt, explanation, isSmart: true });
       }
     }
-  }, [entries.length]); 
+  }, [entries.length]); // Optimized dependency
 
   const currentPrompt = smartPrompt || prompt;
 
@@ -198,11 +199,9 @@ export default function WriteScreen({ navigation, route }: Props) {
         setCoachMessage(tip);
         setShowCoach(true);
         Animated.timing(coachFade, { toValue: 1, duration: 500, useNativeDriver: true }).start();
-        
-        // Show for 12 seconds
         setTimeout(() => {
           Animated.timing(coachFade, { toValue: 0, duration: 500, useNativeDriver: true }).start(() => setShowCoach(false));
-        }, 12000);
+        }, 5000);
       }
     }, 1500);
     return () => clearTimeout(timeout);
@@ -236,6 +235,7 @@ export default function WriteScreen({ navigation, route }: Props) {
   const getDraftTimer = useEntriesStore((s) => s.getDraftTimer);
   const setDraftTimer = useEntriesStore((s) => s.setDraftTimer);
   const upsert = useEntriesStore((s) => s.upsert);
+  const getDraft = useEntriesStore((s) => s.getDraft);
   const getPomodoroState = useEntriesStore((s) => s.getPomodoroState);
 
   const { writeDuration, breakDuration, totalCycles, showTimer, setShowTimer } = useWritingSettings();
@@ -264,6 +264,7 @@ export default function WriteScreen({ navigation, route }: Props) {
         if (storedPomodoroState) {
           setPhase(storedPomodoroState.mode || 'writing');
           setCurrentCycle(storedPomodoroState.cyclesCompleted || 1);
+          // Check if we can skip break (custom logic can go here)
           setSkipBreakAvailable(storedPomodoroState.mode === 'break');
         }
       } else {
@@ -334,6 +335,7 @@ export default function WriteScreen({ navigation, route }: Props) {
         setRemaining(t);
 
         if (preserveTimerProgress) {
+            // Save full state
            setDraftTimer(date, t, { 
                mode: phase, 
                cyclesCompleted: currentCycle, 
@@ -400,16 +402,15 @@ export default function WriteScreen({ navigation, route }: Props) {
     setTimeout(() => setRunning(true), 100);
   };
 
-  // --- SAVE & EXIT HANDLERS ---
-const saveAndExit = () => {
+  const saveAndExit = () => {
     if (!text.trim() && !audioUri) return;
     
-    // FIX: Save 'currentPrompt' (which contains the Smart Prompt)
+    // Note: We use 'any' here temporarily until we strictly type the upsert function for audioUri
     upsert({ 
         date, 
         text: text.trim(), 
-        prompt: { text: currentPrompt?.text || '' }, 
-        createdAt: Date.now() as any, 
+        prompt: { text: prompt?.text || '' }, 
+        createdAt: Date.now() as any, // Using timestamp number
         isComplete: false, 
         audioUri 
     });
@@ -427,15 +428,15 @@ const saveAndExit = () => {
     const isGratitudeEntry = completedGratitudeItems >= 2;
     const xpBonus = isGratitudeEntry ? 10 : 0;
 
-    if (isGratitudeEntry) useProgress.getState().incrementTotalEntries(); 
+    if (isGratitudeEntry) useProgress.getState().incrementTotalEntries(); // Assuming this logic exists
 
-    // Save locally
-upsert({
+    upsert({
       date, 
       text: text.trim(), 
-      prompt: { text: currentPrompt?.text || '' }, 
+      prompt: { text: prompt?.text || '' }, 
       createdAt: Date.now() as any,
-      isComplete: false,
+      isComplete: false, 
+      // Custom fields handled by flexible type [key: string]: any
       isGratitude: isGratitudeEntry, 
       gratitudeItems: gratitudeEntries.filter(e => e?.trim()), 
       xpBonus, 
@@ -444,25 +445,28 @@ upsert({
 
     if (xpBonus > 0) showToast('+10 XP Gratitude Bonus!');
     
-    // Pass selected mood and prompt text to next screen
+    // We need to cast params as 'any' because MoodTag expects specific things
+    // that might exceed the strict definition in RootStack for now
 setTimeout(() => {
       navigation.navigate('MoodTag', { 
           date, 
           text, 
-          prompt: currentPrompt?.text || '', // Pass the string directly
+          prompt: prompt?.text, 
           savedFrom: 'Write',
           initialMood: selectedSuggestedMood || undefined,
+          // Pass extra data via params if needed, or rely on store
       });
     }, 50);
   };
 
-  const handleTextChange = (newText: string) => {    
+const handleTextChange = (newText: string) => {    
     setText(newText);
     setWordCount(newText.trim().split(/\s+/).filter(w => w.length > 0).length);
     
-    // Trigger suggestion logic after 2 chars
+// Trigger suggestion logic immediately for testing
     if (newText.length > 2) {
-      setSuggestedMoods(getMoodSuggestions(newText));
+      const suggestions = getMoodSuggestions(newText);
+      setSuggestedMoods(suggestions);
     } else {
       setSuggestedMoods([]);
     }
@@ -571,16 +575,15 @@ setTimeout(() => {
                       <Play size={20} fill={isPlaying ? "white" : "transparent"} color="white" />
                       <Text style={{ color: 'white', fontWeight: '700' }}>{isPlaying ? "Stop" : "Play Recording"}</Text>
                     </PremiumPressable>
-<PremiumPressable onPress={deleteRecording} style={{ padding: 12, borderRadius: 12, borderWidth: 1, borderColor: palette.border, backgroundColor: palette.card }}>
+                    <PremiumPressable onPress={deleteRecording} style={{ padding: 12, borderRadius: 12, borderWidth: 1, borderColor: palette.border, backgroundColor: palette.card }}>
                       <Trash2 size={20} color="#EF4444" />
                     </PremiumPressable>
-                  </View>
+</View>
                 )}
               </View>
-            </Animated.View>
 
-            {/* MOOD SUGGESTIONS */}
-            <View style={styles.bottomRowContainer}>
+              {/* MOOD SUGGESTIONS & WORD COUNT */}
+              <View style={styles.bottomRowContainer}>
                 {suggestedMoods.length > 0 && (
                   <View style={styles.suggestionsContainer}>
                     <Text style={[styles.suggestionsLabel, { color: palette.subtleText }]}>Suggested moods:</Text>
@@ -606,16 +609,46 @@ setTimeout(() => {
                     </View>
                   </View>
                 )}
-<View style={styles.wordCountContainer}>
-                  <Text style={[styles.wordCount, { color: palette.subtleText }]}>{wordCount} word{wordCount !== 1 ? 's' : ''}</Text>
+                
+                <View style={styles.wordCountContainer}>
+                  <Text style={[styles.wordCount, { color: palette.subtleText }]}>
+                    {wordCount} word{wordCount !== 1 ? 's' : ''}
+                  </Text>
                 </View>
               </View>
+            </Animated.View>
+          {suggestedMoods.length > 0 && (
+            <View style={styles.suggestionsContainer}>
+              <Text style={[styles.suggestionsLabel, { color: palette.subtleText }]}>Suggested moods:</Text>
+              <View style={styles.suggestionsRow}>
+                {suggestedMoods.map((suggestion) => (
+                  <Pressable
+                    key={suggestion.mood}
+                    onPress={() => setSelectedSuggestedMood(selectedSuggestedMood === suggestion.mood ? null : suggestion.mood)}
+                    style={[
+                      styles.suggestionChip, 
+                      { 
+                        backgroundColor: selectedSuggestedMood === suggestion.mood ? palette.accent + '40' : palette.card, 
+                        borderColor: selectedSuggestedMood === suggestion.mood ? palette.accent : palette.border, 
+                        borderWidth: selectedSuggestedMood === suggestion.mood ? 2 : 1 
+                      }
+                    ]}
+                  >
+                    <Text style={[styles.suggestionText, { color: palette.accent, fontWeight: '700' }]}>
+                      {suggestion.mood}
+                    </Text>
+                  </Pressable>
+                ))}
+                </View>
+            </View>
+          )}
 
-          {/* FOCUS MODE */}
+
+{/* FOCUS MODE */}
           <PremiumPressable
             onPress={() => navigation.navigate('FocusWrite', { date, prompt: currentPrompt, text })}
             haptic="light"
-            style={[styles.focusButton, { backgroundColor: palette.accent + '10', borderColor: palette.accent + '30', marginTop: 12 }]}
+            style={[styles.focusButton, { backgroundColor: palette.accent + '10', borderColor: palette.accent + '30' }]}
           >
             <Text style={[styles.focusButtonText, { color: palette.accent }]}>Enter Focus Mode</Text>
           </PremiumPressable>

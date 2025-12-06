@@ -571,16 +571,15 @@ setTimeout(() => {
                       <Play size={20} fill={isPlaying ? "white" : "transparent"} color="white" />
                       <Text style={{ color: 'white', fontWeight: '700' }}>{isPlaying ? "Stop" : "Play Recording"}</Text>
                     </PremiumPressable>
-<PremiumPressable onPress={deleteRecording} style={{ padding: 12, borderRadius: 12, borderWidth: 1, borderColor: palette.border, backgroundColor: palette.card }}>
+                    <PremiumPressable onPress={deleteRecording} style={{ padding: 12, borderRadius: 12, borderWidth: 1, borderColor: palette.border, backgroundColor: palette.card }}>
                       <Trash2 size={20} color="#EF4444" />
                     </PremiumPressable>
                   </View>
                 )}
               </View>
-            </Animated.View>
 
-            {/* MOOD SUGGESTIONS */}
-            <View style={styles.bottomRowContainer}>
+              {/* MOOD SUGGESTIONS INSIDE */}
+              <View style={styles.bottomRowContainer}>
                 {suggestedMoods.length > 0 && (
                   <View style={styles.suggestionsContainer}>
                     <Text style={[styles.suggestionsLabel, { color: palette.subtleText }]}>Suggested moods:</Text>
@@ -606,10 +605,11 @@ setTimeout(() => {
                     </View>
                   </View>
                 )}
-<View style={styles.wordCountContainer}>
+                <View style={styles.wordCountContainer}>
                   <Text style={[styles.wordCount, { color: palette.subtleText }]}>{wordCount} word{wordCount !== 1 ? 's' : ''}</Text>
                 </View>
               </View>
+            </Animated.View>
 
           {/* FOCUS MODE */}
           <PremiumPressable

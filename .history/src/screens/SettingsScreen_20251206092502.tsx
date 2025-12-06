@@ -403,28 +403,26 @@ const SettingRow = ({ label, description, value, onValueChange, icon }: any) => 
                   </View>
               </View>
 
-{/* 2. FEEDBACK CARD */}
+              {/* 2. FEEDBACK CARD */}
               <View style={[styles.card, { backgroundColor: palette.card, borderColor: palette.border }]}>
                 <Text style={[styles.title, { color: palette.text }]}>Feedback</Text>
                 <SettingRow 
                     label="Haptic Feedback" 
                     value={hapticsEnabled} 
                     onValueChange={setHapticsEnabled} 
+                    icon={<Zap size={18} color={palette.sub} />}
                 />
                 <SettingRow 
                     label="Completion Sound" 
                     value={soundEnabled} 
                     onValueChange={setSoundEnabled} 
+                    icon={<Volume2 size={18} color={palette.sub} />}
                 />
-              </View>
-
-              {/* 3. SECURITY CARD */}
-              <View style={[styles.card, { backgroundColor: palette.card, borderColor: palette.border }]}>
-                <Text style={[styles.title, { color: palette.text }]}>Security</Text>
                 <SettingRow 
                     label="Biometric Lock" 
                     value={isBiometricsEnabled} 
                     onValueChange={(val: boolean) => { setIsBiometricsEnabled(val); if (val && hapticsEnabled) Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success); }} 
+                    icon={<Lock size={18} color={palette.sub} />}
                 />
               </View>
 
@@ -441,48 +439,21 @@ const SettingRow = ({ label, description, value, onValueChange, icon }: any) => 
                   ))}
                 </View>
                 
-<View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 16 }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 16 }}>
                   <TextInput keyboardType="numeric" placeholder="Custom (5-600s)" placeholderTextColor={palette.sub} value={customWriteText} onChangeText={setCustomWriteText} style={[styles.input, { color: palette.text, borderColor: palette.border, backgroundColor: palette.bg }]} />
                   <PremiumPressable onPress={() => { if (!writeInvalid) { setWriteDuration(writeParsed); showToast('Duration updated'); }}} disabled={writeInvalid} style={[styles.applyBtn, { backgroundColor: writeInvalid ? '#CBD5E1' : palette.accent }]}>
                     <Text style={{ color: 'white', fontWeight: '600', fontSize: 12 }}>Set</Text>
                   </PremiumPressable>
                 </View>
 
-                <Text style={[styles.label, { color: palette.sub, marginBottom: 8 }]}>Break Duration</Text>
-                <View style={{ flexDirection: 'row', gap: 8, marginBottom: 12 }}>
-                  {[30, 60, 120].map((s) => (
-                    <PremiumPressable key={s} onPress={() => { setBreakDuration(s); setCustomBreakText(String(s)); }} haptic="light" style={[styles.chip, { borderColor: palette.border, backgroundColor: breakDuration === s ? palette.accentSoft : 'transparent' }]}>
-                        <Text style={{ color: breakDuration === s ? palette.accent : palette.sub, fontSize: 12 }}>{s < 60 ? `${s}s` : `${s/60}m`}</Text>
-                    </PremiumPressable>
-                  ))}
-                </View>
-                
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 16 }}>
-                  <TextInput keyboardType="numeric" placeholder="Custom (5-600s)" placeholderTextColor={palette.sub} value={customBreakText} onChangeText={setCustomBreakText} style={[styles.input, { color: palette.text, borderColor: palette.border, backgroundColor: palette.bg }]} />
-                  <PremiumPressable onPress={() => { if (!breakInvalid) { setBreakDuration(breakParsed); showToast('Break updated'); }}} disabled={breakInvalid} style={[styles.applyBtn, { backgroundColor: breakInvalid ? '#CBD5E1' : palette.accent }]}>
-                    <Text style={{ color: 'white', fontWeight: '600', fontSize: 12 }}>Set</Text>
-                  </PremiumPressable>
-                </View>
-
-                <Text style={{ fontSize: 12, color: palette.sub, marginBottom: 12, fontStyle: 'italic' }}>
-                  * Custom duration limits: 5s minimum, 600s maximum.
-                </Text>
-
                 <Text style={[styles.label, { color: palette.sub, marginBottom: 8 }]}>Total Cycles</Text>
-<View style={{ flexDirection: 'row', gap: 8, marginBottom: 16 }}>
+                <View style={{ flexDirection: 'row', gap: 8, marginBottom: 8 }}>
                   {[2, 4, 6].map((cycles) => (
                     <PremiumPressable key={cycles} onPress={() => setTotalCycles(cycles)} haptic="light" style={[styles.chip, { borderColor: palette.border, backgroundColor: totalCycles === cycles ? palette.accentSoft : 'transparent' }]}>
                       <Text style={{ color: totalCycles === cycles ? palette.accent : palette.sub, fontSize: 12 }}>{cycles}</Text>
                     </PremiumPressable>
                   ))}
                 </View>
-
-                <SettingRow 
-                    label="Gratitude Mode" 
-                    description="Always show gratitude prompts"
-                    value={gratitudeModeEnabled} 
-                    onValueChange={setGratitudeModeEnabled} 
-                />
               </View>
 
               {/* 4. NOTIFICATIONS */}

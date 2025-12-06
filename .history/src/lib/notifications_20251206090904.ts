@@ -11,10 +11,9 @@ Notifications.setNotificationHandler({
 });
 
 export async function registerForPushNotificationsAsync(): Promise<string | undefined> {
-  try {
-    let token;
+  let token;
 
-    if (Platform.OS === 'android') {
+  if (Platform.OS === 'android') {
     await Notifications.setNotificationChannelAsync('default', {
       name: 'default',
       importance: Notifications.AndroidImportance.MAX,
@@ -36,13 +35,9 @@ export async function registerForPushNotificationsAsync(): Promise<string | unde
   }
 
   // In a real app, you'd get the expo push token here
-// token = (await Notifications.getExpoPushTokenAsync()).data;
-    
-    return token;
-  } catch (error) {
-    console.warn("Notification permissions failed (likely Expo Go limitation):", error);
-    return undefined;
-  }
+  // token = (await Notifications.getExpoPushTokenAsync()).data;
+  
+  return token;
 }
 
 export async function cancelDailyReminders() {
@@ -50,11 +45,10 @@ export async function cancelDailyReminders() {
 }
 
 export async function scheduleDailyReminder(hour: number, minute: number) {
-  try {
-    // Clear old reminders first so we don't stack them
-    await cancelDailyReminders();
+  // Clear old reminders first so we don't stack them
+  await cancelDailyReminders();
 
-    const identifier = await Notifications.scheduleNotificationAsync({
+  const identifier = await Notifications.scheduleNotificationAsync({
     content: {
       title: "Mindful Minute",
       body: "It's time for your daily reflection.",
@@ -63,12 +57,8 @@ export async function scheduleDailyReminder(hour: number, minute: number) {
       hour,
       minute,
       repeats: true,
-} as any, // Type assertion needed for repeating trigger in some Expo versions
-    });
-    
-    return identifier;
-  } catch (e) {
-    console.warn("Schedule failed:", e);
-    return undefined;
-  }
+    } as any, // Type assertion needed for repeating trigger in some Expo versions
+  });
+  
+  return identifier;
 }

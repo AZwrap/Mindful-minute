@@ -469,20 +469,13 @@ const SettingRow = ({ label, description, value, onValueChange, icon }: any) => 
                 </Text>
 
                 <Text style={[styles.label, { color: palette.sub, marginBottom: 8 }]}>Total Cycles</Text>
-<View style={{ flexDirection: 'row', gap: 8, marginBottom: 16 }}>
+                <View style={{ flexDirection: 'row', gap: 8, marginBottom: 8 }}>
                   {[2, 4, 6].map((cycles) => (
                     <PremiumPressable key={cycles} onPress={() => setTotalCycles(cycles)} haptic="light" style={[styles.chip, { borderColor: palette.border, backgroundColor: totalCycles === cycles ? palette.accentSoft : 'transparent' }]}>
                       <Text style={{ color: totalCycles === cycles ? palette.accent : palette.sub, fontSize: 12 }}>{cycles}</Text>
                     </PremiumPressable>
                   ))}
                 </View>
-
-                <SettingRow 
-                    label="Gratitude Mode" 
-                    description="Always show gratitude prompts"
-                    value={gratitudeModeEnabled} 
-                    onValueChange={setGratitudeModeEnabled} 
-                />
               </View>
 
               {/* 4. NOTIFICATIONS */}

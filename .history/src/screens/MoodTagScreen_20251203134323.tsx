@@ -20,9 +20,9 @@ const moodOptions = ['calm','grateful','anxious','focused','happy','reflective',
 export default function MoodTagScreen({ navigation, route }) {
   const systemScheme = useColorScheme();
   const { getCurrentTheme } = useTheme();
-const currentTheme = getCurrentTheme(systemScheme);
+  const currentTheme = getCurrentTheme(systemScheme);
   const isDark = currentTheme === 'dark';
-  const { date, prompt, text, suggestedMood, initialMood } = route.params || {};
+  const { date, prompt, text, suggestedMood } = route.params || {};
 
   // DEBUG LOGGING
   useEffect(() => {
@@ -37,18 +37,16 @@ const currentTheme = getCurrentTheme(systemScheme);
 
 // SIMPLE STATE - INTELLIGENT INITIALIZATION
   const [selectedMood, setSelectedMood] = useState(() => {
-    const target = initialMood || suggestedMood;
-    if (target && moodOptions.includes(target.toLowerCase())) {
-      return target.toLowerCase();
+    if (suggestedMood && moodOptions.includes(suggestedMood.toLowerCase())) {
+      return suggestedMood.toLowerCase();
     }
     return '';
   });
 
 const [customMood, setCustomMood] = useState(() => {
-    const target = initialMood || suggestedMood;
     // If we have a suggestion but it's NOT a standard bubble, fill the text box (Capitalized)
-    if (target && !moodOptions.includes(target.toLowerCase())) {
-      return target.charAt(0).toUpperCase() + target.slice(1);
+    if (suggestedMood && !moodOptions.includes(suggestedMood.toLowerCase())) {
+      return suggestedMood.charAt(0).toUpperCase() + suggestedMood.slice(1);
     }
     return '';
   });
@@ -147,13 +145,15 @@ const [customMood, setCustomMood] = useState(() => {
       try { await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); } catch {}
     }
     
-// FIXED: Only update the mood. Do NOT send text/prompt to avoid overwriting existing data.
+// FIXED: Now uses the extracted upsert function
     if (upsert) {
       upsert({ 
         date,
-        // We do not send 'text' or 'prompt' here. The store will merge these fields 
-        // into the existing entry created by WriteScreen.
+        text, 
+        prompt: { text: prompt?.text }, 
+        // CHANGED: 'mood' -> 'moodTag' to match what Home/History screens expect
         moodTag: { type: selectedMood ? 'chip' : 'custom', value: mood },
+        createdAt: new Date().toISOString(),
         isComplete: true
       });
     } else {
