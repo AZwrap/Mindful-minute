@@ -130,18 +130,16 @@ const SwipeableEntry = memo(({
         friction={2}
         overshootFriction={8}
       >
-<Pressable
+        <Pressable
           onPress={onPress}
           onLongPress={onLongPress}
-          delayLongPress={500} // Increased delay for export menu
+          delayLongPress={200}
           hitSlop={8}
           style={({ pressed }) => [
             styles.entryItem,
             { 
-              // Fix: Use solid color shift instead of opacity to prevent delete button bleed-through
-              backgroundColor: isDark 
-                ? (pressed ? '#334155' : '#1E293B') 
-                : (pressed ? '#F1F5F9' : '#FFFFFF'),
+              opacity: pressed ? 0.8 : 1,
+              backgroundColor: isDark ? '#1E293B' : '#FFFFFF',
               zIndex: 10,
               elevation: 5,
             },
@@ -679,6 +677,6 @@ statsWidget: {
     paddingHorizontal: 12,
     paddingVertical: 10,
     fontSize: 14,
-    marginBottom: 16,
+    marginBottom: 0,
   },
 });

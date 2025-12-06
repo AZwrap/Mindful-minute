@@ -696,17 +696,10 @@ const SettingRow = ({ label, description, value, onValueChange, icon }: any) => 
                    borderColor: palette.accent 
                 }
             ]}>
+              
                <Text style={[styles.toastText, { color: palette.text }]}>{toastMsg}</Text>
-            </Animated.View>
 
-          </Animated.View>
-        </SafeAreaView>
-      </LinearGradient>
-    </View>
-  );
-}
-
-// Helper: Convert HSL to Hex
+               // Helper: Convert HSL to Hex
 function hslToHex(h: number, s: number, l: number) {
   l /= 100;
   const a = s * Math.min(l, 1 - l) / 100;
@@ -717,6 +710,16 @@ function hslToHex(h: number, s: number, l: number) {
   };
   return `#${f(0)}${f(8)}${f(4)}`.toUpperCase();
 }
+            </Animated.View>
+
+          </Animated.View>
+        </SafeAreaView>
+      </LinearGradient>
+    </View>
+  );
+}
+
+
 
 const styles = StyleSheet.create({
   container: { flex: 1 },

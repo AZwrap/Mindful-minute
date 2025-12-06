@@ -1,9 +1,6 @@
 import { initializeApp } from "firebase/app";
-import { getFirestore } from "firebase/firestore";
-import { initializeAuth, getAuth, getReactNativePersistence } from "firebase/auth";
+import { initializeAuth, getReactNativePersistence } from "firebase/auth";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager } from "firebase/firestore";
-import { getApp, getApps } from "firebase/app";
 
 // Replace with your actual config keys
 const firebaseConfig = {
@@ -14,6 +11,11 @@ const firebaseConfig = {
   messagingSenderId: "YOUR_SENDER_ID",
   appId: "YOUR_APP_ID",
 };
+
+import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager } from "firebase/firestore";
+
+import { getApp, getApps } from "firebase/app";
+import { getFirestore } from "firebase/firestore";
 
 // Singleton App Check: Prevents re-initialization on hot reload
 export const app = getApps().length > 0 ? getApp() : initializeApp(firebaseConfig);
@@ -37,17 +39,6 @@ try {
 }
 export const db = dbInstance;
 
-// Safe Auth Initialization
-let authInstance;
-try {
-  authInstance = initializeAuth(app, {
-    persistence: getReactNativePersistence(AsyncStorage),
-  });
-} catch (e: any) {
-  if (e.code === 'auth/already-initialized') {
-    authInstance = getAuth(app);
-  } else {
-    throw e;
-  }
-}
-export const auth = authInstance;
+export const auth = initializeAuth(app, {
+  persistence: getReactNativePersistence(AsyncStorage),
+});

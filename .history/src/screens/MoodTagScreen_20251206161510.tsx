@@ -16,8 +16,7 @@ import { shallow } from 'zustand/shallow'; // Ensure shallow is imported if avai
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 // --- ADD THIS ABOVE THE COMPONENT ---
-// FIXED: Use Title Case to match database constants
-const moodOptions = ['Calm','Grateful','Anxious','Focused','Happy','Reflective','Tired','Energetic','Optimistic','Overwhelmed'];
+const moodOptions = ['calm','grateful','anxious','focused','happy','reflective','tired','energized','optimistic','overwhelmed'];
 
 export default function MoodTagScreen({ navigation, route }) {
   const systemScheme = useColorScheme();
@@ -39,21 +38,18 @@ const currentTheme = getCurrentTheme(systemScheme);
 
 // SIMPLE STATE - INTELLIGENT INITIALIZATION
   const [selectedMood, setSelectedMood] = useState(() => {
-    // Check match using Title Case
-    const normalizedSuggestion = suggestedMood ? suggestedMood.charAt(0).toUpperCase() + suggestedMood.slice(1).toLowerCase() : '';
-    
-    if (normalizedSuggestion && moodOptions.includes(normalizedSuggestion)) {
-      return normalizedSuggestion;
+    const target = initialMood || suggestedMood;
+    if (target && moodOptions.includes(target.toLowerCase())) {
+      return target.toLowerCase();
     }
     return '';
   });
 
-  const [customMood, setCustomMood] = useState(() => {
-    const normalizedSuggestion = suggestedMood ? suggestedMood.charAt(0).toUpperCase() + suggestedMood.slice(1).toLowerCase() : '';
-    
-    // If suggestion exists but isn't in our bubbles, put it in custom box
-    if (normalizedSuggestion && !moodOptions.includes(normalizedSuggestion)) {
-      return normalizedSuggestion;
+const [customMood, setCustomMood] = useState(() => {
+    const target = initialMood || suggestedMood;
+    // If we have a suggestion but it's NOT a standard bubble, fill the text box (Capitalized)
+    if (target && !moodOptions.includes(target.toLowerCase())) {
+      return target.charAt(0).toUpperCase() + target.slice(1);
     }
     return '';
   });
@@ -288,11 +284,10 @@ if (queue.length === 0) {
               </Text>
             )}
 
-           <View style={{ flexDirection:'row', flexWrap:'wrap', gap:8, marginTop:12 }}>
+            <View style={{ flexDirection:'row', flexWrap:'wrap', gap:8, marginTop:12 }}>
               {moodOptions.map((m) => {
                 const active = selectedMood === m;
-                // Compare loosely or strictly depending on source format
-                const isSuggested = m.toLowerCase() === (suggestedMood || '').toLowerCase();
+                const isSuggested = m === suggestedMood;
                 
                 return (
                   <Pressable
@@ -309,11 +304,11 @@ if (queue.length === 0) {
                       },
                     ]}
                   >
-                   <Text style={{ 
+                    <Text style={{ 
                       color: active ? '#FFFFFF' : (isSuggested ? '#6366F1' : palette.sub),
                       fontWeight: '600',
                     }}>
-                      {m} 
+                      {m.charAt(0).toUpperCase() + m.slice(1)}
                     </Text>
                   </Pressable>
                 );

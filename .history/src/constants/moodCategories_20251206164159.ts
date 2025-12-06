@@ -12,10 +12,10 @@ export interface MoodCategory {
 }
 
 export const MOOD_CATEGORIES: Record<string, string[]> = {
-  // Added Optimistic, Determined
-  "High Energy Pleasant": ["Excited", "Happy", "Motivated", "Grateful", "Confident", "Energetic", "Optimistic", "Determined"],
-  // Added Focused, Reflective, Hopeful, Nostalgic
-  "Low Energy Pleasant": ["Calm", "Relaxed", "Content", "Peaceful", "Thoughtful", "Balanced", "Focused", "Reflective", "Hopeful", "Nostalgic"],
+  // Added Optimistic
+  "High Energy Pleasant": ["Excited", "Happy", "Motivated", "Grateful", "Confident", "Energetic", "Optimistic"],
+  // Added Focused, Reflective
+  "Low Energy Pleasant": ["Calm", "Relaxed", "Content", "Peaceful", "Thoughtful", "Balanced", "Focused", "Reflective"],
   "High Energy Unpleasant": ["Anxious", "Stressed", "Frustrated", "Angry", "Overwhelmed", "Restless"],
   "Low Energy Unpleasant": ["Sad", "Tired", "Lonely", "Bored", "Disappointed", "Exhausted"]
 };
@@ -24,13 +24,12 @@ export const MOOD_COLORS: Record<string, string> = {
   // High Energy Pleasant (Yellows/Oranges)
   Excited: '#F59E0B', Happy: '#FBBF24', Motivated: '#D97706',
   Grateful: '#FCD34D', Confident: '#B45309', Energetic: '#F59E0B',
-  Optimistic: '#F59E0B', Determined: '#EA580C', // New
+  Optimistic: '#F59E0B', // New
 
-  // Low Energy Pleasant (Greens/Teals)
+  // Low Energy Pleasant (Greens)
   Calm: '#10B981', Relaxed: '#34D399', Content: '#059669',
   Peaceful: '#6EE7B7', Thoughtful: '#047857', Balanced: '#10B981',
-  Focused: '#059669', Reflective: '#047857', 
-  Hopeful: '#2DD4BF', Nostalgic: '#0D9488', // New
+  Focused: '#059669', Reflective: '#047857', // New
 
   // High Energy Unpleasant (Reds)
   Anxious: '#EF4444', Stressed: '#DC2626', Frustrated: '#B91C1C',

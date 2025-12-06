@@ -90,11 +90,9 @@ export default function SettingsScreen({ navigation }: Props) {
   const entriesMap = useEntriesStore((s) => s.entries);
   
 // Local UI State
-const [themeDropdownOpen, setThemeDropdownOpen] = useState(false); 
+  const [themeDropdownOpen, setThemeDropdownOpen] = useState(false); 
   const [accentDropdownOpen, setAccentDropdownOpen] = useState(false);
-  // Track hue (0-360) and lightness (0-100) for the sliders
-  const [hue, setHue] = useState(0); 
-  const [lightness, setLightness] = useState(50);
+  const [customHex, setCustomHex] = useState(accentColor || '#6366F1'); // NEW
   
   const [customWriteText, setCustomWriteText] = useState(String(writeDuration ?? 60));
   const [customBreakText, setCustomBreakText] = useState(String(breakDuration ?? 30));
@@ -392,92 +390,37 @@ const SettingRow = ({ label, description, value, onValueChange, icon }: any) => 
                       </View>
                     </Pressable>
 
-                    {accentDropdownOpen && (
-                      <View style={[styles.colorGrid, { backgroundColor: isDark ? "#1E293B" : "#F9FAFB", borderColor: palette.border, padding: 12, gap: 16, flexDirection: 'column' }]}>
-                        
-                        {/* 1. HUE SLIDER (Rainbow) */}
-                        <View>
-                          <Text style={{ color: palette.sub, fontSize: 11, marginBottom: 6, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.5 }}>
-                            1. Pick Color
-                          </Text>
-                          <View style={{ height: 48, borderRadius: 12, overflow: 'hidden', borderWidth: 1, borderColor: palette.border }}>
-                            <Pressable
+{accentDropdownOpen && (
+                      <View style={[styles.colorGrid, { backgroundColor: isDark ? "#1E293B" : "#F9FAFB", borderColor: palette.border }]}>
+                        <Text style={{ color: palette.sub, fontSize: 12, marginBottom: 8, fontWeight: '600' }}>Select Color</Text>
+                        <View style={{ height: 40, borderRadius: 8, overflow: 'hidden', borderWidth: 1, borderColor: palette.border }}>
+                          <Pressable
+                            style={{ flex: 1 }}
+                            onTouchStart={(e) => {
+                              const width = 300; // Approx interactive width
+                              const x = e.nativeEvent.locationX;
+                              const hue = Math.max(0, Math.min(360, (x / width) * 360));
+                              const color = hslToHex(hue, 100, 50);
+                              setAccentColor(color);
+                              if (hapticsEnabled) Haptics.selectionAsync();
+                            }}
+                          >
+                            <LinearGradient
+                              colors={[
+                                '#FF0000', '#FF7F00', '#FFFF00', '#00FF00', 
+                                '#00FFFF', '#0000FF', '#8B00FF', '#FF0000'
+                              ]}
+                              start={{ x: 0, y: 0 }}
+                              end={{ x: 1, y: 0 }}
                               style={{ flex: 1 }}
-                              onTouchStart={(e) => {
-                                const width = 300; 
-                                const x = e.nativeEvent.locationX;
-                                const newHue = Math.max(0, Math.min(360, (x / width) * 360));
-                                setHue(newHue);
-                                const color = hslToHex(newHue, 100, lightness);
-                                setAccentColor(color);
-                                if (hapticsEnabled) Haptics.selectionAsync();
-                              }}
-                              onTouchMove={(e) => {
-                                const width = 300; 
-                                const x = e.nativeEvent.locationX;
-                                const newHue = Math.max(0, Math.min(360, (x / width) * 360));
-                                setHue(newHue);
-                                const color = hslToHex(newHue, 100, lightness);
-                                setAccentColor(color);
-                              }}
-                            >
-                              <LinearGradient
-                                colors={['#FF0000', '#FFFF00', '#00FF00', '#00FFFF', '#0000FF', '#FF00FF', '#FF0000']}
-                                start={{ x: 0, y: 0 }}
-                                end={{ x: 1, y: 0 }}
-                                style={{ flex: 1 }}
-                              />
-                            </Pressable>
-                          </View>
+                            />
+                          </Pressable>
                         </View>
-
-                        {/* 2. LIGHTNESS SLIDER (Darker/Brighter) */}
-                        <View>
-                          <Text style={{ color: palette.sub, fontSize: 11, marginBottom: 6, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.5 }}>
-                            2. Adjust Brightness
-                          </Text>
-                          <View style={{ height: 48, borderRadius: 12, overflow: 'hidden', borderWidth: 1, borderColor: palette.border }}>
-                            <Pressable
-                              style={{ flex: 1 }}
-                              onTouchStart={(e) => {
-                                const width = 300;
-                                const x = e.nativeEvent.locationX;
-                                const newLight = Math.max(0, Math.min(100, (x / width) * 100));
-                                setLightness(newLight);
-                                const color = hslToHex(hue, 100, newLight);
-                                setAccentColor(color);
-                                if (hapticsEnabled) Haptics.selectionAsync();
-                              }}
-                              onTouchMove={(e) => {
-                                const width = 300;
-                                const x = e.nativeEvent.locationX;
-                                const newLight = Math.max(0, Math.min(100, (x / width) * 100));
-                                setLightness(newLight);
-                                const color = hslToHex(hue, 100, newLight);
-                                setAccentColor(color);
-                              }}
-                            >
-                              <LinearGradient
-                                // Dynamic Gradient: Black -> Current Color -> White
-                                colors={['#000000', hslToHex(hue, 100, 50), '#FFFFFF']}
-                                start={{ x: 0, y: 0 }}
-                                end={{ x: 1, y: 0 }}
-                                style={{ flex: 1 }}
-                              />
-                            </Pressable>
-                          </View>
-                        </View>
-
-                        {/* Preview */}
-                        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, marginTop: 4 }}>
-                             <View style={{ width: 24, height: 24, borderRadius: 12, backgroundColor: accentColor || '#6366F1', borderWidth: 1, borderColor: palette.border }} />
-                             <Text style={{ color: palette.text, fontWeight: '600', fontSize: 14 }}>{accentColor}</Text>
-                        </View>
-
                       </View>
                     )}
-                  </View>
+                </View>
               </View>
+
 
 {/* 2. FEEDBACK CARD */}
               <View style={[styles.card, { backgroundColor: palette.card, borderColor: palette.border }]}>

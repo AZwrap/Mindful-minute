@@ -392,8 +392,8 @@ const SettingRow = ({ label, description, value, onValueChange, icon }: any) => 
                       </View>
                     </Pressable>
 
-                    {accentDropdownOpen && (
-                      <View style={[styles.colorGrid, { backgroundColor: isDark ? "#1E293B" : "#F9FAFB", borderColor: palette.border, padding: 12, gap: 16, flexDirection: 'column' }]}>
+{accentDropdownOpen && (
+                      <View style={[styles.colorGrid, { backgroundColor: isDark ? "#1E293B" : "#F9FAFB", borderColor: palette.border, padding: 16, gap: 16 }]}>
                         
                         {/* 1. HUE SLIDER (Rainbow) */}
                         <View>
@@ -466,12 +466,6 @@ const SettingRow = ({ label, description, value, onValueChange, icon }: any) => 
                               />
                             </Pressable>
                           </View>
-                        </View>
-
-                        {/* Preview */}
-                        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, marginTop: 4 }}>
-                             <View style={{ width: 24, height: 24, borderRadius: 12, backgroundColor: accentColor || '#6366F1', borderWidth: 1, borderColor: palette.border }} />
-                             <Text style={{ color: palette.text, fontWeight: '600', fontSize: 14 }}>{accentColor}</Text>
                         </View>
 
                       </View>

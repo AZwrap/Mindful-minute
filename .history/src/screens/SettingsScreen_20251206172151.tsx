@@ -392,15 +392,15 @@ const SettingRow = ({ label, description, value, onValueChange, icon }: any) => 
                       </View>
                     </Pressable>
 
-                    {accentDropdownOpen && (
-                      <View style={[styles.colorGrid, { backgroundColor: isDark ? "#1E293B" : "#F9FAFB", borderColor: palette.border, padding: 12, gap: 16, flexDirection: 'column' }]}>
+{accentDropdownOpen && (
+                      <View style={[styles.colorGrid, { backgroundColor: isDark ? "#1E293B" : "#F9FAFB", borderColor: palette.border, padding: 12, gap: 16 }]}>
                         
                         {/* 1. HUE SLIDER (Rainbow) */}
                         <View>
-                          <Text style={{ color: palette.sub, fontSize: 11, marginBottom: 6, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                          <Text style={{ color: palette.sub, fontSize: 12, marginBottom: 6, fontWeight: '600', textTransform: 'uppercase' }}>
                             1. Pick Color
                           </Text>
-                          <View style={{ height: 48, borderRadius: 12, overflow: 'hidden', borderWidth: 1, borderColor: palette.border }}>
+                          <View style={{ height: 50, borderRadius: 12, overflow: 'hidden', borderWidth: 1, borderColor: palette.border }}>
                             <Pressable
                               style={{ flex: 1 }}
                               onTouchStart={(e) => {
@@ -433,10 +433,10 @@ const SettingRow = ({ label, description, value, onValueChange, icon }: any) => 
 
                         {/* 2. LIGHTNESS SLIDER (Darker/Brighter) */}
                         <View>
-                          <Text style={{ color: palette.sub, fontSize: 11, marginBottom: 6, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                          <Text style={{ color: palette.sub, fontSize: 12, marginBottom: 6, fontWeight: '600', textTransform: 'uppercase' }}>
                             2. Adjust Brightness
                           </Text>
-                          <View style={{ height: 48, borderRadius: 12, overflow: 'hidden', borderWidth: 1, borderColor: palette.border }}>
+                          <View style={{ height: 50, borderRadius: 12, overflow: 'hidden', borderWidth: 1, borderColor: palette.border }}>
                             <Pressable
                               style={{ flex: 1 }}
                               onTouchStart={(e) => {
@@ -458,7 +458,7 @@ const SettingRow = ({ label, description, value, onValueChange, icon }: any) => 
                               }}
                             >
                               <LinearGradient
-                                // Dynamic Gradient: Black -> Current Color -> White
+                                // Black -> Current Hue -> White
                                 colors={['#000000', hslToHex(hue, 100, 50), '#FFFFFF']}
                                 start={{ x: 0, y: 0 }}
                                 end={{ x: 1, y: 0 }}
@@ -466,12 +466,6 @@ const SettingRow = ({ label, description, value, onValueChange, icon }: any) => 
                               />
                             </Pressable>
                           </View>
-                        </View>
-
-                        {/* Preview */}
-                        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, marginTop: 4 }}>
-                             <View style={{ width: 24, height: 24, borderRadius: 12, backgroundColor: accentColor || '#6366F1', borderWidth: 1, borderColor: palette.border }} />
-                             <Text style={{ color: palette.text, fontWeight: '600', fontSize: 14 }}>{accentColor}</Text>
                         </View>
 
                       </View>

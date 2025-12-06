@@ -1,6 +1,6 @@
 import { initializeApp } from "firebase/app";
 import { getFirestore } from "firebase/firestore";
-import { initializeAuth, getAuth, getReactNativePersistence } from "firebase/auth";
+import { initializeAuth, getReactNativePersistence } from "firebase/auth";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager } from "firebase/firestore";
 import { getApp, getApps } from "firebase/app";
@@ -37,17 +37,6 @@ try {
 }
 export const db = dbInstance;
 
-// Safe Auth Initialization
-let authInstance;
-try {
-  authInstance = initializeAuth(app, {
-    persistence: getReactNativePersistence(AsyncStorage),
-  });
-} catch (e: any) {
-  if (e.code === 'auth/already-initialized') {
-    authInstance = getAuth(app);
-  } else {
-    throw e;
-  }
-}
-export const auth = authInstance;
+export const auth = initializeAuth(app, {
+  persistence: getReactNativePersistence(AsyncStorage),
+});

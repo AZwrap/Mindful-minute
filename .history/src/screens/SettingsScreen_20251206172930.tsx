@@ -392,7 +392,7 @@ const SettingRow = ({ label, description, value, onValueChange, icon }: any) => 
                       </View>
                     </Pressable>
 
-                    {accentDropdownOpen && (
+{accentDropdownOpen && (
                       <View style={[styles.colorGrid, { backgroundColor: isDark ? "#1E293B" : "#F9FAFB", borderColor: palette.border, padding: 12, gap: 16, flexDirection: 'column' }]}>
                         
                         {/* 1. HUE SLIDER (Rainbow) */}
