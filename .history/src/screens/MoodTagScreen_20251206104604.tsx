@@ -131,9 +131,9 @@ const [customMood, setCustomMood] = useState(() => {
 
 const isCustom = !selectedMood && customMood.trim();
     
-    // Retrieve existing entry to check for gratitude flag set by WriteScreen
-    const existingEntry = useEntriesStore.getState().entries[date];
-    const isGratitude = existingEntry?.isGratitude || false;
+    // Check if this was a gratitude entry (saved previously by WriteScreen)
+    const currentEntry = useEntriesStore.getState().entries[date];
+    const isGratitude = currentEntry?.isGratitude || false;
 
     // Apply progress and get result
     const result = applyDailySave({

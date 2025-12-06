@@ -64,13 +64,12 @@ type ProgressStore = ProgressState & ProgressActions;
 // --------------------------------------------------
 export const useProgress = create<ProgressStore>()(
   persist(
-(set, get) => ({
+    (set, get) => ({
       // STATE
       streak: 0,
       totalEntries: 0,
       lastEntryDate: null,
       unlockedIds: [],
-      uniqueMoods: [], // <--- Added this to satisfy the type definition
 
       // ACTIONS
       updateStreak: (date: string) => {

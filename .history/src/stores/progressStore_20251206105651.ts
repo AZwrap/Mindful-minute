@@ -18,11 +18,6 @@ export const ACHIEVEMENTS: Record<string, any> = {
   'entries_50': { id: 'entries_50', name: 'Dedicated Writer', description: 'Write 50 entries', category: 'patterns', tier: 'gold' },
   'entries_100': { id: 'entries_100', name: 'Legacy Builder', description: 'Write 100 entries', category: 'patterns', tier: 'platinum' },
 
-// Emotional Range (Distinct Moods)
-  'range_3': { id: 'range_3', name: 'Emotional Explorer', description: 'Log 3 different moods', category: 'range', tier: 'bronze' },
-  'range_7': { id: 'range_7', name: 'Self-Aware', description: 'Log 7 different moods', category: 'range', tier: 'silver' },
-  'range_10': { id: 'range_10', name: 'Full Spectrum', description: 'Log all 10 base moods', category: 'range', tier: 'gold' },
-
   // Depth (Word Count)
   'depth_1': { id: 'depth_1', name: 'Thoughtful', description: 'Write an entry over 50 words', category: 'depth', tier: 'bronze' },
   'depth_2': { id: 'depth_2', name: 'Deep Diver', description: 'Write an entry over 150 words', category: 'depth', tier: 'gold' },
@@ -46,7 +41,6 @@ interface ProgressState {
   totalEntries: number;
   lastEntryDate: string | null;
   unlockedIds: string[];
-  uniqueMoods: string[];
 }
 
 interface ProgressActions {
@@ -64,13 +58,12 @@ type ProgressStore = ProgressState & ProgressActions;
 // --------------------------------------------------
 export const useProgress = create<ProgressStore>()(
   persist(
-(set, get) => ({
+    (set, get) => ({
       // STATE
       streak: 0,
       totalEntries: 0,
       lastEntryDate: null,
       unlockedIds: [],
-      uniqueMoods: [], // <--- Added this to satisfy the type definition
 
       // ACTIONS
       updateStreak: (date: string) => {
@@ -96,49 +89,33 @@ export const useProgress = create<ProgressStore>()(
         set((state) => ({ totalEntries: state.totalEntries + 1 }));
       },
 
-     getAchievements: () => {
-        const { streak, totalEntries, unlockedIds, uniqueMoods } = get(); // Destructure uniqueMoods
+      getAchievements: () => {
+        const { streak, totalEntries, unlockedIds } = get();
         const unlocked = (unlockedIds || []).map(id => ACHIEVEMENTS[id]).filter(Boolean);
 
-// Calculate mastery for each category
         const mastery = {
           consistency: { progress: streak, total: 30, unlocked: streak >= 30 },
           patterns: { progress: totalEntries, total: 100, unlocked: totalEntries >= 100 },
-          range: { progress: (uniqueMoods || []).length, total: 10, unlocked: (uniqueMoods || []).length >= 10 }, // UPDATED
           gratitude: { progress: 0, total: 50, unlocked: false },
           depth: { progress: 0, total: 10, unlocked: false },
+          range: { progress: 0, total: 10, unlocked: false },
           mindfulness: { progress: 0, total: 10, unlocked: false },
         };
 
         return { unlocked, allAchievements: ACHIEVEMENTS, mastery };
       },
 
-applyDailySave: (data) => {
-        const { date, isGratitude, wordCount = 0, entryHour, mood } = data; // Destructure mood
+      applyDailySave: (data) => {
+        const { date, isGratitude, wordCount = 0, entryHour } = data;
         const state = get();
         
-// 1. Update Stats
         get().updateStreak(date);
         get().incrementTotalEntries();
 
-        // 2. Update Mood History
-        let updatedUniqueMoods = state.uniqueMoods || [];
-        if (mood && !updatedUniqueMoods.includes(mood)) {
-            updatedUniqueMoods = [...updatedUniqueMoods, mood];
-            set({ uniqueMoods: updatedUniqueMoods });
-        }
-
-// 3. Check for new Unlocks
         const newStreak = state.lastEntryDate === date ? state.streak : state.streak + 1;
         const newTotal = state.totalEntries + 1;
         const currentUnlocked = new Set(state.unlockedIds || []);
         const newUnlocks: string[] = [];
-
-        // Emotional Range (New)
-        const uniqueCount = updatedUniqueMoods.length;
-        if (uniqueCount >= 3 && !currentUnlocked.has('range_3')) newUnlocks.push('range_3');
-        if (uniqueCount >= 7 && !currentUnlocked.has('range_7')) newUnlocks.push('range_7');
-        if (uniqueCount >= 10 && !currentUnlocked.has('range_10')) newUnlocks.push('range_10');
 
         // Consistency
         if (newStreak >= 3 && !currentUnlocked.has('streak_3')) newUnlocks.push('streak_3');
@@ -170,16 +147,15 @@ applyDailySave: (data) => {
            if (newTotal >= 50 && !currentUnlocked.has('gratitude_50')) newUnlocks.push('gratitude_50');
         }
 
-        // 4. Persist
         if (newUnlocks.length > 0) {
           set({ unlockedIds: [...(state.unlockedIds || []), ...newUnlocks] });
         }
         
-return { newAchievements: newUnlocks.map(id => ACHIEVEMENTS[id]).filter(Boolean) };
+        return { newAchievements: newUnlocks.map(id => ACHIEVEMENTS[id]).filter(Boolean) };
       },
 
-resetProgress: () => {
-        set({ streak: 0, totalEntries: 0, lastEntryDate: null, unlockedIds: [], uniqueMoods: [] });
+      resetProgress: () => {
+        set({ streak: 0, totalEntries: 0, lastEntryDate: null, unlockedIds: [] });
       },
     }),
     {
