@@ -669,86 +669,105 @@ const styles = StyleSheet.create({
   container: { flex: 1 },
   loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   loadingText: { marginTop: 12, fontSize: 14, fontWeight: '500' },
-  scrollContent: { flexGrow: 1, paddingBottom: 20 },
-  contentCard: { margin: 16, padding: 16, borderRadius: 24 },
   
-  periodSelector: {
+  scrollContent: { 
+    padding: 20, 
+    paddingBottom: 100, 
+    gap: 12 
+  },
+  
+  header: {
+    marginBottom: 10,
+  },
+  pageTitle: {
+    fontSize: 28,
+    fontWeight: '800',
+    letterSpacing: -0.5,
+  },
+
+  // Grid Layout
+  row: {
     flexDirection: 'row',
+    gap: 12,
+  },
+
+  // Bento Card Styles
+  bentoCard: {
+    padding: 16,
+    borderRadius: 24,
     justifyContent: 'space-between',
-    marginBottom: 20,
-    borderRadius: 16,
-    backgroundColor: 'rgba(0,0,0,0.05)',
-    padding: 4,
+    minHeight: 110,
+    // Note: 'gap' for flex layout inside card if needed
   },
-  periodOption: {
-    flex: 1,
+  cardHeader: {
+    flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 8,
-    borderRadius: 12,
+    gap: 8,
+    marginBottom: 12,
   },
-  periodText: {
+  iconCircle: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  cardLabel: {
     fontSize: 13,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  cardValue: {
+    fontSize: 28,
+    fontWeight: '800',
+    letterSpacing: -1,
+  },
+  cardSub: {
+    fontSize: 13,
+    color: 'rgba(150, 160, 180, 0.8)',
+    marginTop: 4,
+    fontWeight: '500',
+  },
+
+  // Mood Section
+  moodRow: {
+    gap: 12,
+  },
+  moodItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  moodValue: {
+    width: 70,
+    fontSize: 14,
     fontWeight: '600',
   },
-
-  insightsSection: {
-    marginBottom: 24,
-    padding: 16,
-    borderRadius: 16,
+  progressBar: {
+    flex: 1,
+    height: 6,
+    backgroundColor: 'rgba(0,0,0,0.05)',
+    borderRadius: 4,
+    overflow: 'hidden',
   },
-  insightsTitle: { fontSize: 16, fontWeight: '700', marginBottom: 16 },
-  
-  insightsGrid: { flexDirection: 'row', justifyContent: 'space-between', gap: 8 },
-  insightItem: { alignItems: 'center', flex: 1 },
-  insightLabel: { fontSize: 11, fontWeight: '600', textTransform: 'uppercase', marginBottom: 4 },
-  insightValue: { fontSize: 16, fontWeight: '700' },
+  moodCount: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#94A3B8',
+    width: 20,
+    textAlign: 'right',
+  },
 
-  analyticsSection: { marginBottom: 24, padding: 16, borderRadius: 16 },
-  analyticsTitle: { fontSize: 16, fontWeight: '700', marginBottom: 16 },
-  analyticsGrid: { gap: 16 },
-  analyticsRow: { flexDirection: 'row', justifyContent: 'space-between' },
-  analyticItem: { alignItems: 'center', flex: 1 },
-  analyticLabel: { fontSize: 12, fontWeight: '600', marginBottom: 4 },
-  analyticValue: { fontSize: 16, fontWeight: '700' },
-
-  timeAnalysis: { marginTop: 12 },
-  timeTitle: { fontSize: 12, fontWeight: '600', marginBottom: 8, textAlign: 'center' },
-  timeBars: { gap: 8 },
-  timeBarItem: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  timeLabel: { fontSize: 12, fontWeight: '600', textTransform: 'capitalize' },
-  timeBarContainer: { flex: 1, height: 6, borderRadius: 3, overflow: 'hidden' },
-  timeBar: { height: '100%', borderRadius: 3 },
-  timeCount: { fontSize: 12, fontWeight: '600', width: 20 },
-
-  trendsSection: { marginBottom: 24, padding: 16, borderRadius: 16 },
-  trendsTitle: { fontSize: 16, fontWeight: '700', marginBottom: 16 },
-  statItem: { marginBottom: 12 },
-  statHeader: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 },
-  moodName: { fontSize: 14, fontWeight: '600' },
-  statCount: { fontSize: 14, fontWeight: '700' },
-  percentageBar: { height: 6, borderRadius: 3, overflow: 'hidden', marginBottom: 4 },
-  percentageFill: { height: '100%', borderRadius: 3 },
-  percentageText: { fontSize: 11, fontWeight: '500' },
-
-  emptyState: { padding: 20, alignItems: 'center' },
-  emptyTitle: { fontSize: 16, fontWeight: '700', marginBottom: 4 },
-  emptySubtitle: { fontSize: 13, textAlign: 'center', opacity: 0.7 },
-
-  dayDistribution: { marginTop: 16 },
-  distributionTitle: { fontSize: 12, fontWeight: '600', marginBottom: 8, textAlign: 'center', textTransform: 'uppercase' },
-  daysGrid: { gap: 6 },
-  dayItem: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  dayName: { fontSize: 11, fontWeight: '600', width: 30 },
-  dayBarContainer: { flex: 1, height: 4, borderRadius: 2, overflow: 'hidden' },
-  dayBar: { height: '100%', borderRadius: 2 },
-  dayCount: { fontSize: 11, fontWeight: '600', width: 16 },
-
-  bottomRecapContainer: { marginTop: 8 },
+  // Button
   recapButton: {
     borderWidth: 1,
-    paddingVertical: 14,
-    borderRadius: 16,
+    paddingVertical: 16,
+    borderRadius: 20,
     alignItems: 'center',
   },
-  recapButtonText: { fontWeight: '700', fontSize: 15 },
+  recapButtonText: { 
+    fontWeight: '700', 
+    fontSize: 15 
+  },
 });

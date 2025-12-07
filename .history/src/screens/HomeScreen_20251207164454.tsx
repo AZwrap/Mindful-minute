@@ -25,9 +25,7 @@ import { useJournalStore } from "../stores/journalStore";
 import { useEntriesStore } from '../stores/entriesStore';
 import { useTheme } from '../stores/themeStore';
 import { useSettings } from '../stores/settingsStore';
-import { useProgress } from '../stores/progressStore'; // Import Progress Store
 import { RootStackParamList } from '../navigation/RootStack';
-import { Flame } from 'lucide-react-native'; // Import Icon
 
 // Components
 import PremiumPressable from '../components/PremiumPressable';
@@ -75,19 +73,10 @@ export default function HomeScreen() {
   });
   const [isGeneratingPrompt, setIsGeneratingPrompt] = useState(false);
 
-// STORE SELECTORS
+  // STORE SELECTORS
   const sharedJournals = useJournalStore((s) => s.journals);
   const drafts = useEntriesStore((s) => s.drafts);
   const map = useEntriesStore((s) => s.entries);
-  const streak = useProgress((s) => s.streak); // Get Streak
-
-  // Time-based greeting
-  const getGreeting = () => {
-    const hour = new Date().getHours();
-    if (hour < 12) return 'Good Morning';
-    if (hour < 18) return 'Good Afternoon';
-    return 'Good Evening';
-  };
 
   const sharedJournalsList = useMemo(() => {
     return Object.values(sharedJournals || {});
@@ -306,29 +295,17 @@ export default function HomeScreen() {
         accessible={true}
         accessibilityRole="summary"
       >
-{/* New Header: Greeting + Streak */}
-        <View style={styles.headerRow}>
-          <View>
-            <Text style={[styles.greetingSub, { color: textSub }]}>{getGreeting()},</Text>
-            <Text style={[styles.greetingTitle, { color: textMain }]}>Ready to reflect?</Text>
-          </View>
-          
-          <View style={[styles.streakBadge, { backgroundColor: isDark ? 'rgba(245, 158, 11, 0.15)' : '#FFF7ED', borderColor: 'rgba(245, 158, 11, 0.2)' }]}>
-            <Flame size={16} color="#F59E0B" fill="#F59E0B" />
-            <Text style={[styles.streakText, { color: '#F59E0B' }]}>{streak || 0}</Text>
-          </View>
-        </View>
-
-        {/* Prompt Card */}
+        {/* Prompt */}
         <View 
-          style={[styles.promptCard, { backgroundColor: isDark ? 'rgba(0,0,0,0.2)' : 'rgba(255,255,255,0.6)' }]}
           accessible={true}
           accessibilityRole="header"
           accessibilityLabel={`Today's journal prompt: ${todayPrompt.text}`}
         >
-          <Text style={[styles.promptLabel, { color: brand }]}>TODAY'S PROMPT</Text>
+          <Text style={[styles.title, { color: textMain }]}>
+            Today's Reflection
+          </Text>
           <Text 
-            style={[styles.prompt, { color: textMain }]}
+            style={[styles.prompt, { color: textSub }]}
             accessibilityRole="text"
             accessibilityLabel={todayPrompt.text}
           >
@@ -539,55 +516,16 @@ const styles = StyleSheet.create({
     borderRadius: 24,
     gap: 20,
   },
-headerRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 24,
-  },
-  greetingSub: {
-    fontSize: 14,
-    fontWeight: '600',
-    opacity: 0.8,
-  },
-  greetingTitle: {
-    fontSize: 24,
-    fontWeight: '800',
-  },
-  streakBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-    borderRadius: 20,
-    borderWidth: 1,
-  },
-  streakText: {
-    fontWeight: '800',
-    fontSize: 14,
-  },
-  promptCard: {
-    padding: 20,
-    borderRadius: 20,
-    marginBottom: 10,
-  },
-  promptLabel: {
-    fontSize: 11,
+  title: { 
+    fontSize: 20, 
     fontWeight: '700',
-    letterSpacing: 1,
     textAlign: 'center',
-    marginBottom: 12,
-    opacity: 0.8,
+    marginBottom: 4,
   },
-  // Kept for compatibility but unused in new layout
-  title: { fontSize: 20, fontWeight: '700', textAlign: 'center', marginBottom: 4 },
-  
   prompt: { 
-    fontSize: 18, 
-    lineHeight: 28,
+    fontSize: 16, 
+    lineHeight: 24,
     textAlign: 'center',
-    fontWeight: '500',
   },
   promptExplanation: {
     fontSize: 12,

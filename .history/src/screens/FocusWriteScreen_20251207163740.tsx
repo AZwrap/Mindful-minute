@@ -41,9 +41,9 @@ const palette = useSharedPalette();
   const [text, setText] = useState(initialText);
   const [wordCount, setWordCount] = useState(0);
   
-// Zen Mode State
+  // Zen Mode State
   const [isZenMode, setIsZenMode] = useState(zenModeEnabled);
-  const [zenTimer, setZenTimer] = useState(48); // Updated to 48s
+  const [zenTimer, setZenTimer] = useState(40);
 
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const textInputRef = useRef<TextInput>(null);
