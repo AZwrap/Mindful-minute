@@ -3,8 +3,9 @@ import React, { useEffect } from "react";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { NavigationContainer } from "@react-navigation/native";
 import { StatusBar } from "expo-status-bar";
+import * as QuickActions from "expo-quick-actions";
 import * as SplashScreen from 'expo-splash-screen';
-import { useColorScheme, Linking, Platform, Alert } from "react-native";
+import { useColorScheme, Linking, Platform } from "react-native";
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 // Navigation & Stores
@@ -71,8 +72,51 @@ export default function App() {
     return () => sub.remove();
   }, []);
 
+// 3. Quick Actions
+  useEffect(() => {
+const setupActions = async () => {
+      const items = [
+        {
+          id: "new_entry",
+          title: "New Entry",
+          subtitle: "Mindful check-in",
+          // On Android, passing an invalid string name causes the shortcut to fail. 
+          // We use undefined for Android for now.
+          icon: Platform.OS === "ios" ? "compose" : undefined, 
+          params: { href: "/Write" },
+        },
+        {
+          id: "view_stats",
+          title: "View Stats",
+          subtitle: "Check your progress",
+          icon: Platform.OS === "ios" ? "time" : undefined, 
+          params: { href: "/Stats" },
+        }
+      ];
+      
+      try {
+        await QuickActions.setShortcutItems(items);
+      } catch (e) {
+        console.log("Failed to set quick actions:", e);
+      }
+    };
+    setupActions();
 
-    
+    const sub = QuickActions.addListener((item) => {
+      if (item.id === "new_entry") {
+        navigationRef.navigate("Write" as any, {
+          date: new Date().toISOString().split('T')[0],
+          prompt: { text: "Quick entry from home screen", isSmart: false }
+        });
+      } else if (item.id === "view_stats") {
+        navigationRef.navigate("MainTabs" as any, {
+          screen: "Stats"
+        });
+      }
+    });
+
+    return () => sub.remove();
+  }, []);
 
   // 4. Notifications (Schedule & Tap Handler)
   useEffect(() => {

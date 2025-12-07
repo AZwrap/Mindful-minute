@@ -12,13 +12,11 @@ import {
   Platform,
   Keyboard,
   Alert,
-  Image,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
 import { Audio } from 'expo-av';
-import { Mic, Square, Play, Trash2, RotateCcw, Camera, XCircle } from 'lucide-react-native';
-import * as ImagePicker from 'expo-image-picker'; // NEW
+import { Mic, Square, Play, Trash2, RotateCcw } from 'lucide-react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -84,67 +82,8 @@ export default function WriteScreen({ navigation, route }: Props) {
   // --- VOICE MEMO STATE ---
   const [recording, setRecording] = useState<Audio.Recording | undefined | null>(null);
   const [audioUri, setAudioUri] = useState<string | null>(null);
-const [sound, setSound] = useState<Audio.Sound | null>(null);
+  const [sound, setSound] = useState<Audio.Sound | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
-  const [imageUri, setImageUri] = useState<string | null>(null); // NEW
-
-// --- IMAGE LOGIC ---
-  const pickImage = () => {
-    Alert.alert(
-      "Add Photo",
-      "Capture a moment or choose from your gallery.",
-      [
-        {
-          text: "Take Photo",
-          onPress: async () => {
-            try {
-              // 1. Request Camera Permission
-              const perm = await ImagePicker.requestCameraPermissionsAsync();
-              if (!perm.granted) {
-                Alert.alert("Permission Required", "Camera access is needed to take photos.");
-                return;
-              }
-
-              // 2. Launch Camera
-              const result = await ImagePicker.launchCameraAsync({
-                mediaTypes: ImagePicker.MediaTypeOptions.Images,
-                allowsEditing: true,
-                aspect: [4, 3],
-                quality: 0.8,
-              });
-
-              if (!result.canceled) {
-                setImageUri(result.assets[0].uri);
-              }
-            } catch (e) {
-              console.log(e);
-              Alert.alert("Error", "Could not open camera.");
-            }
-          }
-        },
-        {
-          text: "Choose from Library",
-          onPress: async () => {
-            try {
-              const result = await ImagePicker.launchImageLibraryAsync({
-                mediaTypes: ImagePicker.MediaTypeOptions.Images,
-                allowsEditing: true,
-                aspect: [4, 3],
-                quality: 0.8,
-              });
-
-              if (!result.canceled) {
-                setImageUri(result.assets[0].uri);
-              }
-            } catch (e) {
-              Alert.alert("Error", "Could not pick image.");
-            }
-          }
-        },
-        { text: "Cancel", style: "cancel" }
-      ]
-    );
-  };
 
   // --- VOICE LOGIC ---
   async function startRecording() {
@@ -466,14 +405,14 @@ const saveAndExit = () => {
     if (!text.trim() && !audioUri) return;
     
 // FIX: Save 'currentPrompt' (which contains the Smart Prompt)
-upsert({ 
+    upsert({ 
         date, 
         text: text.trim(), 
+        // Ensure we save a fallback title so History screen isn't empty
         prompt: { text: currentPrompt?.text || 'Free writing' }, 
         createdAt: Date.now() as any, 
         isComplete: false, 
-        audioUri,
-        imageUri // NEW
+        audioUri 
     });
     
     if (!preserveTimerProgress) setDraftTimer(date, writeDuration);
@@ -497,12 +436,11 @@ upsert({
       text: text.trim(), 
       prompt: { text: currentPrompt?.text || 'Free writing' }, 
       createdAt: Date.now() as any,
-isComplete: false,
+      isComplete: false,
       isGratitude: isGratitudeEntry, 
       gratitudeItems: gratitudeEntries.filter(e => e?.trim()), 
       xpBonus, 
-      audioUri,
-      imageUri // NEW
+      audioUri
     });
 
     if (xpBonus > 0) showToast('+10 XP Gratitude Bonus!');
@@ -601,7 +539,7 @@ isComplete: false,
               </Animated.View>
             )}
 
-<Animated.View style={[animatedInputStyle, { marginTop: timerCompleted ? -120 : 2, borderRadius: 14 }]}
+            <Animated.View style={[animatedInputStyle, { marginTop: timerCompleted ? -120 : 2, borderRadius: 14 }]}
               onLayout={(e) => {
                 const y = e.nativeEvent.layout.y;
                 setSectionPositions((prev) => ({ ...prev, editor: y }));
@@ -621,85 +559,23 @@ isComplete: false,
                 multiline
                 style={[styles.input, { color: palette.text, backgroundColor: palette.card, borderWidth: 0 }]}
               />
-
-              {/* MEDIA CONTROLS (Voice + Photo) */}
-              <View style={{ marginTop: 16, marginBottom: 16, paddingHorizontal: 12 }}>
-                
-                {/* 1. Control Row */}
-                <View style={{ flexDirection: 'row', gap: 12 }}>
-                  {/* Voice Button */}
-                  {!audioUri ? (
-                    <PremiumPressable 
-                      onPress={recording ? stopRecording : startRecording} 
-                      style={{ 
-                        flex: 1,
-                        backgroundColor: recording ? '#EF4444' : palette.card, 
-                        borderColor: recording ? '#EF4444' : palette.border, 
-                        borderWidth: 1, 
-                        borderRadius: 14, 
-                        paddingVertical: 12, 
-                        flexDirection: 'row', 
-                        alignItems: 'center', 
-                        justifyContent: 'center',
-                        gap: 8 
-                      }}
-                    >
-                      {recording ? <Square size={20} color="white" /> : <Mic size={20} color={palette.text} />}
-                      <Text style={{ color: recording ? 'white' : palette.text, fontWeight: '600' }}>
-                        {recording ? "Stop" : "Voice"}
-                      </Text>
+              {/* VOICE CONTROLS */}
+              <View style={{ marginTop: 16, marginBottom: 16, flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 12 }}>
+                {!audioUri ? (
+                  <PremiumPressable onPress={recording ? stopRecording : startRecording} style={{ backgroundColor: recording ? '#EF4444' : palette.card, borderColor: recording ? '#EF4444' : palette.border, borderWidth: 1, borderRadius: 999, paddingVertical: 12, paddingHorizontal: 16, flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                    {recording ? <Square size={20} color="white" /> : <Mic size={20} color={palette.text} />}
+                    <Text style={{ color: recording ? 'white' : palette.text, fontWeight: '600' }}>{recording ? "Stop Recording" : "Record Voice Note"}</Text>
+                  </PremiumPressable>
+                ) : (
+                  <View style={{ flexDirection: 'row', gap: 8, flex: 1 }}>
+                    
+                    <PremiumPressable onPress={playSound} style={{ flex: 1, backgroundColor: palette.accent, borderRadius: 12, padding: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+                      <Play size={20} fill={isPlaying ? "white" : "transparent"} color="white" />
+                      <Text style={{ color: 'white', fontWeight: '700' }}>{isPlaying ? "Stop" : "Play Recording"}</Text>
                     </PremiumPressable>
-                  ) : (
-                    <View style={{ flex: 1, flexDirection: 'row', gap: 8 }}>
-                      <PremiumPressable onPress={playSound} style={{ flex: 1, backgroundColor: palette.accent, borderRadius: 14, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
-                        <Play size={18} fill={isPlaying ? "white" : "transparent"} color="white" />
-                        <Text style={{ color: 'white', fontWeight: '700' }}>Play</Text>
-                      </PremiumPressable>
-                      <PremiumPressable onPress={deleteRecording} style={{ padding: 12, borderRadius: 14, borderWidth: 1, borderColor: palette.border, backgroundColor: palette.card }}>
-                        <Trash2 size={20} color="#EF4444" />
-                      </PremiumPressable>
-                    </View>
-                  )}
-
-                  {/* Photo Button (Hidden if image exists) */}
-                  {!imageUri && (
-                    <PremiumPressable 
-                      onPress={pickImage}
-                      style={{ 
-                        flex: 1,
-                        backgroundColor: palette.card, 
-                        borderColor: palette.border, 
-                        borderWidth: 1, 
-                        borderRadius: 14, 
-                        paddingVertical: 12, 
-                        flexDirection: 'row', 
-                        alignItems: 'center', 
-                        justifyContent: 'center',
-                        gap: 8 
-                      }}
-                    >
-                      <Camera size={20} color={palette.text} />
-                      <Text style={{ color: palette.text, fontWeight: '600' }}>Photo</Text>
+<PremiumPressable onPress={deleteRecording} style={{ padding: 12, borderRadius: 12, borderWidth: 1, borderColor: palette.border, backgroundColor: palette.card }}>
+                      <Trash2 size={20} color="#EF4444" />
                     </PremiumPressable>
-                  )}
-                </View>
-
-                {/* 2. Image Preview */}
-                {imageUri && (
-                  <View style={{ marginTop: 12, alignItems: 'center' }}>
-                    <View style={{ position: 'relative' }}>
-                      <Image 
-                        source={{ uri: imageUri }} 
-                        style={{ width: '100%', aspectRatio: 16/9, borderRadius: 16, height: 200 }} 
-                        resizeMode="cover"
-                      />
-                      <Pressable 
-                        onPress={() => setImageUri(null)}
-                        style={{ position: 'absolute', top: -10, right: -10, backgroundColor: palette.bg, borderRadius: 20 }}
-                      >
-                        <XCircle size={28} color="#EF4444" fill={palette.card} />
-                      </Pressable>
-                    </View>
                   </View>
                 )}
               </View>

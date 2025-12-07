@@ -569,7 +569,7 @@ return result;
                 renderSectionHeader={({ section: { title } }) => (
                   <View style={{
                     paddingVertical: 12,
-                    paddingHorizontal: 12,
+                    paddingHorizontal: 4,
                     marginBottom: 4,
                   }}>
                     <Text style={{

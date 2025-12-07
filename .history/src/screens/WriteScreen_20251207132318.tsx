@@ -88,62 +88,22 @@ const [sound, setSound] = useState<Audio.Sound | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [imageUri, setImageUri] = useState<string | null>(null); // NEW
 
-// --- IMAGE LOGIC ---
-  const pickImage = () => {
-    Alert.alert(
-      "Add Photo",
-      "Capture a moment or choose from your gallery.",
-      [
-        {
-          text: "Take Photo",
-          onPress: async () => {
-            try {
-              // 1. Request Camera Permission
-              const perm = await ImagePicker.requestCameraPermissionsAsync();
-              if (!perm.granted) {
-                Alert.alert("Permission Required", "Camera access is needed to take photos.");
-                return;
-              }
+  // --- IMAGE LOGIC ---
+  const pickImage = async () => {
+    try {
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [4, 3],
+        quality: 0.8,
+      });
 
-              // 2. Launch Camera
-              const result = await ImagePicker.launchCameraAsync({
-                mediaTypes: ImagePicker.MediaTypeOptions.Images,
-                allowsEditing: true,
-                aspect: [4, 3],
-                quality: 0.8,
-              });
-
-              if (!result.canceled) {
-                setImageUri(result.assets[0].uri);
-              }
-            } catch (e) {
-              console.log(e);
-              Alert.alert("Error", "Could not open camera.");
-            }
-          }
-        },
-        {
-          text: "Choose from Library",
-          onPress: async () => {
-            try {
-              const result = await ImagePicker.launchImageLibraryAsync({
-                mediaTypes: ImagePicker.MediaTypeOptions.Images,
-                allowsEditing: true,
-                aspect: [4, 3],
-                quality: 0.8,
-              });
-
-              if (!result.canceled) {
-                setImageUri(result.assets[0].uri);
-              }
-            } catch (e) {
-              Alert.alert("Error", "Could not pick image.");
-            }
-          }
-        },
-        { text: "Cancel", style: "cancel" }
-      ]
-    );
+      if (!result.canceled) {
+        setImageUri(result.assets[0].uri);
+      }
+    } catch (e) {
+      Alert.alert("Error", "Could not pick image.");
+    }
   };
 
   // --- VOICE LOGIC ---
@@ -601,7 +561,7 @@ isComplete: false,
               </Animated.View>
             )}
 
-<Animated.View style={[animatedInputStyle, { marginTop: timerCompleted ? -120 : 2, borderRadius: 14 }]}
+            <Animated.View style={[animatedInputStyle, { marginTop: timerCompleted ? -120 : 2, borderRadius: 14 }]}
               onLayout={(e) => {
                 const y = e.nativeEvent.layout.y;
                 setSectionPositions((prev) => ({ ...prev, editor: y }));
@@ -621,8 +581,7 @@ isComplete: false,
                 multiline
                 style={[styles.input, { color: palette.text, backgroundColor: palette.card, borderWidth: 0 }]}
               />
-
-              {/* MEDIA CONTROLS (Voice + Photo) */}
+{/* MEDIA CONTROLS (Voice + Photo) */}
               <View style={{ marginTop: 16, marginBottom: 16, paddingHorizontal: 12 }}>
                 
                 {/* 1. Control Row */}
@@ -700,6 +659,18 @@ isComplete: false,
                         <XCircle size={28} color="#EF4444" fill={palette.card} />
                       </Pressable>
                     </View>
+                  </View>
+                )}
+              </View>
+                  <View style={{ flexDirection: 'row', gap: 8, flex: 1 }}>
+                    
+                    <PremiumPressable onPress={playSound} style={{ flex: 1, backgroundColor: palette.accent, borderRadius: 12, padding: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+                      <Play size={20} fill={isPlaying ? "white" : "transparent"} color="white" />
+                      <Text style={{ color: 'white', fontWeight: '700' }}>{isPlaying ? "Stop" : "Play Recording"}</Text>
+                    </PremiumPressable>
+<PremiumPressable onPress={deleteRecording} style={{ padding: 12, borderRadius: 12, borderWidth: 1, borderColor: palette.border, backgroundColor: palette.card }}>
+                      <Trash2 size={20} color="#EF4444" />
+                    </PremiumPressable>
                   </View>
                 )}
               </View>

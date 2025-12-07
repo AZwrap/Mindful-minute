@@ -88,62 +88,22 @@ const [sound, setSound] = useState<Audio.Sound | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [imageUri, setImageUri] = useState<string | null>(null); // NEW
 
-// --- IMAGE LOGIC ---
-  const pickImage = () => {
-    Alert.alert(
-      "Add Photo",
-      "Capture a moment or choose from your gallery.",
-      [
-        {
-          text: "Take Photo",
-          onPress: async () => {
-            try {
-              // 1. Request Camera Permission
-              const perm = await ImagePicker.requestCameraPermissionsAsync();
-              if (!perm.granted) {
-                Alert.alert("Permission Required", "Camera access is needed to take photos.");
-                return;
-              }
+  // --- IMAGE LOGIC ---
+  const pickImage = async () => {
+    try {
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [4, 3],
+        quality: 0.8,
+      });
 
-              // 2. Launch Camera
-              const result = await ImagePicker.launchCameraAsync({
-                mediaTypes: ImagePicker.MediaTypeOptions.Images,
-                allowsEditing: true,
-                aspect: [4, 3],
-                quality: 0.8,
-              });
-
-              if (!result.canceled) {
-                setImageUri(result.assets[0].uri);
-              }
-            } catch (e) {
-              console.log(e);
-              Alert.alert("Error", "Could not open camera.");
-            }
-          }
-        },
-        {
-          text: "Choose from Library",
-          onPress: async () => {
-            try {
-              const result = await ImagePicker.launchImageLibraryAsync({
-                mediaTypes: ImagePicker.MediaTypeOptions.Images,
-                allowsEditing: true,
-                aspect: [4, 3],
-                quality: 0.8,
-              });
-
-              if (!result.canceled) {
-                setImageUri(result.assets[0].uri);
-              }
-            } catch (e) {
-              Alert.alert("Error", "Could not pick image.");
-            }
-          }
-        },
-        { text: "Cancel", style: "cancel" }
-      ]
-    );
+      if (!result.canceled) {
+        setImageUri(result.assets[0].uri);
+      }
+    } catch (e) {
+      Alert.alert("Error", "Could not pick image.");
+    }
   };
 
   // --- VOICE LOGIC ---

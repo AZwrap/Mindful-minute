@@ -438,6 +438,15 @@ return result;
                 )}
               </View>
             </View>
+                hitSlop={10}
+              >
+                {isSearching ? (
+                  <X size={20} color={textSub} />
+                ) : (
+                  <Search size={20} color={textSub} />
+                )}
+              </PremiumPressable>
+            </View>
 
             {isSearching && (
               <TextInput
@@ -568,8 +577,9 @@ return result;
                 }
                 renderSectionHeader={({ section: { title } }) => (
                   <View style={{
+                    backgroundColor: isDark ? '#0F172A' : '#F8FAFC',
                     paddingVertical: 12,
-                    paddingHorizontal: 12,
+                    paddingHorizontal: 4,
                     marginBottom: 4,
                   }}>
                     <Text style={{
@@ -635,10 +645,8 @@ return result;
                   />
                 )}
               />
-</>
+            </>
           )}
-        </View> 
-        {/* ^^^ This closing View was missing */}
       </Animated.View>
       </SafeAreaView>
     </LinearGradient>

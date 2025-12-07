@@ -14,10 +14,9 @@ RefreshControl,
   StyleProp,
   ViewStyle,
 } from 'react-native';
-import { Calendar } from 'react-native-calendars';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Swipeable } from 'react-native-gesture-handler';
-import { Search, X, Trash2, Calendar as CalendarIcon, List } from 'lucide-react-native';
+import { Search, X , Trash2 } from 'lucide-react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 // Navigation
@@ -213,24 +212,10 @@ export default function HistoryScreen({ navigation }: HistoryScreenProps) {
       .map(([date, entry]) => ({ ...entry, date })); // Explicitly merge date back in for types
   }, [map]);
 
-const [selectedMood, setSelectedMood] = useState('all');
+  const [selectedMood, setSelectedMood] = useState('all');
   const [searchText, setSearchText] = useState('');
   const [isSearching, setIsSearching] = useState(false);
-  const [viewMode, setViewMode] = useState<'list' | 'calendar'>('list'); // NEW
   const contentFadeAnim = useRef(new Animated.Value(0)).current;
-
-  // NEW: Prepare Calendar Data
-  const markedDates = useMemo(() => {
-    const marks: Record<string, any> = {};
-    entries.forEach(entry => {
-      marks[entry.date] = {
-        marked: true,
-        dotColor: isDark ? '#818CF8' : '#6366F1', // Indigo accent
-        // You can add logic here to change color based on mood if desired
-      };
-    });
-    return marks;
-  }, [entries, isDark]);
   const [refreshing, setRefreshing] = useState(false);
   const [deletedEntries, setDeletedEntries] = useState<Record<string, boolean>>({});
 
@@ -400,43 +385,25 @@ return result;
             </View>
           </PremiumPressable>
 
-{/* Mood Filter & Search */}
+          {/* Mood Filter & Search */}
           <View style={styles.filterContainer}>
             <View style={styles.filterHeader}>
               <Text style={[styles.filterLabel, { color: textSub }]}>
-                {viewMode === 'list' ? 'Journal History' : 'Calendar View'}
+                Filter Entries
               </Text>
-              
-              <View style={{ flexDirection: 'row', gap: 12 }}>
-                {/* View Mode Toggle */}
-                <PremiumPressable
-                  onPress={() => setViewMode(prev => prev === 'list' ? 'calendar' : 'list')}
-                  hitSlop={10}
-                >
-                  {viewMode === 'list' ? (
-                    <CalendarIcon size={20} color={textSub} />
-                  ) : (
-                    <List size={20} color={textSub} />
-                  )}
-                </PremiumPressable>
-
-                {/* Search Toggle (Only show in list mode) */}
-                {viewMode === 'list' && (
-                  <PremiumPressable 
-                    onPress={() => {
-                      if (isSearching) setSearchText('');
-                      setIsSearching(!isSearching);
-                    }}
-                    hitSlop={10}
-                  >
-                    {isSearching ? (
-                      <X size={20} color={textSub} />
-                    ) : (
-                      <Search size={20} color={textSub} />
-                    )}
-                  </PremiumPressable>
+              <PremiumPressable 
+                onPress={() => {
+                  if (isSearching) setSearchText('');
+                  setIsSearching(!isSearching);
+                }}
+                hitSlop={10}
+              >
+                {isSearching ? (
+                  <X size={20} color={textSub} />
+                ) : (
+                  <Search size={20} color={textSub} />
                 )}
-              </View>
+              </PremiumPressable>
             </View>
 
             {isSearching && (
@@ -495,150 +462,99 @@ return result;
             )}
           </View>
 
-{viewMode === 'calendar' ? (
-            <View style={{ marginTop: 12 }}>
-              <Calendar
-                theme={{
-                  backgroundColor: 'transparent',
-                  calendarBackground: 'transparent',
-                  textSectionTitleColor: textSub,
-                  selectedDayBackgroundColor: '#6366F1',
-                  selectedDayTextColor: '#ffffff',
-                  todayTextColor: '#6366F1',
-                  dayTextColor: textMain,
-                  textDisabledColor: isDark ? '#334155' : '#CBD5E1',
-                  dotColor: '#6366F1',
-                  selectedDotColor: '#ffffff',
-                  arrowColor: '#6366F1',
-                  monthTextColor: textMain,
-                  indicatorColor: '#6366F1',
-                  textDayFontWeight: '600',
-                  textMonthFontWeight: '700',
-                  textDayHeaderFontWeight: '600',
-                  textDayFontSize: 14,
-                  textMonthFontSize: 16,
-                  textDayHeaderFontSize: 12
-                }}
-                markedDates={markedDates}
-                onDayPress={(day) => {
-                  // Check if we have an entry for this day
-                  if (map && map[day.dateString]) {
-                    navigation.navigate('EntryDetail', { date: day.dateString });
-                  } else {
-                    // Optional: Prompt to write a new entry for this past date?
-                    Alert.alert(
-                      "No Entry",
-                      "Would you like to write an entry for this date?",
-                      [
-                        { text: "Cancel", style: "cancel" },
-                        { 
-                          text: "Write", 
-                          onPress: () => navigation.navigate('Write', { date: day.dateString }) 
-                        }
-                      ]
-                    );
-                  }
-                }}
-                enableSwipeMonths={true}
-              />
-            </View>
-          ) : (
-            <>
-              <View style={styles.entryCountContainer}>
-                <Text style={[styles.entryCount, { color: textSub }]}>
-                  {filteredEntries.length} {filteredEntries.length === 1 ? 'entry' : 'entries'}
-                </Text>
-              </View>
+          <View style={styles.entryCountContainer}>
+            <Text style={[styles.entryCount, { color: textSub }]}>
+              {filteredEntries.length} {filteredEntries.length === 1 ? 'entry' : 'entries'}
+            </Text>
+          </View>
 
 <SectionList
-                sections={sections}
-                keyExtractor={(item) => item.date}
-                style={styles.entriesList}
-                showsVerticalScrollIndicator={true}
-                stickySectionHeadersEnabled={true}
-                removeClippedSubviews={true}
-                refreshControl={
-                  <RefreshControl
-                    refreshing={refreshing}
-                    onRefresh={handleRefresh}
-                    tintColor={isDark ? '#6366F1' : '#6366F1'}
-                    colors={['#6366F1']}
-                    progressBackgroundColor={isDark ? '#1E293B' : '#F1F5F9'}
-                  />
-                }
-                renderSectionHeader={({ section: { title } }) => (
-                  <View style={{
-                    paddingVertical: 12,
-                    paddingHorizontal: 12,
-                    marginBottom: 4,
-                  }}>
-                    <Text style={{
-                      fontSize: 14,
-                      fontWeight: '700',
-                      color: isDark ? '#818CF8' : '#6366F1',
-                      textTransform: 'uppercase',
-                      letterSpacing: 1,
-                    }}>
-                      {title}
-                    </Text>
-                  </View>
-                )}
-                ListEmptyComponent={
-                  <View style={styles.emptyState}>
-                    <Text style={[styles.emptyText, { color: textSub, marginBottom: 16 }]}>
-                      {selectedMood === 'all' 
-                        ? 'Your journal is waiting for you.' 
-                        : `No entries found for "${selectedMood}".`
-                      }
-                    </Text>
-                    
-                    {selectedMood === 'all' && !searchText && (
-                      <PremiumPressable
-                        onPress={() => navigation.navigate('Write', { date: new Date().toISOString().split('T')[0] })}
-                        haptic="medium"
-                        style={{
-                          backgroundColor: isDark ? '#334155' : 'white',
-                          paddingHorizontal: 24,
-                          paddingVertical: 12,
-                          borderRadius: 12,
-                          borderWidth: 1,
-                          borderColor: borderColor,
-                          shadowColor: "#000",
-                          shadowOffset: { width: 0, height: 2 },
-                          shadowOpacity: 0.05,
-                          shadowRadius: 4,
-                          elevation: 2,
-                        }}
-                      >
-                        <Text style={{ 
-                          color: isDark ? '#818CF8' : '#6366F1', 
-                          fontWeight: '600',
-                          fontSize: 15
-                        }}>
-                          Write New Entry
-                        </Text>
-                      </PremiumPressable>
-                    )}
-                  </View>
-                }
-                renderItem={({ item }) => (
-                  <SwipeableEntry
-                    key={item.date}
-                    entry={item}
-                    onDelete={handleDeleteEntry}
-                    onPress={() => navigation.navigate('EntryDetail', { date: item.date })}
-                    onLongPress={() => handleLongPressEntry(item)}
-                    isDark={isDark}
-                    textMain={textMain}
-                    textSub={textSub}
-                    borderColor={borderColor}
-                  />
-                )}
+            sections={sections}
+            keyExtractor={(item) => item.date}
+            style={styles.entriesList}
+            showsVerticalScrollIndicator={true}
+            stickySectionHeadersEnabled={true}
+            removeClippedSubviews={true}
+            refreshControl={
+              <RefreshControl
+                refreshing={refreshing}
+                onRefresh={handleRefresh}
+                tintColor={isDark ? '#6366F1' : '#6366F1'}
+                colors={['#6366F1']}
+                progressBackgroundColor={isDark ? '#1E293B' : '#F1F5F9'}
               />
-</>
-          )}
-        </View> 
-        {/* ^^^ This closing View was missing */}
+            }
+renderSectionHeader={({ section: { title } }) => (
+              <View style={{
+                paddingVertical: 12,
+                paddingHorizontal: 8,
+                marginBottom: 4,
+              }}>
+                <Text style={{
+                  fontSize: 14,
+                  fontWeight: '700',
+                  // Using your App's Accent Color (Indigo) for a clean, premium look
+                  color: isDark ? '#818CF8' : '#6366F1', 
+                  textTransform: 'uppercase',
+                  letterSpacing: 1,
+                }}>
+                  {title}
+                </Text>
+              </View>
+            )}
+            ListEmptyComponent={
+              <View style={styles.emptyState}>
+                <Text style={[styles.emptyText, { color: textSub, marginBottom: 16 }]}>
+                  {selectedMood === 'all' 
+                    ? 'Your journal is waiting for you.' 
+                    : `No entries found for "${selectedMood}".`
+                  }
+                </Text>
+                
+                {selectedMood === 'all' && !searchText && (
+                  <PremiumPressable
+                    onPress={() => navigation.navigate('Write', { date: new Date().toISOString().split('T')[0] })}
+                    haptic="medium"
+                    style={{
+                      backgroundColor: isDark ? '#334155' : 'white',
+                      paddingHorizontal: 24,
+                      paddingVertical: 12,
+                      borderRadius: 12,
+                      borderWidth: 1,
+                      borderColor: borderColor,
+                      shadowColor: "#000",
+                      shadowOffset: { width: 0, height: 2 },
+                      shadowOpacity: 0.05,
+                      shadowRadius: 4,
+                      elevation: 2,
+                    }}
+                  >
+                    <Text style={{ 
+                      color: isDark ? '#818CF8' : '#6366F1', 
+                      fontWeight: '600',
+                      fontSize: 15
+                    }}>
+                      Write New Entry
+                    </Text>
+                  </PremiumPressable>
+                )}
+              </View>
+            }
+            renderItem={({ item }) => (
+              <SwipeableEntry
+                key={item.date}
+                entry={item}
+                onDelete={handleDeleteEntry}
+                onPress={() => navigation.navigate('EntryDetail', { date: item.date })}
+                onLongPress={() => handleLongPressEntry(item)}
+                isDark={isDark}
+                textMain={textMain}
+                textSub={textSub}
+                borderColor={borderColor}
+              />
+            )}
+          />
+        </View>
       </Animated.View>
       </SafeAreaView>
     </LinearGradient>

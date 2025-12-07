@@ -568,8 +568,9 @@ return result;
                 }
                 renderSectionHeader={({ section: { title } }) => (
                   <View style={{
+                    backgroundColor: isDark ? '#0F172A' : '#F8FAFC',
                     paddingVertical: 12,
-                    paddingHorizontal: 12,
+                    paddingHorizontal: 4,
                     marginBottom: 4,
                   }}>
                     <Text style={{
@@ -635,10 +636,8 @@ return result;
                   />
                 )}
               />
-</>
+            </>
           )}
-        </View> 
-        {/* ^^^ This closing View was missing */}
       </Animated.View>
       </SafeAreaView>
     </LinearGradient>

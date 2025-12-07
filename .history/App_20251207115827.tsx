@@ -3,6 +3,7 @@ import React, { useEffect } from "react";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { NavigationContainer } from "@react-navigation/native";
 import { StatusBar } from "expo-status-bar";
+import * as QuickActions from "expo-quick-actions";
 import * as SplashScreen from 'expo-splash-screen';
 import { useColorScheme, Linking, Platform, Alert } from "react-native";
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -71,8 +72,67 @@ export default function App() {
     return () => sub.remove();
   }, []);
 
+// 3. Quick Actions
+  useEffect(() => {
+const setupActions = async () => {
+      try {
+        console.log("Setting up Quick Actions...");
 
-    
+        // 1. Check if the native function exists
+        if (!QuickActions.setShortcutItems) {
+          Alert.alert("Error", "Quick Actions Native Module is MISSING.\nYou are likely running Expo Go or an old build.");
+          return;
+        }
+
+        // 2. Check device support
+        const isSupported = await QuickActions.isSupported();
+        if (!isSupported) {
+           console.log("Device does not support Quick Actions");
+           return;
+        }
+
+        // 3. Define Items
+        const items = [
+          {
+            id: "new_entry",
+            title: "New Entry",
+            subtitle: "Mindful check-in",
+            icon: Platform.OS === "ios" ? "compose" : undefined, 
+            params: { href: "/Write" },
+          },
+          {
+            id: "view_stats",
+            title: "View Stats",
+            subtitle: "Check your progress",
+            icon: Platform.OS === "ios" ? "time" : undefined, 
+            params: { href: "/Stats" },
+          }
+        ];
+
+        // 4. Set Items
+        await QuickActions.setShortcutItems(items);
+        
+      } catch (e: any) {
+        Alert.alert("Quick Actions Error", e.message);
+      }
+    };
+    setupActions();
+
+    const sub = QuickActions.addListener((item) => {
+      if (item.id === "new_entry") {
+        navigationRef.navigate("Write" as any, {
+          date: new Date().toISOString().split('T')[0],
+          prompt: { text: "Quick entry from home screen", isSmart: false }
+        });
+      } else if (item.id === "view_stats") {
+        navigationRef.navigate("MainTabs" as any, {
+          screen: "Stats"
+        });
+      }
+    });
+
+    return () => sub.remove();
+  }, []);
 
   // 4. Notifications (Schedule & Tap Handler)
   useEffect(() => {
