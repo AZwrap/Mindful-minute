@@ -123,7 +123,7 @@ const MoodDropdown = ({
             styles.dropdownContent,
             {
               position: 'absolute',
-              top: triggerPosition.y + triggerPosition.height + 5, // Added small gap
+              top: triggerPosition.y + triggerPosition.height + 0, // Added small gap
               left: triggerPosition.x,
               width: triggerPosition.width,
               backgroundColor: isDark ? '#1F2937' : '#FFFFFF',
