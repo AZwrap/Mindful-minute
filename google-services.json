@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "223587015486",
+    "project_id": "mindful-minute-4da16",
+    "storage_bucket": "mindful-minute-4da16.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:223587015486:android:8ee44a00eea89a1674aa6f",
+        "android_client_info": {
+          "package_name": "com.mindfulminute.app"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "223587015486-8c3jpv1011as2ivgd16lc8kfofe8pecf.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.mindfulminute.app",
+            "certificate_hash": "5e8f16062ea3cd2c4a0d547876baa6f38cabf625"
+          }
+        },
+        {
+          "client_id": "223587015486-kjgm2tj1i1ne8qhacq09ffccqjheqkca.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAGoLUs5QkRN0DMKFBoNjHErLIm0pin4Ow"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "223587015486-kjgm2tj1i1ne8qhacq09ffccqjheqkca.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

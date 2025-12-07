@@ -118,6 +118,11 @@ const [themeDropdownOpen, setThemeDropdownOpen] = useState(false);
     }
   }, [loaded]);
 
+  // Sync custom hex input when color changes
+  useEffect(() => {
+    if (accentColor) setCustomHex(accentColor.toUpperCase());
+  }, [accentColor]);
+
   // --- ANIMATED TOGGLES ---
   const toggleThemeDropdown = () => {
     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
@@ -477,9 +482,10 @@ const SettingRow = ({ label, description, value, onValueChange, icon }: any) => 
                           </View>
                         </View>
 
-{/* Preview */}
-                        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginTop: 4 }}>
+                        {/* Preview */}
+                        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, marginTop: 4 }}>
                              <View style={{ width: 24, height: 24, borderRadius: 12, backgroundColor: accentColor || '#6366F1', borderWidth: 1, borderColor: palette.border }} />
+                             <Text style={{ color: palette.text, fontWeight: '600', fontSize: 14 }}>{accentColor}</Text>
                         </View>
 
                       </View>
