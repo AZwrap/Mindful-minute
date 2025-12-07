@@ -525,33 +525,12 @@ const SettingRow = ({ label, description, value, onValueChange, icon }: any) => 
                 <Text style={[styles.title, { color: palette.text }]}>Session Configuration</Text>
                 
                 <Text style={[styles.label, { color: palette.sub, marginBottom: 8 }]}>Writing Duration</Text>
-<View style={{ flexDirection: 'row', gap: 8, marginBottom: 12 }}>
-                  {[30, 60, 120, 300].map((s) => {
-                    const isSelected = writeDuration === s;
-                    return (
-                      <PremiumPressable 
-                        key={s} 
-                        onPress={() => { setWriteDuration(s); setCustomWriteText(String(s)); }} 
-                        haptic="light" 
-                        style={[
-                          styles.chip, 
-                          { 
-                            // Solid accent color when selected
-                            backgroundColor: isSelected ? palette.accent : 'transparent',
-                            borderColor: isSelected ? palette.accent : palette.border 
-                          }
-                        ]}
-                      >
-                        <Text style={{ 
-                          color: isSelected ? 'white' : palette.sub, 
-                          fontSize: 12,
-                          fontWeight: isSelected ? '700' : '400' 
-                        }}>
-                          {s < 60 ? `${s}s` : `${s/60}m`}
-                        </Text>
-                      </PremiumPressable>
-                    );
-                  })}
+                <View style={{ flexDirection: 'row', gap: 8, marginBottom: 12 }}>
+                  {[30, 60, 120, 300].map((s) => (
+                    <PremiumPressable key={s} onPress={() => { setWriteDuration(s); setCustomWriteText(String(s)); }} haptic="light" style={[styles.chip, { borderColor: palette.border, backgroundColor: writeDuration === s ? palette.accentSoft : 'transparent' }]}>
+                        <Text style={{ color: writeDuration === s ? palette.accent : palette.sub, fontSize: 12 }}>{s < 60 ? `${s}s` : `${s/60}m`}</Text>
+                    </PremiumPressable>
+                  ))}
                 </View>
                 
 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 16 }}>
@@ -562,32 +541,12 @@ const SettingRow = ({ label, description, value, onValueChange, icon }: any) => 
                 </View>
 
                 <Text style={[styles.label, { color: palette.sub, marginBottom: 8 }]}>Break Duration</Text>
-<View style={{ flexDirection: 'row', gap: 8, marginBottom: 12 }}>
-                  {[30, 60, 120].map((s) => {
-                    const isSelected = breakDuration === s;
-                    return (
-                      <PremiumPressable 
-                        key={s} 
-                        onPress={() => { setBreakDuration(s); setCustomBreakText(String(s)); }} 
-                        haptic="light" 
-                        style={[
-                          styles.chip, 
-                          { 
-                            backgroundColor: isSelected ? palette.accent : 'transparent',
-                            borderColor: isSelected ? palette.accent : palette.border 
-                          }
-                        ]}
-                      >
-                        <Text style={{ 
-                          color: isSelected ? 'white' : palette.sub, 
-                          fontSize: 12,
-                          fontWeight: isSelected ? '700' : '400'
-                        }}>
-                          {s < 60 ? `${s}s` : `${s/60}m`}
-                        </Text>
-                      </PremiumPressable>
-                    );
-                  })}
+                <View style={{ flexDirection: 'row', gap: 8, marginBottom: 12 }}>
+                  {[30, 60, 120].map((s) => (
+                    <PremiumPressable key={s} onPress={() => { setBreakDuration(s); setCustomBreakText(String(s)); }} haptic="light" style={[styles.chip, { borderColor: palette.border, backgroundColor: breakDuration === s ? palette.accentSoft : 'transparent' }]}>
+                        <Text style={{ color: breakDuration === s ? palette.accent : palette.sub, fontSize: 12 }}>{s < 60 ? `${s}s` : `${s/60}m`}</Text>
+                    </PremiumPressable>
+                  ))}
                 </View>
                 
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 16 }}>
@@ -637,9 +596,9 @@ const SettingRow = ({ label, description, value, onValueChange, icon }: any) => 
                     value={gratitudeModeEnabled} 
                     onValueChange={setGratitudeModeEnabled} 
                 />
-<SettingRow 
+                <SettingRow 
                     label="Zen Mode Pre-roll" 
-                    description="40s breathing exercise before writing (Focus Mode only)"
+                    description="40s breathing exercise before writing"
                     value={zenModeEnabled} 
                     onValueChange={setZenModeEnabled} 
                 />

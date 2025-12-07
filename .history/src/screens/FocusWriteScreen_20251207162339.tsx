@@ -135,8 +135,7 @@ return (
               <Text style={[styles.zenTitle, { color: textMain }]}>Ground Yourself</Text>
               <Text style={[styles.zenSub, { color: textSub }]}>Take a few deep breaths before you begin.</Text>
               
-{/* Increased margin to prevent overlap from the scaling effect */}
-              <View style={{ transform: [{ scale: 4 }], marginVertical: 100 }}>
+              <View style={{ transform: [{ scale: 4 }], marginVertical: 60 }}>
                 <BreathingCircle running={true} isDark={isDark} />
               </View>
 
@@ -219,9 +218,8 @@ return (
               <Text style={[styles.progressText, { color: textSub }]}>
                 {wordCount}/200 words
               </Text>
-</View>
+            </View>
           </Pressable>
-          )} 
         </Animated.View>
       </KeyboardAvoidingView>
     </LinearGradient>
@@ -245,14 +243,8 @@ const styles = StyleSheet.create({
   progressBar: { height: 4, borderRadius: 2, marginBottom: 8, overflow: 'hidden' },
 progressFill: { height: '100%', borderRadius: 2 },
   progressText: { fontSize: 12, fontWeight: '500', textAlign: 'center' },
-zenContainer: { 
-    flex: 1, 
-    alignItems: 'center', 
-    justifyContent: 'center', 
-    paddingBottom: 100,
-    backgroundColor: 'transparent', // Ensures clean rendering
-    zIndex: 10
-  },  zenTitle: { fontSize: 24, fontWeight: '700', marginBottom: 8 },
+  zenContainer: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingBottom: 100 },
+  zenTitle: { fontSize: 24, fontWeight: '700', marginBottom: 8 },
   zenSub: { fontSize: 16, textAlign: 'center', opacity: 0.8 },
   zenTimer: { fontSize: 20, fontWeight: '600', marginTop: 20, fontVariant: ['tabular-nums'] },
   skipBtn: { marginTop: 30, padding: 12 },
