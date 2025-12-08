@@ -77,7 +77,7 @@ const [achievementQueue, setAchievementQueue] = useState([]);
   const [currentAchievement, setCurrentAchievement] = useState(null);
   const [showAchievement, setShowAchievement] = useState(false);
 
-const handlePopupClose = () => {
+  const handlePopupClose = () => {
     setShowAchievement(false);
     // Small delay before next one or navigation
     setTimeout(() => {
@@ -87,11 +87,15 @@ const handlePopupClose = () => {
         setAchievementQueue(q => q.slice(1));
         setShowAchievement(true);
       } else {
-        // FIX: Explicitly navigate to the correct tab hierarchy
-        navigation.navigate('MainTabs', { screen: 'HomeTab', params: { savedFrom: 'mood' } });
+        navigation.reset({ 
+          index: 0, 
+          routes: [{ name: 'MainTabs', params: { savedFrom: 'mood' } }] 
+        });
       }
     }, 300);
   };
+  // Calling this in render body can cause infinite loops if it triggers updates.
+  // We will call it inside handleSave instead.
 
   const handleMoodPress = (mood) => {
     const wasSelected = selectedMood === mood;
@@ -153,95 +157,114 @@ const currentEntryMood = selectedMood || customMood;
   const currentGradient = gradients[currentTheme] || gradients.light;
 
 async function handleSave() {
-    try {
-      console.log('--- STARTING SAVE ---');
-      
-      // 1. Validation
-      if (!text?.trim()) {
-        Alert.alert('Missing Reflection', 'Please go back and write something before saving.', [
-          { text: 'Go Back', onPress: () => navigation.goBack() },
-          { text: 'Cancel', style: 'cancel' }
-        ]);
-        return;
-      }
-
-      const mood = selectedMood || customMood.trim();
-      if (!mood) {
-        Alert.alert('Select a Mood', 'Please choose how you are feeling before saving.', [{ text: 'OK' }]);
-        return;
-      }
-
-      // 2. Save to Entries Store
-      console.log('Saving to entriesStore...');
-      if (upsert) {
-        upsert({ 
-          date,
-          text: text,
-          prompt: prompt,
-          moodTag: { type: selectedMood ? 'chip' : 'custom', value: mood },
-          isComplete: true,
-          updatedAt: Date.now()
-        });
-      } else {
-        throw new Error("upsert function missing");
-      }
-
-      // 3. Calculate Progress & Achievements
-      console.log('Calculating progress...');
-      const existingEntry = useEntriesStore.getState().entries[date];
-      const isGratitude = existingEntry?.isGratitude || false;
-
-      const result = applyDailySave({
-        date,
-        moodTagged: true,
-        wordCount: text.trim().split(/\s+/).filter(word => word.length > 0).length,
-        mood: mood,
-        usedTimer: true,
-        entryHour: new Date().getHours(),
-        isGratitude
-      });
-
-      console.log('Save complete. Achievements:', result?.newAchievements?.length);
-
-      // 4. Haptics
-      if (hapticsEnabled) {
-        try { await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); } catch {}
-      }
-
-      // 5. Handle Navigation or Achievements
-      if (result && result.newAchievements && result.newAchievements.length > 0) {
-        // Show Achievement Popup
-        if (hapticsEnabled) {
-          try { await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success); } catch {}
-        }
-        
-        // Ensure customization store exists before calling
-        try {
-          const currentMastery = useProgress.getState().getAchievements().mastery;
-          useCustomization.getState().checkForUnlocks(
-            { unlocked: result.newAchievements.map(a => a.id) },
-            currentMastery
-          );
-        } catch (e) {
-          console.log('Customization unlock check failed (non-critical):', e);
-        }
-
-        setCurrentAchievement(result.newAchievements[0]);
-        setAchievementQueue(result.newAchievements.slice(1));
-        setShowAchievement(true);
-      } else {
-        // Go Home Immediately
-        console.log('Navigating to HomeTab...');
-        navigation.navigate('MainTabs', { screen: 'HomeTab' });
-      }
-
-    } catch (error) {
-      console.error('SAVE ERROR:', error);
-      Alert.alert("Save Error", "Your entry was saved, but we hit a snag closing the screen. " + error.message, [
-        { text: "Go Home", onPress: () => navigation.navigate('MainTabs', { screen: 'HomeTab' }) }
+    // 1. Validation
+    if (!text?.trim()) {
+      Alert.alert('Missing Reflection', 'Please go back and write something before saving.', [
+        { text: 'Go Back', onPress: () => navigation.goBack() },
+        { text: 'Cancel', style: 'cancel' }
       ]);
+      return;
+    }
+
+    const mood = selectedMood || customMood.trim();
+    if (!mood) {
+      Alert.alert('Select a Mood', 'Please choose how you are feeling before saving.', [{ text: 'OK' }]);
+      return;
+    }
+
+    // 2. Prepare Data
+    const isCustom = !selectedMood && customMood.trim();
+    
+    // Retrieve existing entry to preserve flags like isGratitude
+    const existingEntry = useEntriesStore.getState().entries[date];
+    const isGratitude = existingEntry?.isGratitude || false;
+
+    // 3. Save to Store (FORCE SAVE TEXT & PROMPT)
+    if (upsert) {
+      upsert({ 
+        date,
+        text: text,     // Explicitly save text from params
+        prompt: prompt, // Explicitly save prompt from params
+        moodTag: { type: selectedMood ? 'chip' : 'custom', value: mood },
+        isComplete: true,
+        updatedAt: Date.now()
+      });
+    } else {
+      console.error("Critical: upsert function not found in useEntriesStore");
+      Alert.alert("Error", "Could not save entry. Please restart the app.");
+      return;
+    }
+
+    // 4. Update Progress / Achievements
+    const result = applyDailySave({
+      date,
+      moodTagged: true,
+      wordCount: text.trim().split(/\s+/).filter(word => word.length > 0).length,
+      mood: mood,
+      usedTimer: true,
+      entryHour: new Date().getHours(),
+      isGratitude
+    });
+
+    console.log('ACHIEVEMENT RESULT:', result);
+
+    if (hapticsEnabled) {
+      try { await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); } catch {}
+    }
+
+    // 5. Handle Navigation / Popups
+    if (result.newAchievements && result.newAchievements.length > 0) {
+      if (hapticsEnabled) {
+        try { await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success); } catch {}
+      }
+  
+      const currentMastery = useProgress.getState().getAchievements().mastery;
+      useCustomization.getState().checkForUnlocks(
+        { unlocked: result.newAchievements.map(a => a.id) },
+        currentMastery
+      );
+
+setCurrentAchievement(result.newAchievements[0]);
+      setAchievementQueue(result.newAchievements.slice(1));
+      setShowAchievement(true);
+    } else {
+      // Safer navigation fallback
+      navigation.navigate('MainTabs', { screen: 'Home' });
     }
   }
+
+  const showNextAchievement = (queue) => {
+if (queue.length === 0) {
+      console.log('All achievements shown, navigating home...');
+      navigation.reset({ 
+        index: 0, 
+        routes: [{ name: 'MainTabs', params: { savedFrom: 'mood' } }] 
+      });
+      return;
+    }
+
+    const nextAchievement = queue[0];
+    const remainingQueue = queue.slice(1);
+    
+    setCurrentAchievement(nextAchievement);
+    setAchievementQueue(remainingQueue);
+    setShowAchievement(true);
+
+    setProgressWidth(new Animated.Value(0));
+
+    Animated.timing(progressWidth, {
+      toValue: 100,
+      duration: 1500,
+      useNativeDriver: false,
+    }).start();
+
+    setTimeout(() => {
+      setShowAchievement(false);
+      setTimeout(() => {
+        showNextAchievement(remainingQueue);
+      }, 300);
+    }, 1500);
+  };
 
   const palette = {
     bg: isDark ? '#0F172A' : '#F8FAFC',

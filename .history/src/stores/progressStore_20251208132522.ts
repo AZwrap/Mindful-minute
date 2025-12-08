@@ -124,84 +124,79 @@ updateStreak: (date: string) => {
       },
 
 applyDailySave: (data) => {
-        const { date, isGratitude, wordCount = 0, entryHour, mood } = data;
+        const { date, isGratitude, wordCount = 0, entryHour, mood } = data; // Destructure mood
         const state = get();
         
-        // 1. Calculate New Totals (DEFINED CORRETLY)
-        const newTotalEntries = state.totalEntries + 1;
+// 1. Update Stats
+        get().updateStreak(date);
+        get().incrementTotalEntries();
+        
+        // Track Words for Mindful Minutes (30 words ≈ 1 min)
         const currentWords = state.totalWords || 0;
         const newTotalWords = currentWords + (wordCount || 0);
-        
-        // 2. Update Basic Stats
-        get().updateStreak(date);
-        set({ 
-          totalEntries: newTotalEntries, 
-          totalWords: newTotalWords 
-        });
+        set({ totalWords: newTotalWords });
 
-        // 3. Update Mood History
+        // 2. Update Mood History
         let updatedUniqueMoods = state.uniqueMoods || [];
         if (mood && !updatedUniqueMoods.includes(mood)) {
             updatedUniqueMoods = [...updatedUniqueMoods, mood];
             set({ uniqueMoods: updatedUniqueMoods });
         }
 
-        // 4. Check for New Achievements
+// 3. Check for new Unlocks
         const newStreak = state.lastEntryDate === date ? state.streak : state.streak + 1;
+        const newTotal = state.totalEntries + 1;
         const currentUnlocked = new Set(state.unlockedIds || []);
         const newUnlocks: string[] = [];
+        // Accumulate words (defaults to 0 if undefined)
+      const newTotalWords = (state.totalWords || 0) + (entry.wordCount || 0);
 
-        // --- A. Mindful Time (Total Minutes) ---
-        // 30 words ≈ 1 minute
-        const totalMins = Math.floor(newTotalWords / 30);
-        if (totalMins >= 10 && !currentUnlocked.has('time_10m')) newUnlocks.push('time_10m');
-        if (totalMins >= 60 && !currentUnlocked.has('time_1h')) newUnlocks.push('time_1h');
-        if (totalMins >= 300 && !currentUnlocked.has('time_5h')) newUnlocks.push('time_5h');
-
-        // --- B. Emotional Range ---
+        // Emotional Range (New)
         const uniqueCount = updatedUniqueMoods.length;
         if (uniqueCount >= 3 && !currentUnlocked.has('range_3')) newUnlocks.push('range_3');
         if (uniqueCount >= 7 && !currentUnlocked.has('range_7')) newUnlocks.push('range_7');
         if (uniqueCount >= 10 && !currentUnlocked.has('range_10')) newUnlocks.push('range_10');
 
-        // --- C. Consistency ---
+        // Consistency
         if (newStreak >= 3 && !currentUnlocked.has('streak_3')) newUnlocks.push('streak_3');
         if (newStreak >= 7 && !currentUnlocked.has('streak_7')) newUnlocks.push('streak_7');
         if (newStreak >= 14 && !currentUnlocked.has('streak_14')) newUnlocks.push('streak_14');
         if (newStreak >= 30 && !currentUnlocked.has('streak_30')) newUnlocks.push('streak_30');
         
-        // --- D. Total Entries (Patterns) ---
-        if (newTotalEntries >= 1 && !currentUnlocked.has('entries_1')) newUnlocks.push('entries_1');
-        if (newTotalEntries >= 10 && !currentUnlocked.has('entries_10')) newUnlocks.push('entries_10');
-        if (newTotalEntries >= 50 && !currentUnlocked.has('entries_50')) newUnlocks.push('entries_50');
-        if (newTotalEntries >= 100 && !currentUnlocked.has('entries_100')) newUnlocks.push('entries_100');
+        // Patterns
+        if (newTotal >= 1 && !currentUnlocked.has('entries_1')) newUnlocks.push('entries_1');
+        if (newTotal >= 10 && !currentUnlocked.has('entries_10')) newUnlocks.push('entries_10');
+        if (newTotal >= 50 && !currentUnlocked.has('entries_50')) newUnlocks.push('entries_50');
+        if (newTotal >= 100 && !currentUnlocked.has('entries_100')) newUnlocks.push('entries_100');
 
-        // --- E. Depth ---
+        // Depth
         if (wordCount >= 50 && !currentUnlocked.has('depth_1')) newUnlocks.push('depth_1');
         if (wordCount >= 150 && !currentUnlocked.has('depth_2')) newUnlocks.push('depth_2');
 
-        // --- F. Mindfulness (Time of Day) ---
-        if (entryHour !== undefined) {
-          if (entryHour < 8 && !currentUnlocked.has('early_bird')) newUnlocks.push('early_bird');
-          if (entryHour >= 22 && !currentUnlocked.has('night_owl')) newUnlocks.push('night_owl');
-        }
-        
+        // Mindfulness
+        if (entryHour !== undefined && entryHour < 8 && !currentUnlocked.has('early_bird')) newUnlocks.push('early_bird');
+        if (entryHour !== undefined && entryHour >= 22 && !currentUnlocked.has('night_owl')) newUnlocks.push('night_owl');
+        // Mindful Time Logic
+        const totalMins = Math.floor(newTotalWords / 30);
+        if (totalMins >= 10 && !currentUnlocked.has('time_10m')) newUnlocks.push('time_10m');
+        if (totalMins >= 60 && !currentUnlocked.has('time_1h')) newUnlocks.push('time_1h');
+        if (totalMins >= 300 && !currentUnlocked.has('time_5h')) newUnlocks.push('time_5h');
         const day = new Date(date).getDay();
         if ((day === 0 || day === 6) && !currentUnlocked.has('weekend_warrior')) newUnlocks.push('weekend_warrior');
 
-        // --- G. Gratitude ---
+        // Gratitude
         if (isGratitude) {
            if (!currentUnlocked.has('gratitude_1')) newUnlocks.push('gratitude_1');
-           if (newTotalEntries >= 10 && !currentUnlocked.has('gratitude_10')) newUnlocks.push('gratitude_10'); 
-           if (newTotalEntries >= 50 && !currentUnlocked.has('gratitude_50')) newUnlocks.push('gratitude_50');
+           if (newTotal >= 10 && !currentUnlocked.has('gratitude_10')) newUnlocks.push('gratitude_10'); 
+           if (newTotal >= 50 && !currentUnlocked.has('gratitude_50')) newUnlocks.push('gratitude_50');
         }
 
-        // 5. Persist Unlocks
+        // 4. Persist
         if (newUnlocks.length > 0) {
           set({ unlockedIds: [...(state.unlockedIds || []), ...newUnlocks] });
         }
         
-        return { newAchievements: newUnlocks.map(id => ACHIEVEMENTS[id]).filter(Boolean) };
+return { newAchievements: newUnlocks.map(id => ACHIEVEMENTS[id]).filter(Boolean) };
       },
 
 resetProgress: () => {

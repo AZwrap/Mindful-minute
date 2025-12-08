@@ -134,7 +134,6 @@ const getDayName = (dateString: string) => {
   const date = new Date(dateString);
   return date.toLocaleDateString('en-US', { weekday: 'long' });
 };
-
 // --- NEW HELPER: Recent Consistency ---
 const getRecentConsistency = (entries: JournalEntry[]) => {
   const last7Days = Array.from({ length: 7 }, (_, i) => {
@@ -157,7 +156,6 @@ const getRecentConsistency = (entries: JournalEntry[]) => {
 const estimateMindfulMinutes = (totalWords: number) => {
   return Math.max(1, Math.round(totalWords / 30));
 };
-
 const analyzeWritingPatterns = (allEntries: JournalEntry[]): WritingPatterns | null => {
   if (!allEntries || !allEntries.length) return null;
 
@@ -626,12 +624,12 @@ const styles = StyleSheet.create({
     gap: 6,
     marginTop: 12,
   },
-consistencyRow: {
+  consistencyRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     marginTop: 12,
-    height: 60, 
+    height: 60, // Match previous height for layout stability
   },
   consistencyDot: {
     width: 24,

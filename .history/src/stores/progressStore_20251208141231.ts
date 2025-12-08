@@ -127,12 +127,12 @@ applyDailySave: (data) => {
         const { date, isGratitude, wordCount = 0, entryHour, mood } = data;
         const state = get();
         
-        // 1. Calculate New Totals (DEFINED CORRETLY)
+        // 1. Calculate New Totals
         const newTotalEntries = state.totalEntries + 1;
         const currentWords = state.totalWords || 0;
         const newTotalWords = currentWords + (wordCount || 0);
         
-        // 2. Update Basic Stats
+        // 2. Update Basic Stats (Synchronously update store)
         get().updateStreak(date);
         set({ 
           totalEntries: newTotalEntries, 

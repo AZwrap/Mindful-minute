@@ -135,29 +135,6 @@ const getDayName = (dateString: string) => {
   return date.toLocaleDateString('en-US', { weekday: 'long' });
 };
 
-// --- NEW HELPER: Recent Consistency ---
-const getRecentConsistency = (entries: JournalEntry[]) => {
-  const last7Days = Array.from({ length: 7 }, (_, i) => {
-    const d = new Date();
-    d.setDate(d.getDate() - (6 - i));
-    return d.toISOString().split('T')[0]; // YYYY-MM-DD
-  });
-
-  const entrySet = new Set(entries.map(e => e.date));
-
-  return last7Days.map(date => ({
-    date,
-    dayLabel: new Date(date).toLocaleDateString('en-US', { weekday: 'narrow' }), // M, T, W...
-    hasEntry: entrySet.has(date),
-    isToday: date === new Date().toISOString().split('T')[0]
-  }));
-};
-
-// --- NEW HELPER: Estimate Time (30 words/min avg on mobile) ---
-const estimateMindfulMinutes = (totalWords: number) => {
-  return Math.max(1, Math.round(totalWords / 30));
-};
-
 const analyzeWritingPatterns = (allEntries: JournalEntry[]): WritingPatterns | null => {
   if (!allEntries || !allEntries.length) return null;
 
@@ -278,9 +255,8 @@ export default function StatsScreen({ route, navigation }: Props) {  const syste
       .sort((a, b) => (a[0] < b[0] ? 1 : -1))
       .map(([date, entry]) => ({ date, ...entry }));
 
-return {
+    return {
       entries: sortedEntries,
-      consistency: getRecentConsistency(sortedEntries), // New
       writingPatterns: analyzeWritingPatterns(sortedEntries),
       writingAnalytics: analyzeWritingAnalytics(sortedEntries),
       gratitudeAnalytics: analyzeGratitudePractice(sortedEntries),
@@ -507,42 +483,43 @@ style={{ marginTop: 20 }}
                         {moodStats[0]?.mood || '—'}
                       </Text>
                     </View>
-{/* Mindful Minutes Card */}
                     <View style={[styles.bentoCard, { backgroundColor: palette.card }]}>
-                      <View style={{flexDirection:'row', alignItems:'center', gap:4}}>
-                        <Clock size={14} color={textSub} />
-                        <Text style={[styles.bentoLabel, { color: textSub, marginTop: 0 }]}>Mindful Time</Text>
-                      </View>
+                      <Text style={[styles.bentoLabel, { color: textSub, marginTop: 0 }]}>Avg Words</Text>
                       <Text style={[styles.bentoValue, { color: textMain }]}>
-                        {estimateMindfulMinutes(writingAnalytics?.totalWords || 0)}
-                        <Text style={{fontSize: 14, fontWeight:'500', color: textSub}}> mins</Text>
+                        {writingAnalytics?.averageWords || 0}
                       </Text>
                     </View>
                   </View>
 
-                  {/* Right Col: Consistency Strip (Last 7 Days) */}
+                  {/* Right Col: Activity Chart */}
                   <View style={[styles.bentoCard, { flex: 1, backgroundColor: palette.card }]}>
-                    <Text style={[styles.bentoLabel, { color: textSub, marginTop: 0 }]}>Last 7 Days</Text>
-                    <View style={styles.consistencyRow}>
-                      {statsData.consistency.map((day: any) => (
-                        <View key={day.date} style={{ alignItems: 'center', gap: 6 }}>
+                    <Text style={[styles.bentoLabel, { color: textSub, marginTop: 0 }]}>Peak Activity</Text>
+                    <Text style={[styles.bentoValue, { color: textMain, fontSize: 20 }]}>
+                      {writingPatterns?.mostFrequentDay || '—'}
+                    </Text>
+                    
+                    {/* Tiny Bar Chart */}
+                    <View style={styles.chartContainer}>
+                      {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((day, index) => {
+                        const fullDay = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'][index];
+                        const count = writingPatterns?.dayCounts?.[fullDay] || 0;
+                        const max = Math.max(...Object.values(writingPatterns?.dayCounts || { a: 1 }));
+                        const height = max > 0 ? (count / max) * 100 : 0;
+                        
+                        return (
                           <View 
+                            key={day} 
                             style={[
-                              styles.consistencyDot,
+                              styles.chartBar, 
                               { 
-                                backgroundColor: day.hasEntry ? palette.accent : (isDark ? '#334155' : '#E2E8F0'),
-                                borderColor: day.isToday ? palette.text : 'transparent',
-                                borderWidth: day.isToday ? 1 : 0
+                                backgroundColor: count > 0 ? palette.accent : palette.border,
+                                height: `${Math.max(10, height)}%`,
+                                opacity: count > 0 ? 1 : 0.5
                               }
-                            ]}
-                          >
-                            {day.hasEntry && <View style={{width: 4, height: 4, borderRadius: 2, backgroundColor: 'white'}} />}
-                          </View>
-                          <Text style={{ fontSize: 10, color: day.isToday ? palette.text : textSub, fontWeight: '600' }}>
-                            {day.dayLabel}
-                          </Text>
-                        </View>
-                      ))}
+                            ]} 
+                          />
+                        );
+                      })}
                     </View>
 </View>
                 </View>
@@ -625,20 +602,6 @@ const styles = StyleSheet.create({
     height: 60,
     gap: 6,
     marginTop: 12,
-  },
-consistencyRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginTop: 12,
-    height: 60, 
-  },
-  consistencyDot: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    justifyContent: 'center',
-    alignItems: 'center',
   },
   chartBar: {
     flex: 1,
