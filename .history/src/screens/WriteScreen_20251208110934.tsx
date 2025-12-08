@@ -76,10 +76,6 @@ export default function WriteScreen({ navigation, route }: Props) {
   // 1. MOUNT REF
   const mounted = useRef(false);
   const isScreenActive = useRef(true);
-  const isSaved = useRef(false); // Track if user explicitly saved
-
-  // Move this UP so it's available for cleanup logic
-  const { showTimer, setShowTimer, writeDuration } = useWritingSettings(); 
 
   // --- THEME & PALETTE ---
   const systemScheme = useColorScheme();
@@ -309,36 +305,34 @@ if (!result.canceled) {
     overflow: 'hidden',
   };
 
-// Cleanup: Reset timer if user backs out without saving
+  // Cleanup: Clear timer state if user backs out without saving
   useEffect(() => {
     return () => {
-        // If we didn't explicitly save, reset timer to the start (writeDuration)
-        if (!isSaved.current) {
-            setDraftTimer(date, writeDuration); 
+        // Only clear if we didn't save (you might need more complex logic for 'saved' state, 
+        // but this ensures backing out resets the timer for next time)
+        if (!preserveTimerProgress) {
+            setDraftTimer(date, 0); 
         }
     };
-  }, [writeDuration]); // Dependency ensures we have the correct duration
+  }, []);
 
 // ===== POMODORO & TIMER HOOK =====
   const {
     remaining, running, phase, currentCycle, totalCycles, skipBreakAvailable, timerCompleted,
-setRunning, handleTick, skipBreak, handleReset, fade
+    setRunning, handleTick, skipBreak, handleReset, fade
   } = useJournalTimer(date, isScreenActive);
   
-  // (useWritingSettings moved to top)
-  
+const { showTimer, setShowTimer, writeDuration } = useWritingSettings(); 
   // Restore the missing variable
   const preserveTimerProgress = useSettings((s) => s.preserveTimerProgress);
   const setDraftTimer = useEntriesStore((s) => s.setDraftTimer);
   const upsert = useEntriesStore((s) => s.upsert);
   
 
-// --- SAVE & EXIT HANDLERS ---
+  // --- SAVE & EXIT HANDLERS ---
 const saveAndExit = () => {
     if (!text.trim() && !audioUri) return;
     
-    isSaved.current = true; // Prevent timer reset on unmount
-
 // FIX: Save 'currentPrompt' (which contains the Smart Prompt)
 upsert({ 
         date, 
@@ -354,12 +348,11 @@ upsert({
     navigation.reset({ index: 0, routes: [{ name: 'MainTabs' }] });
   };
 
-const continueToMood = async () => {
+  const continueToMood = async () => {
     if (!text.trim() && !audioUri) {
       Alert.alert("Empty", "Please write something or record audio first.");
       return;
     }
-    isSaved.current = true; // Prevent timer reset on unmount
     const completedGratitudeItems = gratitudeEntries.filter((entry) => entry?.trim()).length;
     const isGratitudeEntry = completedGratitudeItems >= 2;
     const xpBonus = isGratitudeEntry ? 10 : 0;
@@ -445,8 +438,8 @@ isComplete: false,
               )}
             </Text>
 
-{/* Collapsible Timer Container - Collapses when hidden OR completed */}
-            <Animated.View style={[{ opacity: fade }, styles.timerContainer, (!showTimer || timerCompleted) && { height: 0, overflow: 'hidden' }]}>
+            {/* Collapsible Timer Container */}
+            <Animated.View style={[{ opacity: fade }, styles.timerContainer, !showTimer && { height: 0, overflow: 'hidden' }]}>
               {showTimer && (
                 <View style={[styles.timerRow, { justifyContent: 'center' }]}>
                   <View style={{ marginRight: 20 }}>
@@ -488,10 +481,9 @@ isComplete: false,
                   <Text style={[styles.coachText, { color: palette.accent }]}>{coachMessage}</Text>
                 </View>
               </Animated.View>
-)}
+            )}
 
-            {/* FIX: Removed negative margin hack. Layout now naturally reflows because TimerContainer collapses above. */}
-            <Animated.View style={[animatedInputStyle, { marginTop: 16, borderRadius: 14 }]}
+<Animated.View style={[animatedInputStyle, { marginTop: timerCompleted ? -120 : 2, borderRadius: 14 }]}
               onLayout={(e) => {
                 const y = e.nativeEvent.layout.y;
                 setSectionPositions((prev) => ({ ...prev, editor: y }));

@@ -20,7 +20,6 @@ import * as Haptics from 'expo-haptics';
 import { Audio } from 'expo-av';
 import { Mic, Square, Play, Trash2, RotateCcw, Camera, XCircle } from 'lucide-react-native';
 import * as ImagePicker from 'expo-image-picker'; // NEW
-import * as FileSystem from 'expo-file-system'; // Added for permanent storage
 import { useFocusEffect } from '@react-navigation/native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -51,7 +50,6 @@ import {
   getPromptExplanation,
 } from '../utils/smartPrompts';
 import { getCoachingTip } from '../utils/coachingEngine';
-import { STRINGS } from '../constants/strings';
 
 // --------------------------------------------------
 // TYPES
@@ -76,10 +74,6 @@ export default function WriteScreen({ navigation, route }: Props) {
   // 1. MOUNT REF
   const mounted = useRef(false);
   const isScreenActive = useRef(true);
-  const isSaved = useRef(false); // Track if user explicitly saved
-
-  // Move this UP so it's available for cleanup logic
-  const { showTimer, setShowTimer, writeDuration } = useWritingSettings(); 
 
   // --- THEME & PALETTE ---
   const systemScheme = useColorScheme();
@@ -95,21 +89,8 @@ export default function WriteScreen({ navigation, route }: Props) {
   const [recording, setRecording] = useState<Audio.Recording | undefined | null>(null);
   const [audioUri, setAudioUri] = useState<string | null>(null);
 const [sound, setSound] = useState<Audio.Sound | null>(null);
-const [isPlaying, setIsPlaying] = useState(false);
+  const [isPlaying, setIsPlaying] = useState(false);
   const [imageUri, setImageUri] = useState<string | null>(null); // NEW
-
-  // Helper to move image from cache to document directory
-  const saveImageLocally = async (uri: string) => {
-    try {
-      const filename = uri.split('/').pop() || `entry-${Date.now()}.jpg`;
-      const newPath = `${FileSystem.documentDirectory}${filename}`;
-      await FileSystem.moveAsync({ from: uri, to: newPath });
-      return newPath;
-    } catch (e) {
-      console.log('Error saving image locally:', e);
-      return uri; // Fallback to cache URI if move fails
-    }
-  };
 
 // --- IMAGE LOGIC ---
   const pickImage = () => {
@@ -136,9 +117,8 @@ const [isPlaying, setIsPlaying] = useState(false);
                 quality: 0.8,
               });
 
-if (!result.canceled) {
-                const savedUri = await saveImageLocally(result.assets[0].uri);
-                setImageUri(savedUri);
+              if (!result.canceled) {
+                setImageUri(result.assets[0].uri);
               }
             } catch (e) {
               console.log(e);
@@ -157,9 +137,8 @@ if (!result.canceled) {
                 quality: 0.8,
               });
 
-if (!result.canceled) {
-                const savedUri = await saveImageLocally(result.assets[0].uri);
-                setImageUri(savedUri);
+              if (!result.canceled) {
+                setImageUri(result.assets[0].uri);
               }
             } catch (e) {
               Alert.alert("Error", "Could not pick image.");
@@ -309,36 +288,34 @@ if (!result.canceled) {
     overflow: 'hidden',
   };
 
-// Cleanup: Reset timer if user backs out without saving
+  // Cleanup: Clear timer state if user backs out without saving
   useEffect(() => {
     return () => {
-        // If we didn't explicitly save, reset timer to the start (writeDuration)
-        if (!isSaved.current) {
-            setDraftTimer(date, writeDuration); 
+        // Only clear if we didn't save (you might need more complex logic for 'saved' state, 
+        // but this ensures backing out resets the timer for next time)
+        if (!preserveTimerProgress) {
+            setDraftTimer(date, 0); 
         }
     };
-  }, [writeDuration]); // Dependency ensures we have the correct duration
+  }, []);
 
 // ===== POMODORO & TIMER HOOK =====
   const {
     remaining, running, phase, currentCycle, totalCycles, skipBreakAvailable, timerCompleted,
-setRunning, handleTick, skipBreak, handleReset, fade
+    setRunning, handleTick, skipBreak, handleReset, fade
   } = useJournalTimer(date, isScreenActive);
   
-  // (useWritingSettings moved to top)
-  
+const { showTimer, setShowTimer, writeDuration } = useWritingSettings(); 
   // Restore the missing variable
   const preserveTimerProgress = useSettings((s) => s.preserveTimerProgress);
   const setDraftTimer = useEntriesStore((s) => s.setDraftTimer);
   const upsert = useEntriesStore((s) => s.upsert);
   
 
-// --- SAVE & EXIT HANDLERS ---
+  // --- SAVE & EXIT HANDLERS ---
 const saveAndExit = () => {
     if (!text.trim() && !audioUri) return;
     
-    isSaved.current = true; // Prevent timer reset on unmount
-
 // FIX: Save 'currentPrompt' (which contains the Smart Prompt)
 upsert({ 
         date, 
@@ -354,12 +331,11 @@ upsert({
     navigation.reset({ index: 0, routes: [{ name: 'MainTabs' }] });
   };
 
-const continueToMood = async () => {
+  const continueToMood = async () => {
     if (!text.trim() && !audioUri) {
       Alert.alert("Empty", "Please write something or record audio first.");
       return;
     }
-    isSaved.current = true; // Prevent timer reset on unmount
     const completedGratitudeItems = gratitudeEntries.filter((entry) => entry?.trim()).length;
     const isGratitudeEntry = completedGratitudeItems >= 2;
     const xpBonus = isGratitudeEntry ? 10 : 0;
@@ -445,17 +421,16 @@ isComplete: false,
               )}
             </Text>
 
-{/* Collapsible Timer Container - Collapses when hidden OR completed */}
-            <Animated.View style={[{ opacity: fade }, styles.timerContainer, (!showTimer || timerCompleted) && { height: 0, overflow: 'hidden' }]}>
+            {/* Collapsible Timer Container */}
+            <Animated.View style={[{ opacity: fade }, styles.timerContainer, !showTimer && { height: 0, overflow: 'hidden' }]}>
               {showTimer && (
-                <View style={[styles.timerRow, { justifyContent: 'center' }]}>
+                <View style={styles.timerRow}>
                   <View style={{ marginRight: 20 }}>
                   <PremiumPressable onPress={handleReset} style={[styles.resetBtn, { backgroundColor: palette.card }]}>
                     <RotateCcw size={18} color={palette.accent} />
                   </PremiumPressable>
                   </View>
-                  {/* FIX: Use semantic palette color 'successSoft' instead of hardcoded rgba */}
-                  <View style={[styles.timerPill, { backgroundColor: phase === 'writing' ? palette.card : palette.successSoft, height: phase === 'break' && skipBreakAvailable ? 115 : 90 }]}>
+                  <View style={[styles.timerPill, { backgroundColor: phase === 'writing' ? palette.card : 'rgba(34,197,94,0.1)', height: phase === 'break' && skipBreakAvailable ? 115 : 90 }]}>
                     <View style={styles.phaseIndicator}>
                       <Text style={[styles.phaseText, { color: phase === 'writing' ? palette.accent : '#16A34A' }]}>{phase === 'writing' ? '🖊️ Writing' : '⏸️ Break'}</Text>
                       <Text style={[styles.cycleText, { color: palette.subtleText }]}>Cycle {currentCycle}/{totalCycles}</Text>
@@ -488,10 +463,9 @@ isComplete: false,
                   <Text style={[styles.coachText, { color: palette.accent }]}>{coachMessage}</Text>
                 </View>
               </Animated.View>
-)}
+            )}
 
-            {/* FIX: Removed negative margin hack. Layout now naturally reflows because TimerContainer collapses above. */}
-            <Animated.View style={[animatedInputStyle, { marginTop: 16, borderRadius: 14 }]}
+<Animated.View style={[animatedInputStyle, { marginTop: timerCompleted ? -120 : 2, borderRadius: 14 }]}
               onLayout={(e) => {
                 const y = e.nativeEvent.layout.y;
                 setSectionPositions((prev) => ({ ...prev, editor: y }));
@@ -505,8 +479,8 @@ isComplete: false,
                   handleInputFocusAnim(1);
                   if (scrollRef.current) scrollRef.current.scrollTo({ y: Math.max(0, sectionPositions.editor - 40), animated: true });
                 }}
-onBlur={() => handleInputFocusAnim(0)}
-                placeholder={STRINGS.write.placeholder}
+                onBlur={() => handleInputFocusAnim(0)}
+                placeholder="Take a minute to breathe and write…"
                 placeholderTextColor={palette.subtleText}
                 multiline
                 style={[styles.input, { color: palette.text, backgroundColor: palette.card, borderWidth: 0 }]}
@@ -651,8 +625,8 @@ onBlur={() => handleInputFocusAnim(0)}
               <Text style={[styles.btnGhostText, { color: palette.text }]}>{running ? 'Pause' : 'Resume'}</Text>
             </PremiumPressable>
 
-           <PremiumPressable onPress={saveAndExit} style={[styles.btnGhost, { borderColor: palette.accent }]}><Text style={[styles.btnGhostText, { color: palette.accent }]}>{STRINGS.common.saveAndExit}</Text></PremiumPressable>
-            <PremiumPressable onPress={continueToMood} style={[styles.btnPrimary, { backgroundColor: palette.accent }]}><Text style={styles.btnPrimaryText}>{STRINGS.common.continue}</Text></PremiumPressable>
+            <PremiumPressable onPress={saveAndExit} style={[styles.btnGhost, { borderColor: palette.accent }]}><Text style={[styles.btnGhostText, { color: palette.accent }]}>Save & Exit</Text></PremiumPressable>
+            <PremiumPressable onPress={continueToMood} style={[styles.btnPrimary, { backgroundColor: palette.accent }]}><Text style={styles.btnPrimaryText}>Continue</Text></PremiumPressable>
           </View>
         </View>
 

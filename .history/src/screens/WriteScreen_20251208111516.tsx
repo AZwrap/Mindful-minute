@@ -445,8 +445,8 @@ isComplete: false,
               )}
             </Text>
 
-{/* Collapsible Timer Container - Collapses when hidden OR completed */}
-            <Animated.View style={[{ opacity: fade }, styles.timerContainer, (!showTimer || timerCompleted) && { height: 0, overflow: 'hidden' }]}>
+            {/* Collapsible Timer Container */}
+            <Animated.View style={[{ opacity: fade }, styles.timerContainer, !showTimer && { height: 0, overflow: 'hidden' }]}>
               {showTimer && (
                 <View style={[styles.timerRow, { justifyContent: 'center' }]}>
                   <View style={{ marginRight: 20 }}>
@@ -488,10 +488,9 @@ isComplete: false,
                   <Text style={[styles.coachText, { color: palette.accent }]}>{coachMessage}</Text>
                 </View>
               </Animated.View>
-)}
+            )}
 
-            {/* FIX: Removed negative margin hack. Layout now naturally reflows because TimerContainer collapses above. */}
-            <Animated.View style={[animatedInputStyle, { marginTop: 16, borderRadius: 14 }]}
+<Animated.View style={[animatedInputStyle, { marginTop: timerCompleted ? -120 : 2, borderRadius: 14 }]}
               onLayout={(e) => {
                 const y = e.nativeEvent.layout.y;
                 setSectionPositions((prev) => ({ ...prev, editor: y }));

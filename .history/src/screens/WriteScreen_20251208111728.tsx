@@ -488,10 +488,9 @@ isComplete: false,
                   <Text style={[styles.coachText, { color: palette.accent }]}>{coachMessage}</Text>
                 </View>
               </Animated.View>
-)}
+            )}
 
-            {/* FIX: Removed negative margin hack. Layout now naturally reflows because TimerContainer collapses above. */}
-            <Animated.View style={[animatedInputStyle, { marginTop: 16, borderRadius: 14 }]}
+<Animated.View style={[animatedInputStyle, { marginTop: timerCompleted ? -120 : 2, borderRadius: 14 }]}
               onLayout={(e) => {
                 const y = e.nativeEvent.layout.y;
                 setSectionPositions((prev) => ({ ...prev, editor: y }));
