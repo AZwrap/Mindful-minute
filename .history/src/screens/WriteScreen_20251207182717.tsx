@@ -409,7 +409,7 @@ isComplete: false,
       <SafeAreaView style={{ flex: 1 }} edges={['top']}>
         <ScrollView ref={scrollRef} style={styles.container} contentContainerStyle={[styles.scrollContent, { paddingBottom: 20 + keyboardHeight }]} keyboardShouldPersistTaps="handled">
           <View style={styles.contentCard}>
-{/* PROMPT */}
+            {/* PROMPT */}
             <Text style={[styles.prompt, { color: promptColor }]}>
               {currentPrompt?.text}
               {currentPrompt?.explanation && (
@@ -419,8 +419,7 @@ isComplete: false,
               )}
             </Text>
 
-            {/* Collapsible Timer Container */}
-            <Animated.View style={[{ opacity: fade }, styles.timerContainer, !showTimer && { height: 0, overflow: 'hidden' }]}>
+            <Animated.View style={[{ opacity: fade }, styles.timerContainer]}>
               {showTimer && (
                 <View style={styles.timerRow}>
                   <View style={{ marginRight: 20 }}>
@@ -433,8 +432,7 @@ isComplete: false,
                       <Text style={[styles.phaseText, { color: phase === 'writing' ? palette.accent : '#16A34A' }]}>{phase === 'writing' ? '🖊️ Writing' : '⏸️ Break'}</Text>
                       <Text style={[styles.cycleText, { color: palette.subtleText }]}>Cycle {currentCycle}/{totalCycles}</Text>
                     </View>
-                    {/* key={phase} forces a full reset when switching Writing <-> Break */}
-                    <Timer key={phase} seconds={remaining} running={running} onTick={handleTick} />
+                    <Timer seconds={remaining} running={running} onTick={handleTick} />
                     <Text style={[styles.timerStatus, { color: running ? palette.accent : palette.subtleText }]}>{running ? (phase === 'writing' ? 'Writing' : 'Break') : 'Paused'}</Text>
                     {phase === 'break' && skipBreakAvailable && (
                       <PremiumPressable onPress={skipBreak} style={[styles.skipButton, { backgroundColor: palette.card }]}>

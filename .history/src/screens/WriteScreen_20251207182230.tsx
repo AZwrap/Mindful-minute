@@ -304,10 +304,8 @@ const [sound, setSound] = useState<Audio.Sound | null>(null);
     setRunning, handleTick, skipBreak, handleReset, fade
   } = useJournalTimer(date, isScreenActive);
   
-  const { showTimer, setShowTimer, writeDuration } = useWritingSettings(); 
-  // Restore the missing variable
-  const preserveTimerProgress = useSettings((s) => s.preserveTimerProgress);
-  const setDraftTimer = useEntriesStore((s) => s.setDraftTimer);
+  const { showTimer, setShowTimer, writeDuration } = useWritingSettings(); // writeDuration needed for save
+  const setDraftTimer = useEntriesStore((s) => s.setDraftTimer); // Needed for exit logic
   
 
   // --- SAVE & EXIT HANDLERS ---
@@ -409,7 +407,7 @@ isComplete: false,
       <SafeAreaView style={{ flex: 1 }} edges={['top']}>
         <ScrollView ref={scrollRef} style={styles.container} contentContainerStyle={[styles.scrollContent, { paddingBottom: 20 + keyboardHeight }]} keyboardShouldPersistTaps="handled">
           <View style={styles.contentCard}>
-{/* PROMPT */}
+            {/* PROMPT */}
             <Text style={[styles.prompt, { color: promptColor }]}>
               {currentPrompt?.text}
               {currentPrompt?.explanation && (
@@ -419,8 +417,7 @@ isComplete: false,
               )}
             </Text>
 
-            {/* Collapsible Timer Container */}
-            <Animated.View style={[{ opacity: fade }, styles.timerContainer, !showTimer && { height: 0, overflow: 'hidden' }]}>
+            <Animated.View style={[{ opacity: fade }, styles.timerContainer]}>
               {showTimer && (
                 <View style={styles.timerRow}>
                   <View style={{ marginRight: 20 }}>
@@ -433,8 +430,7 @@ isComplete: false,
                       <Text style={[styles.phaseText, { color: phase === 'writing' ? palette.accent : '#16A34A' }]}>{phase === 'writing' ? '🖊️ Writing' : '⏸️ Break'}</Text>
                       <Text style={[styles.cycleText, { color: palette.subtleText }]}>Cycle {currentCycle}/{totalCycles}</Text>
                     </View>
-                    {/* key={phase} forces a full reset when switching Writing <-> Break */}
-                    <Timer key={phase} seconds={remaining} running={running} onTick={handleTick} />
+                    <Timer seconds={remaining} running={running} onTick={handleTick} />
                     <Text style={[styles.timerStatus, { color: running ? palette.accent : palette.subtleText }]}>{running ? (phase === 'writing' ? 'Writing' : 'Break') : 'Paused'}</Text>
                     {phase === 'break' && skipBreakAvailable && (
                       <PremiumPressable onPress={skipBreak} style={[styles.skipButton, { backgroundColor: palette.card }]}>
@@ -664,7 +660,7 @@ const styles = StyleSheet.create({
   cycleText: { fontSize: 10, fontWeight: '600' },
   skipButton: { marginTop: 6, paddingVertical: 4, paddingHorizontal: 8, borderRadius: 8 },
   skipText: { fontSize: 10, fontWeight: '600' },
-timerContainer: { justifyContent: 'center', minHeight: 10, paddingBottom: 8 }, // Removed fixed height suggestionsContainer: { flex: 1, marginRight: 12 },
+timerContainer: { justifyContent: 'center', minHeight: 10 }, // Removed fixed height suggestionsContainer: { flex: 1, marginRight: 12 },
   suggestionsLabel: { fontSize: 12, fontWeight: '600', marginBottom: 8, textTransform: 'uppercase', letterSpacing: 0.5 },
   suggestionsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   suggestionChip: { flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderRadius: 16, paddingHorizontal: 12, paddingVertical: 6, gap: 4 },
