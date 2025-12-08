@@ -248,12 +248,15 @@ export default function StatsScreen({ route, navigation }: Props) {  const syste
   const [isReady, setIsReady] = useState(false);
   const [selectedPeriod, setSelectedPeriod] = useState<PeriodType>('month');
 
-// --- 1. MEMOIZED ANALYTICS (Heavy calculations) ---
+// --- MEMOIZED ANALYTICS ---
+  // This replaces the heavy useEffect. It only runs when 'map' changes.
   const statsData = useMemo(() => {
+    // 1. Prepare Sorted Entries
     const sortedEntries = Object.entries(map || {})
       .sort((a, b) => (a[0] < b[0] ? 1 : -1))
       .map(([date, entry]) => ({ date, ...entry }));
 
+    // 2. Run Heavy Analytics
     return {
       entries: sortedEntries,
       writingPatterns: analyzeWritingPatterns(sortedEntries),
@@ -265,29 +268,23 @@ export default function StatsScreen({ route, navigation }: Props) {  const syste
     };
   }, [map, gratitudeStreak, totalGratitudeEntries]);
 
-  // --- 2. FILTERED STATE ---
-  const [displayData, setDisplayData] = useState({
-    periodEntries: [] as JournalEntry[],
-    moodTrends: null as any,
-    moodInsights: [] as any[],
-    writingInsightsAnalysis: null as any,
-    writingInsights: [] as any[],
-    moodStats: [] as MoodStat[],
-  });
-
-  // Trigger loading animation when data is ready
+  // Trigger fade-in when data is ready
   useEffect(() => {
-    if (statsData.entries) {
-      setIsReady(true);
-      Animated.timing(contentFadeAnim, { toValue: 1, duration: 400, useNativeDriver: true }).start();
-    }
+    setIsReady(true);
+    Animated.timing(contentFadeAnim, {
+      toValue: 1,
+      duration: 400,
+      useNativeDriver: true,
+    }).start();
   }, [statsData]);
 
-  // Filter Data Effect
+  // PERIOD FILTERING LOGIC
   useEffect(() => {
     if (!isReady) return;
 
-    let cutoffDate = new Date(0);
+    const now = new Date();
+    let cutoffDate = new Date(0); // Default to epoch
+
     if (selectedPeriod === 'week') {
         const d = new Date();
         d.setDate(d.getDate() - 7);
@@ -299,11 +296,18 @@ export default function StatsScreen({ route, navigation }: Props) {  const syste
         cutoffDate = d;
     }
 
+// 1. Filter Entries for Period
     const _periodEntries = selectedPeriod === 'all' 
       ? statsData.entries 
       : statsData.entries.filter(e => new Date(e.date + 'T00:00:00') >= cutoffDate);
 
-    // Calculate Mood Stats for period
+    // 2. Mood Trends
+    const _moodTrends = analyzeMoodTrends(statsData.entries, selectedPeriod);
+    const _moodInsights = getMoodInsights(_moodTrends);
+    const _writingInsightsAnalysis = analyzeWritingInsights(statsData.entries, selectedPeriod);
+    const _writingInsights = getWritingInsights(_writingInsightsAnalysis);
+
+    // 3. Mood Stats
     const _moodStats: Record<string, number> = {};
     let total = 0;
     _periodEntries.forEach(e => {
@@ -322,19 +326,54 @@ export default function StatsScreen({ route, navigation }: Props) {  const syste
       }))
       .sort((a, b) => b.count - a.count);
 
+    // 4. Update Display Data
     setDisplayData({
       periodEntries: _periodEntries,
-      moodTrends: analyzeMoodTrends(statsData.entries, selectedPeriod),
-      moodInsights: getMoodInsights(analyzeMoodTrends(statsData.entries, selectedPeriod)),
-      writingInsightsAnalysis: analyzeWritingInsights(statsData.entries, selectedPeriod),
-      writingInsights: getWritingInsights(analyzeWritingInsights(statsData.entries, selectedPeriod)),
-      moodStats: _moodStatsArray
+      moodStats: _moodStatsArray,
+      moodTrends: _moodTrends,
+      // ... pass other derived data if needed for display
     });
 
-  }, [selectedPeriod, isReady, statsData]);
+  }, [selectedPeriod, isReady, statsData]); // Depend on statsData
+    const _moodInsights = getMoodInsights(_moodTrends);
+    const _writingInsightsAnalysis = analyzeWritingInsights(data.entries, selectedPeriod);
+    const _writingInsights = getWritingInsights(_writingInsightsAnalysis);
 
-  const { writingPatterns, writingAnalytics, gratitudeAnalytics } = statsData;
-  const { moodStats, periodEntries } = displayData;
+    // Mood Stats
+    const _moodStats: Record<string, number> = {};
+    let total = 0;
+    _periodEntries.forEach(e => {
+      if (e.moodTag?.value) {
+        const m = e.moodTag.value;
+        _moodStats[m] = (_moodStats[m] || 0) + 1;
+        total++;
+      }
+    });
+
+    const _moodStatsArray: MoodStat[] = Object.entries(_moodStats)
+      .map(([m, c]) => ({ 
+        mood: m, 
+        count: c, 
+        percentage: total > 0 ? Math.round((c/total)*100) : 0 
+      }))
+      .sort((a, b) => b.count - a.count);
+
+    setData(prev => ({
+      ...prev,
+      periodEntries: _periodEntries,
+      moodTrends: _moodTrends,
+      moodInsights: _moodInsights,
+      writingInsightsAnalysis: _writingInsightsAnalysis,
+      writingInsights: _writingInsights,
+      moodStats: _moodStatsArray
+    }));
+
+  }, [selectedPeriod, isReady, data.entries]);
+
+  const { 
+    writingPatterns, writingAnalytics, gratitudeAnalytics, 
+    moodStats, periodEntries 
+  } = data;
 
   const textMain = palette.text;
   const textSub = palette.subtleText;

@@ -1,5 +1,5 @@
 import React, { useRef } from 'react';
-import { Pressable, Animated, StyleProp, ViewStyle, GestureResponderEvent, PressableProps } from 'react-native';
+import { Pressable, Animated, StyleProp, ViewStyle, GestureResponderEvent } from 'react-native';
 import * as Haptics from 'expo-haptics';
 
 // Create an animated version of Pressable
@@ -8,6 +8,8 @@ const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 // --------------------------------------------------
 // TYPES
 // --------------------------------------------------
+import { PressableProps } from 'react-native';
+
 interface Props extends PressableProps {
   children: React.ReactNode;
   onPress?: (event: GestureResponderEvent) => void;
@@ -77,7 +79,8 @@ onPress={handlePress}
       onPressIn={handlePressIn}
       onPressOut={handlePressOut}
       disabled={disabled}
-accessibilityRole={accessibilityRole}
+      accessibilityRole={accessibilityRole}
+      {...props}
       style={[style, { transform: [{ scale: scaleAnim }] }]}
       {...props}
     >

@@ -610,18 +610,12 @@ return result;
                     </Text>
                   </View>
                 )}
-ListEmptyComponent={
+                ListEmptyComponent={
                   <View style={styles.emptyState}>
-                     <View style={{ width: 64, height: 64, borderRadius: 32, backgroundColor: isDark ? '#334155' : '#E2E8F0', alignItems: 'center', justifyContent: 'center', marginBottom: 16 }}>
-                        <List size={32} color={isDark ? '#94A3B8' : '#94A3B8'} />
-                     </View>
-                    <Text style={[styles.emptyText, { color: textMain, fontWeight: '700', fontSize: 18, marginBottom: 4 }]}>
-                      {selectedMood === 'all' ? 'No Entries Yet' : 'No Matches Found'}
-                    </Text>
-                    <Text style={[styles.emptyText, { color: textSub, marginBottom: 24, fontSize: 14, opacity: 0.8 }]}>
+                    <Text style={[styles.emptyText, { color: textSub, marginBottom: 16 }]}>
                       {selectedMood === 'all' 
-                        ? 'Your story begins with a single entry. Take a mindful minute today.' 
-                        : `We couldn't find any entries tagged with "${selectedMood}".`
+                        ? 'Your journal is waiting for you.' 
+                        : `No entries found for "${selectedMood}".`
                       }
                     </Text>
                     
