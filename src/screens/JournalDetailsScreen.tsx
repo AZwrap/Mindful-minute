@@ -1,10 +1,10 @@
 import React from 'react';
-import { View, Text, StyleSheet, FlatList, Alert } from 'react-native';
+import { View, Text, StyleSheet, FlatList, Alert, Share } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { Users, Copy, LogOut, ChevronLeft } from 'lucide-react-native';
-import * as Clipboard from 'expo-clipboard';
+import { Users, Copy, LogOut, ChevronLeft, Download } from 'lucide-react-native';
+import { exportSharedJournalPDF } from '../utils/exportHelper';
 
 import { RootStackParamList } from '../navigation/RootStack';
 import { useJournalStore } from '../stores/journalStore';
@@ -18,23 +18,30 @@ export default function JournalDetailsScreen({ navigation, route }: Props) {
   const { journalId } = route.params;
   const palette = useSharedPalette();
   
-  const { journals, currentUser, leaveJournal, removeJournal } = useJournalStore();
+  // Get sharedEntries so handleExport doesn't crash
+  const { journals, currentUser, leaveJournal, removeJournal, sharedEntries } = useJournalStore();
   const journal = journals[journalId];
 
-  if (!journal) {
-    return (
-      <View style={[styles.container, { backgroundColor: palette.bg, justifyContent: 'center', alignItems: 'center' }]}>
-        <Text style={{ color: palette.subtleText }}>Journal not found.</Text>
-        <PremiumPressable onPress={() => navigation.goBack()} style={{ marginTop: 20 }}>
-            <Text style={{ color: palette.accent }}>Go Back</Text>
-        </PremiumPressable>
-      </View>
-    );
-  }
+  // Logic: Export PDF
+  const handleExport = async () => {
+    const entries = sharedEntries[journalId] || [];
+    if (entries.length === 0) {
+      Alert.alert("No Data", "There are no entries to export yet.");
+      return;
+    }
+    await exportSharedJournalPDF(journal.name, entries);
+  };
 
-  const handleCopyCode = async () => {
-    await Clipboard.setStringAsync(journal.id);
-    Alert.alert("Copied!", "Invite code copied to clipboard.");
+  // Logic: Share Deep Link
+  const handleShareLink = async () => {
+    const link = `mindfulminute://join/${journal.id}`;
+    try {
+      await Share.share({
+        message: `Join my shared journal on Mindful Minute! Tap here:\n${link}`,
+      });
+    } catch (error) {
+      Alert.alert("Error", "Could not share link.");
+    }
   };
 
   const handleLeave = () => {
@@ -49,8 +56,8 @@ export default function JournalDetailsScreen({ navigation, route }: Props) {
           onPress: async () => {
             if (currentUser) {
                 await leaveSharedJournal(journalId, currentUser);
-                leaveJournal(); // Clear active state
-                removeJournal(journalId); // Remove from local list
+                leaveJournal();
+                removeJournal(journalId);
                 navigation.reset({ index: 0, routes: [{ name: 'MainTabs' }] });
             }
           }
@@ -58,6 +65,17 @@ export default function JournalDetailsScreen({ navigation, route }: Props) {
       ]
     );
   };
+
+  if (!journal) {
+    return (
+      <View style={[styles.container, { backgroundColor: palette.bg, justifyContent: 'center', alignItems: 'center' }]}>
+        <Text style={{ color: palette.subtleText }}>Journal not found.</Text>
+        <PremiumPressable onPress={() => navigation.goBack()} style={{ marginTop: 20 }}>
+            <Text style={{ color: palette.accent }}>Go Back</Text>
+        </PremiumPressable>
+      </View>
+    );
+  }
 
   return (
     <LinearGradient colors={[palette.bg, palette.bg]} style={styles.container}>
@@ -80,11 +98,15 @@ export default function JournalDetailsScreen({ navigation, route }: Props) {
                 
                 <View style={[styles.divider, { backgroundColor: palette.border }]} />
                 
-                <Text style={[styles.label, { color: palette.subtleText }]}>INVITE CODE</Text>
-                <PremiumPressable onPress={handleCopyCode} style={styles.codeRow}>
-                    <Text style={[styles.code, { color: palette.accent }]}>{journal.id}</Text>
+                {/* Invite Link UI (Whitespace removed between Text and Icon) */}
+                <Text style={[styles.label, { color: palette.subtleText }]}>INVITE LINK</Text>
+                <PremiumPressable onPress={handleShareLink} style={styles.codeRow}>
+                    <Text style={[styles.code, { color: palette.accent, textDecorationLine: 'underline' }]}>Share Invite Link</Text>
                     <Copy size={16} color={palette.accent} />
                 </PremiumPressable>
+                <Text style={{ fontSize: 10, color: palette.subtleText, marginTop: 6 }}>
+                    Code: {journal.id}
+                </Text>
             </View>
 
             {/* MEMBERS LIST */}
@@ -94,7 +116,7 @@ export default function JournalDetailsScreen({ navigation, route }: Props) {
             
             <FlatList
                 data={journal.members}
-                keyExtractor={(item, index) => item + index}
+                keyExtractor={(item) => item}
                 renderItem={({ item }) => (
                     <View style={[styles.memberRow, { backgroundColor: palette.card, borderColor: palette.border }]}>
                         <View style={[styles.avatar, { backgroundColor: palette.accent + '20' }]}>
@@ -105,6 +127,19 @@ export default function JournalDetailsScreen({ navigation, route }: Props) {
                 )}
                 contentContainerStyle={{ gap: 8 }}
             />
+
+            {/* ACTIONS */}
+            <Text style={[styles.sectionTitle, { color: palette.subtleText, marginTop: 24 }]}>
+                ACTIONS
+            </Text>
+
+            <PremiumPressable 
+                onPress={handleExport}
+                style={[styles.actionRow, { backgroundColor: palette.card, borderColor: palette.border, marginBottom: 12 }]}
+            >
+                <Download size={20} color={palette.text} />
+                <Text style={[styles.actionText, { color: palette.text }]}>Export PDF</Text>
+            </PremiumPressable>
 
             {/* DANGER ZONE */}
             <PremiumPressable 
@@ -139,4 +174,6 @@ const styles = StyleSheet.create({
   memberName: { fontSize: 16, fontWeight: '500' },
   leaveBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, padding: 16, borderRadius: 16, borderWidth: 1, marginTop: 'auto' },
   leaveText: { color: '#EF4444', fontWeight: '700', fontSize: 15 },
+  actionRow: { flexDirection: 'row', alignItems: 'center', padding: 16, borderRadius: 12, borderWidth: 1, gap: 12 },
+  actionText: { fontSize: 16, fontWeight: '600' },
 });
