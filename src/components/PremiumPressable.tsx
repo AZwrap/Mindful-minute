@@ -36,7 +36,7 @@ export default function PremiumPressable({
     if (disabled) return;
     
     Animated.spring(scaleAnim, {
-      toValue: scaleTo,
+      toValue: scaleTo!,
       useNativeDriver: true,
       friction: 8,
       tension: 40,
@@ -59,12 +59,16 @@ export default function PremiumPressable({
     
     if (haptic && haptic !== 'none') {
       try {
-        const feedbackStyle = 
-          haptic === 'medium' ? Haptics.ImpactFeedbackStyle.Medium :
-          haptic === 'heavy' ? Haptics.ImpactFeedbackStyle.Heavy :
-          Haptics.ImpactFeedbackStyle.Light;
-          
-        await Haptics.impactAsync(feedbackStyle);
+        if (haptic === 'selection') {
+          await Haptics.selectionAsync();
+        } else {
+          const feedbackStyle = 
+            haptic === 'medium' ? Haptics.ImpactFeedbackStyle.Medium :
+            haptic === 'heavy' ? Haptics.ImpactFeedbackStyle.Heavy :
+            Haptics.ImpactFeedbackStyle.Light;
+            
+          await Haptics.impactAsync(feedbackStyle);
+        }
       } catch {}
     }
     
@@ -73,12 +77,17 @@ export default function PremiumPressable({
 
   return (
     <AnimatedPressable
-onPress={handlePress}
+      onPress={handlePress}
       onPressIn={handlePressIn}
       onPressOut={handlePressOut}
       disabled={disabled}
-accessibilityRole={accessibilityRole}
-      style={[style, { transform: [{ scale: scaleAnim }] }]}
+      accessibilityRole={accessibilityRole}
+      // FIX: Safely handle function styles vs object styles
+      style={({ pressed }) => [
+        typeof style === 'function' ? style({ pressed }) : style,
+        { transform: [{ scale: scaleAnim }] },
+        { opacity: disabled ? 0.6 : 1 }
+      ]}
       {...props}
     >
       {children}

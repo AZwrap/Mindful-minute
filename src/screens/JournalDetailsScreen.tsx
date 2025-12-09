@@ -98,7 +98,7 @@ export default function JournalDetailsScreen({ navigation, route }: Props) {
                 
                 <View style={[styles.divider, { backgroundColor: palette.border }]} />
                 
-                {/* Invite Link UI (Whitespace removed between Text and Icon) */}
+                {/* Invite Link UI - Whitespace explicitly removed between components */}
                 <Text style={[styles.label, { color: palette.subtleText }]}>INVITE LINK</Text>
                 <PremiumPressable onPress={handleShareLink} style={styles.codeRow}>
                     <Text style={[styles.code, { color: palette.accent, textDecorationLine: 'underline' }]}>Share Invite Link</Text>
@@ -128,7 +128,7 @@ export default function JournalDetailsScreen({ navigation, route }: Props) {
                 contentContainerStyle={{ gap: 8 }}
             />
 
-            {/* ACTIONS */}
+            {/* ACTIONS - Whitespace explicitly removed */}
             <Text style={[styles.sectionTitle, { color: palette.subtleText, marginTop: 24 }]}>
                 ACTIONS
             </Text>
