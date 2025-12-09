@@ -25,8 +25,9 @@ type Props = NativeStackScreenProps<RootStackParamList, 'Invite'>;
 export default function InviteScreen({ navigation }: Props) {
   const palette = useSharedPalette();
 
-  const createSharedJournal = useJournalStore((s) => s.createSharedJournal);
-  const joinSharedJournal = useJournalStore((s) => s.joinSharedJournal);
+// FIX: Match the actual store action names
+  const createJournal = useJournalStore((s) => s.createJournal);
+  const joinJournal = useJournalStore((s) => s.joinJournal);
 
   const [journalName, setJournalName] = useState("");
   const [joinCode, setJoinCode] = useState("");
@@ -47,9 +48,12 @@ const handleCreate = async () => {
     }
 
     setIsCreating(true);
-    try {
-      // Create and get the new ID
-      const newId = await createSharedJournal(journalName, user.uid);
+try {
+      // FIX: Pass journalName first, then user ID/Name
+      // Using user.email or a display name is better for 'members' array if available, otherwise UID
+      const ownerName = user.displayName || user.email?.split('@')[0] || "Anonymous";
+      
+      const newId = await createJournal(journalName, ownerName);
       setGeneratedCode(newId);
       Alert.alert("Success", "Journal created! Share the code below with your partner.");
     } catch (error) {
@@ -69,11 +73,14 @@ const handleCreate = async () => {
       return;
     }
 
-    setIsJoining(true);
+setIsJoining(true);
     try {
-      await joinSharedJournal(joinCode.trim(), user.uid);
+      const memberName = user.displayName || user.email?.split('@')[0] || "Member";
+      await joinJournal(joinCode.trim(), memberName);
+      
       Alert.alert("Welcome!", "You have joined the journal.");
-      navigation.goBack();
+      // Navigate to the list or specific journal
+      navigation.navigate('JournalList'); 
     } catch (error: any) {
       Alert.alert("Error", error.message || "Failed to join journal.");
     } finally {

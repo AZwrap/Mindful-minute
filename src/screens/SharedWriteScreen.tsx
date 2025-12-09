@@ -6,29 +6,38 @@ import { NativeStackScreenProps } from '@react-navigation/native-stack';
 
 import { RootStackParamList } from '../navigation/RootStack';
 import { useJournalStore } from '../stores/journalStore';
+import { auth } from '../firebaseConfig'; // Added auth
 import { useSharedPalette } from '../hooks/useSharedPalette';
 import PremiumPressable from '../components/PremiumPressable';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'SharedWrite'>;
 
 export default function SharedWriteScreen({ navigation, route }: Props) {
-  const { journalId } = route.params;
-  const [text, setText] = useState('');
-  const palette = useSharedPalette();
-  const addSharedEntry = useJournalStore(s => s.addSharedEntry);
+  const { journalId, entry } = route.params; // Get optional entry param
+  const [text, setText] = useState(entry?.text || ''); // Pre-fill if editing
   
-// Use the ID as fallback if no name system is set up yet
-  const { currentUser } = useJournalStore();
-
-  const handlePost = async () => {
+  const palette = useSharedPalette();
+  const { addSharedEntry, updateSharedEntry } = useJournalStore();
+  const isEditing = !!entry;
+  
+const handlePost = async () => {
     if (!text.trim()) return;
-    
-    // We don't send createdAt here; the store/service handles consistency
-    await addSharedEntry({
-      text,
-      authorName: currentUser || 'Anonymous Member', 
-      journalId
-    });
+
+    if (isEditing) {
+      // UPDATE MODE
+      await updateSharedEntry(journalId, entry.entryId, text.trim());
+    } else {
+      // CREATE MODE
+      const user = auth.currentUser;
+      const authorName = user?.displayName || user?.email?.split('@')[0] || 'Anonymous';
+
+      await addSharedEntry({
+        text: text.trim(),
+        authorName,
+        userId: user?.uid,
+        journalId
+      });
+    }
 
     navigation.goBack();
   };
@@ -41,8 +50,8 @@ export default function SharedWriteScreen({ navigation, route }: Props) {
             <PremiumPressable onPress={() => navigation.goBack()}>
                 <Text style={{ color: palette.subtleText, fontWeight: '600' }}>Cancel</Text>
             </PremiumPressable>
-            <PremiumPressable onPress={handlePost} style={[styles.postBtn, { backgroundColor: palette.accent }]}>
-                <Text style={styles.postText}>Post</Text>
+<PremiumPressable onPress={handlePost} style={[styles.postBtn, { backgroundColor: palette.accent }]}>
+                <Text style={styles.postText}>{isEditing ? "Update" : "Post"}</Text>
             </PremiumPressable>
           </View>
           

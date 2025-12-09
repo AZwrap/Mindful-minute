@@ -18,11 +18,12 @@ export default function SharedJournalScreen({ navigation, route }: Props) {
   const { journalId } = route.params;
   const palette = useSharedPalette();
   
-  const { 
+const { 
     joinJournal, 
     sharedEntries, 
     journalInfo, 
-    currentUser 
+    currentUser,
+    markAsRead 
   } = useJournalStore();
 
   // Helper to handle both Firestore Timestamps and number/string dates
@@ -35,9 +36,13 @@ export default function SharedJournalScreen({ navigation, route }: Props) {
   const entries = sharedEntries[journalId] || [];
   const journal = useJournalStore(s => s.journals[journalId]) || journalInfo;
 
-  // Load journal data on mount
+// Load journal data on mount
   useEffect(() => {
     joinJournal(journalId);
+    markAsRead(journalId);
+    
+    // Optional: Mark as read again when leaving to catch updates while open
+    return () => markAsRead(journalId);
   }, [journalId]);
 
   const handleInvite = async () => {
@@ -63,10 +68,14 @@ export default function SharedJournalScreen({ navigation, route }: Props) {
         { 
           text: "Leave", 
           style: "destructive", 
-          onPress: async () => {
+onPress: async () => {
             if (currentUser) {
                 await leaveSharedJournal(journalId, currentUser);
-                navigation.goBack();
+                // Force navigation back to list to prevent showing a deleted journal
+                navigation.reset({
+                  index: 1,
+                  routes: [{ name: 'MainTabs' }, { name: 'JournalList' }],
+                });
             }
           }
         }
@@ -77,13 +86,17 @@ export default function SharedJournalScreen({ navigation, route }: Props) {
   return (
     <LinearGradient colors={[palette.bg, palette.bg]} style={styles.container}>
       <SafeAreaView style={{ flex: 1 }}>
-        <View style={styles.header}>
-          <View>
-             <Text style={[styles.title, { color: palette.text }]}>{journal?.name || 'Shared Journal'}</Text>
-             <Text style={[styles.subtitle, { color: palette.subtleText }]}>
-                {journal?.members?.length || 1} Members • {entries.length} Entries
-             </Text>
-          </View>
+<View style={styles.header}>
+          <PremiumPressable onPress={() => navigation.navigate('JournalDetails', { journalId })}>
+             <View>
+                <Text style={[styles.title, { color: palette.text }]}>
+                  {journal?.name || 'Shared Journal'} <Text style={{ fontSize: 16, color: palette.subtleText }}>ⓘ</Text>
+                </Text>
+                <Text style={[styles.subtitle, { color: palette.subtleText }]}>
+                    {journal?.members?.length || 1} Members • {entries.length} Entries
+                </Text>
+             </View>
+          </PremiumPressable>
           <View style={{ flexDirection: 'row', gap: 12 }}>
             <PremiumPressable onPress={handleInvite} style={[styles.iconBtn, { backgroundColor: palette.card }]}>
                 <Share2 size={20} color={palette.accent} />

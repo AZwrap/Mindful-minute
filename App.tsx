@@ -4,8 +4,10 @@ import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { NavigationContainer } from "@react-navigation/native";
 import { StatusBar } from "expo-status-bar";
 import * as SplashScreen from 'expo-splash-screen';
-import { useColorScheme, Linking, Platform, Alert } from "react-native";
+import { useColorScheme, Platform, Alert } from "react-native"; // Removed Linking
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import * as Linking from 'expo-linking';
+
 
 // Navigation & Stores
 import RootStack from "./src/navigation/RootStack";
@@ -42,38 +44,17 @@ export default function App() {
     }
   }, [settingsLoaded]);
 
-  // 2. Handle Deep Links (Cold Start + Background)
-  useEffect(() => {
-    const handleDeepLink = ({ url }: { url: string }) => {
-      if (url && url.includes("invite")) {
-        try {
-          joinSharedJournal(url);
-        } catch (e) {
-          console.log("Deep link error:", e);
-        }
-      }
-    };
-
-    // Check if app was opened via link (Cold Start)
-    const checkInitialUrl = async () => {
-      try {
-        const initialUrl = await Linking.getInitialURL();
-        if (initialUrl) {
-          handleDeepLink({ url: initialUrl });
-        }
-      } catch (e) {
-        console.error("Initial URL Error:", e);
-      }
-    };
-    checkInitialUrl();
-
-    // Listen for new links while app is open
-    const sub = Linking.addEventListener("url", handleDeepLink);
-    return () => sub.remove();
-  }, []);
-
-
-    
+  // 2. Deep Linking Config
+  const linking = {
+    prefixes: [Linking.createURL('/'), 'mindfulminute://'],
+    config: {
+      screens: {
+        // This maps "mindfulminute://join/123" -> Invite Screen, passing "123" as route.params.journalId
+        Invite: 'join/:journalId', 
+      },
+    },
+  };
+   
 
   // 4. Notifications (Schedule & Tap Handler)
   useEffect(() => {
@@ -127,9 +108,9 @@ export default function App() {
   if (!settingsLoaded) return null;
 
   return (
-    <SafeAreaProvider>
+<SafeAreaProvider>
       <GestureHandlerRootView style={{ flex: 1 }}>
-        <NavigationContainer ref={navigationRef}>
+        <NavigationContainer ref={navigationRef} linking={linking}>
           <ThemeFadeWrapper>
             <ErrorBoundary>
               <SecurityGate> 

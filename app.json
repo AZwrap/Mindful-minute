@@ -12,9 +12,11 @@
       "resizeMode": "contain",
       "backgroundColor": "#0F172A" 
     },
-    "ios": {
-      "supportsTablet": true
+"ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.mindfulminute.app"
     },
+    "scheme": "mindfulminute",
     
     "android": {
       "adaptiveIcon": {

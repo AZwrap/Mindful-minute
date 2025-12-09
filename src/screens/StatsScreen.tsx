@@ -282,7 +282,21 @@ return {
       entries: sortedEntries,
       consistency: getRecentConsistency(sortedEntries), // New
       writingPatterns: analyzeWritingPatterns(sortedEntries),
-      writingAnalytics: analyzeWritingAnalytics(sortedEntries),
+writingAnalytics: analyzeWritingAnalytics(sortedEntries),
+      // NEW: Calculate time-of-day frequency locally
+      timeBreakdown: (() => {
+        const counts = { Morning: 0, Afternoon: 0, Evening: 0, Night: 0 };
+        sortedEntries.forEach(e => {
+          // Fallback to date string if createdAt is missing, assuming standard ISO format
+          const d = e.createdAt ? new Date(e.createdAt) : new Date(e.date);
+          const h = d.getHours();
+          if (h >= 5 && h < 12) counts.Morning++;
+          else if (h >= 12 && h < 17) counts.Afternoon++;
+          else if (h >= 17 && h < 21) counts.Evening++;
+          else counts.Night++;
+        });
+        return counts;
+      })(),
       gratitudeAnalytics: analyzeGratitudePractice(sortedEntries),
       moodAnalysis: analyzeMoodCorrelations(sortedEntries),
       correlationSummary: getMoodCorrelationSummary(sortedEntries),
@@ -547,6 +561,76 @@ style={{ marginTop: 20 }}
 </View>
                 </View>
 
+                {/* ROW 4: Writing Schedule Chart */}
+                {writingPatterns && (
+                  <View style={[styles.bentoCard, { backgroundColor: palette.card, marginTop: 12 }]}>
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <Text style={[styles.bentoLabel, { color: textSub, marginTop: 0 }]}>WRITING SCHEDULE</Text>
+                      <Calendar size={16} color={textSub} />
+                    </View>
+                    
+                    <View style={styles.dayDistribution}>
+                      {['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'].map((day) => {
+                        const count = writingPatterns.dayCounts[day] || 0;
+                        const max = Math.max(...Object.values(writingPatterns.dayCounts));
+                        const isTopDay = day === writingPatterns.mostFrequentDay;
+                        
+                        return (
+                          <View key={day} style={styles.dayItem}>
+                            <Text style={[styles.dayName, { color: isTopDay ? palette.accent : textSub }]}>
+                              {day.substring(0, 3)}
+                            </Text>
+                            <View style={[styles.dayBarContainer, { backgroundColor: isDark ? '#334155' : '#F1F5F9' }]}>
+                              <Animated.View 
+                                style={[
+                                  styles.dayBar, 
+                                  { 
+                                    width: `${max > 0 ? (count / max) * 100 : 0}%`,
+                                    backgroundColor: isTopDay ? palette.accent : (count > 0 ? palette.text + '60' : 'transparent') 
+                                  }
+                                ]} 
+                              />
+                            </View>
+                            <Text style={[styles.dayCount, { color: textMain }]}>{count}</Text>
+                          </View>
+                        );
+                      })}
+                    </View>
+                  </View>
+                )}
+{/* ROW 5: Productive Hours (Uses existing unused styles) */}
+                <View style={[styles.bentoCard, { backgroundColor: palette.card, marginTop: 12 }]}>
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <Text style={[styles.bentoLabel, { color: textSub, marginTop: 0 }]}>PRODUCTIVE HOURS</Text>
+                    <Clock size={16} color={textSub} />
+                  </View>
+
+                  <View style={styles.timeAnalysis}>
+                    {['Morning', 'Afternoon', 'Evening', 'Night'].map((time) => {
+                      // @ts-ignore - inferred type safety
+                      const count = statsData.timeBreakdown[time] || 0;
+                      const max = Math.max(...Object.values(statsData.timeBreakdown));
+                      
+                      return (
+                        <View key={time} style={styles.timeBarItem}>
+                          <Text style={[styles.timeLabel, { color: textSub, width: 70 }]}>{time}</Text>
+                          <View style={[styles.timeBarContainer, { backgroundColor: isDark ? '#334155' : '#F1F5F9' }]}>
+                            <Animated.View 
+                              style={[
+                                styles.timeBar, 
+                                { 
+                                  width: `${max > 0 ? (count / max) * 100 : 0}%`,
+                                  backgroundColor: count > 0 ? palette.accent : 'transparent'
+                                }
+                              ]} 
+                            />
+                          </View>
+                          <Text style={[styles.timeCount, { color: textMain }]}>{count}</Text>
+                        </View>
+                      );
+                    })}
+                  </View>
+                </View>
               </View>
               )}
 

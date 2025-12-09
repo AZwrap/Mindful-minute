@@ -26,9 +26,11 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { 
   Trash2, Save, FileText, Database, RotateCcw, Share, 
-  ChevronDown, ChevronUp, Palette, Cloud, CloudDownload, Bell, Lock, Zap, Volume2, Sun, Moon
+ChevronDown, ChevronUp, Palette, Cloud, CloudDownload, Bell, Lock, Zap, Volume2, Sun, Moon, User
 } from 'lucide-react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { updateProfile } from 'firebase/auth';
+import { auth } from '../firebaseConfig';
 
 // Stores & Config
 import { useSettings } from "../stores/settingsStore";
@@ -106,12 +108,35 @@ const [themeDropdownOpen, setThemeDropdownOpen] = useState(false);
   const contentFadeAnim = useRef(new Animated.Value(0)).current;
   const toastAnim = useRef(new Animated.Value(0)).current;
 
-  const {
+const {
     theme, setTheme,
     setDynamicSunrise, setDynamicSunset,
     sunriseTime, sunsetTime,
     accentColor, setAccentColor
   } = useTheme();
+
+  // --- PROFILE STATE ---
+  const [displayName, setDisplayName] = useState(auth.currentUser?.displayName || '');
+  const [isUpdatingProfile, setIsUpdatingProfile] = useState(false);
+
+  const handleUpdateProfile = async () => {
+    if (!auth.currentUser) {
+      Alert.alert("Not Signed In", "You must be signed in to set a profile name.");
+      return;
+    }
+    if (!displayName.trim()) return;
+
+    setIsUpdatingProfile(true);
+    try {
+      await updateProfile(auth.currentUser, { displayName: displayName.trim() });
+      showToast('Profile Name Updated');
+      Keyboard.dismiss();
+    } catch (e) {
+      Alert.alert("Error", "Failed to update profile.");
+    } finally {
+      setIsUpdatingProfile(false);
+    }
+  };
 
 // --- EFFECTS ---
   useEffect(() => {
@@ -308,12 +333,40 @@ const SettingRow = ({ label, description, value, onValueChange, icon }: any) => 
         <SafeAreaView style={{ flex: 1 }} edges={['top']}>
           <Animated.View style={{ opacity: contentFadeAnim, flex: 1 }}>
             
-            <ScrollView 
+<ScrollView 
               style={styles.container} 
-              contentContainerStyle={[styles.scrollContent, { flexGrow: 1 }]} // FIXED: Ensures full height
+              contentContainerStyle={[styles.scrollContent, { flexGrow: 1 }]} 
               showsVerticalScrollIndicator={false}
             >
               
+              {/* 0. PROFILE CARD */}
+              <View style={[styles.card, { backgroundColor: palette.card, borderColor: palette.border }]}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+                  <User size={18} color={palette.accent} />
+                  <Text style={[styles.title, { color: palette.text, marginBottom: 0 }]}>Profile Identity</Text>
+                </View>
+                
+                <Text style={[styles.label, { color: palette.sub, marginBottom: 8 }]}>Display Name (for Shared Journals)</Text>
+                <View style={{ flexDirection: 'row', gap: 8 }}>
+                  <TextInput 
+                    value={displayName}
+                    onChangeText={setDisplayName}
+                    placeholder="e.g. Alice"
+                    placeholderTextColor={palette.sub}
+                    style={[styles.input, { flex: 1, color: palette.text, borderColor: palette.border, backgroundColor: palette.bg }]} 
+                  />
+                  <PremiumPressable 
+                    onPress={handleUpdateProfile} 
+                    disabled={isUpdatingProfile}
+                    style={[styles.applyBtn, { backgroundColor: palette.accent, opacity: isUpdatingProfile ? 0.7 : 1 }]}
+                  >
+                    <Text style={{ color: 'white', fontWeight: '600', fontSize: 12 }}>
+                      {isUpdatingProfile ? '...' : 'Save'}
+                    </Text>
+                  </PremiumPressable>
+                </View>
+              </View>
+
               {/* 1. APPEARANCE CARD */}
               <View style={[styles.card, { backgroundColor: palette.card, borderColor: palette.border, paddingBottom: 12 }]}>
                 <Text style={[styles.title, { color: palette.text }]}>Appearance</Text>

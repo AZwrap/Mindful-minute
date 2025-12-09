@@ -31,6 +31,7 @@ import { Flame } from 'lucide-react-native'; // Import Icon
 
 // Components
 import PremiumPressable from '../components/PremiumPressable';
+import { registerForPushNotificationsAsync } from '../lib/notifications';
 
 // --------------------------------------------------
 // TYPES
@@ -182,6 +183,12 @@ export default function HomeScreen() {
     };
     loadPrompt();
   }, [date]);
+  // 6. Request Notifications (New)
+  useEffect(() => {
+    registerForPushNotificationsAsync().then(token => {
+      if (token) console.log("Notification permissions granted");
+    });
+  }, []);
 
   // 6. Determine CTA State
   const entryToday = map?.[date] || null;
@@ -501,7 +508,7 @@ export default function HomeScreen() {
             {sharedJournalsList.map((j) => (
               <Pressable
                 key={j.id}
-                onPress={() => navigation.navigate("SharedJournal", { journalId: j.id })}
+                onPress={() => navigation.navigate('JournalList')}
                 style={{
                   paddingVertical: 12,
                   paddingHorizontal: 8,

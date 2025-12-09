@@ -81,11 +81,15 @@ export const useProgress = create<ProgressStore>()(
 
       // ACTIONS
 updateStreak: (date: string) => {
-          const { streak, lastEntryDate } = get();
+        const { streak, lastEntryDate } = get();
+        // If strict string match, we assume same day.
+        // Ensure callers pass YYYY-MM-DD or consistent format.
         if (lastEntryDate === date) return;
 
         const prev = lastEntryDate ? new Date(lastEntryDate) : null;
         const current = new Date(date);
+        
+        // Normalize to midnight to ensure accurate day diffing
         if (prev) prev.setHours(0, 0, 0, 0);
         current.setHours(0, 0, 0, 0);
 
@@ -93,13 +97,21 @@ updateStreak: (date: string) => {
         if (prev) {
           const diffTime = Math.abs(current.getTime() - prev.getTime());
           const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)); 
-          if (diffDays === 1) newStreak = streak + 1;
-          else if (diffDays > 1) newStreak = 1;
+          
+          if (diffDays === 1) {
+            newStreak = streak + 1;
+          } else if (diffDays > 1) {
+            newStreak = 1;
+          } else {
+            // If diffDays is 0 (same day) but strings didn't match (e.g. diff formats), keep streak
+            newStreak = streak;
+          }
         }
-        set({ streak: newStreak,
-        totalEntries: newTotalEntries,
-        lastEntryDate: entry.date,
-      totalWords: newTotalWords, });
+        
+        set({ 
+          streak: newStreak,
+          lastEntryDate: date 
+        });
       },
 
       incrementTotalEntries: () => {

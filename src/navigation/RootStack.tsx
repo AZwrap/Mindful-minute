@@ -43,10 +43,12 @@ export type RootStackParamList = {
   Achievements: undefined;
 
   // Shared Journal
-  Invite: undefined;
-  SharedWrite: { journalId: string };
+JournalList: undefined;
+  JournalDetails: { journalId: string }; // New Route
   SharedJournal: { journalId: string };
-  SharedEntryDetail: { entry: any }; // We can refine 'any' later once we type the SharedEntry model
+  SharedEntryDetail: { entry: any };
+  SharedWrite: { journalId: string; entry?: any }; // 'entry' is optional for editing
+  Invite: undefined;
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -139,6 +141,8 @@ export default function RootStack() {
       <Stack.Screen name="SharedJournal" component={SharedJournalScreen} />
       <Stack.Screen name="SharedEntryDetail" component={SharedEntryDetailScreen} />
       <Stack.Screen name="Achievements" component={AchievementsScreen} />
+      <Stack.Screen name="JournalDetails" component={require('../screens/JournalDetailsScreen').default} />
+      <Stack.Screen name="JournalList" component={require('../screens/JournalListScreen').default} />
     </Stack.Navigator>
   );
 }

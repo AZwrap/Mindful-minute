@@ -72,3 +72,14 @@ export async function scheduleDailyReminder(hour: number, minute: number) {
     return undefined;
   }
 }
+// Trigger an immediate local alert (mimicking a push notification)
+export async function sendImmediateNotification(title: string, body: string) {
+  try {
+    await Notifications.scheduleNotificationAsync({
+      content: { title, body },
+      trigger: null, // null means "show immediately"
+    });
+  } catch (e) {
+    console.log("Failed to send alert:", e);
+  }
+}
