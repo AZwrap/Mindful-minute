@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, FlatList, Pressable, StyleSheet, Alert, TextInput, Keyboard } from 'react-native';
+import { View, Text, FlatList, Pressable, StyleSheet, Alert, TextInput, Keyboard, RefreshControl } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -18,9 +18,21 @@ export default function JournalListScreen({ navigation }: Props) {
   const { journals, createJournal, joinJournal, restoreJournals, currentUser, lastRead } = useJournalStore();
   const journalList = Object.values(journals);
 
-  // Join State
+// Join State
   const [isJoining, setIsJoining] = useState(false);
   const [joinCode, setJoinCode] = useState('');
+  const [refreshing, setRefreshing] = useState(false);
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    try {
+      if (currentUser) await restoreJournals();
+    } catch (error) {
+      console.log("Refresh error:", error);
+    } finally {
+      setRefreshing(false);
+    }
+  };
 
 // Helper to guard cloud features
   const requireAuth = (action: () => void) => {
@@ -69,18 +81,15 @@ export default function JournalListScreen({ navigation }: Props) {
     }
   };
 
-const handleRestore = async () => {
-    if (!currentUser) {
-      requireAuth(() => {}); // Trigger auth prompt
-      return;
-    }
-    
-    try {
-      const count = await restoreJournals();
-      Alert.alert("Restore Complete", `Found and restored ${count} group(s).`);
-    } catch (e) {
-      Alert.alert("Error", "Could not restore groups. Please try again.");
-    }
+const handleRestore = () => {
+    requireAuth(async () => {
+      try {
+        const count = await restoreJournals();
+        Alert.alert("Restore Complete", `Found and restored ${count} group(s).`);
+      } catch (e) {
+        Alert.alert("Error", "Could not restore groups. Please try again.");
+      }
+    });
   };
   
   return (
@@ -130,10 +139,13 @@ const handleRestore = async () => {
           )}
         </View>
 
-        <FlatList
+<FlatList
           data={journalList}
           keyExtractor={(item) => item.id}
           contentContainerStyle={styles.list}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={palette.accent} />
+          }
           ListEmptyComponent={
             <View style={styles.empty}>
               <Text style={[styles.emptyText, { color: palette.subtleText }]}>

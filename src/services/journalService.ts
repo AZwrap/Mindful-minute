@@ -133,11 +133,11 @@ export const JournalService = {
 
     await addDoc(entriesCol, { ...entry, createdAt: timestamp });
     
-    // Update meta
+// Update meta
     await updateDoc(journalRef, {
       lastEntry: {
-        text: entry.text.substring(0, 50),
-        author: entry.authorName,
+        text: (entry.text || "").substring(0, 50),
+        author: entry.authorName || entry.author || "Anonymous",
         createdAt: timestamp
       },
       updatedAt: timestamp

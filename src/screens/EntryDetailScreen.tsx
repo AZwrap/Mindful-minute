@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, useColorScheme, ScrollView, Image } from 'react-native';
+import { View, Text, StyleSheet, useColorScheme, ScrollView, Image, Modal, FlatList, TouchableOpacity, Linking } from 'react-native';
 import * as Sharing from 'expo-sharing';
 import * as FileSystem from 'expo-file-system';
-import { Pencil } from 'lucide-react-native';
+import { Pencil, Users, Copy, X, CheckSquare, Square, PlayCircle, Share2 } from 'lucide-react-native';
 import * as Clipboard from 'expo-clipboard';
+// @ts-ignore
+import { getRecommendedPlaylist } from '../constants/moodCategories';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -18,7 +20,6 @@ import { useSharedPalette } from '../hooks/useSharedPalette';
 import { useJournalStore } from '../stores/journalStore';
 // @ts-ignore
 import { addSharedEntry } from '../services/syncedJournalService';
-import { Share2 } from 'lucide-react-native';
 
 // Components
 import PremiumPressable from '../components/PremiumPressable';
@@ -59,12 +60,15 @@ export default function EntryDetailScreen({ route, navigation }: Props) {
   const isDark = currentTheme === 'dark';
   const palette = useSharedPalette();
 
-  const { date } = route.params;
+const { date } = route.params;
 
-// Select entry from store
+  // Select entry from store
   const entry = useEntriesStore((s) => s.entries[date]);
-  const currentJournalId = useJournalStore((s) => s.currentJournalId);
+  const { journals, currentJournalId } = useJournalStore(); // Get full list
+  
   const [isSharing, setIsSharing] = useState(false);
+  const [showShareModal, setShowShareModal] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
 
   const gradients = {
     dark: {
@@ -138,7 +142,7 @@ Mood: ${entry.moodTag?.value || 'Not specified'}
     }
   };
 
-  const copyToClipboard = async () => {
+const copyToClipboard = async () => {
     try {
       const content = buildExportText();
       await Clipboard.setStringAsync(content);
@@ -148,21 +152,65 @@ Mood: ${entry.moodTag?.value || 'Not specified'}
       console.log('Clipboard error:', error);
     }
   };
-const handleShare = async () => {
-    if (!currentJournalId) {
-      alert("No Shared Journal Found. Go to the 'Together' tab to create or join one first.");
+
+  // --- SHARE LOGIC ---
+  const openShareModal = () => {
+    const allIds = Object.keys(journals);
+    if (allIds.length === 0) {
+      alert("No Shared Groups Found. Go to the 'Together' tab to create or join one first.");
       return;
     }
+    // Default to current journal if available, otherwise empty
+    setSelectedIds(currentJournalId ? [currentJournalId] : []);
+    setShowShareModal(true);
+  };
+
+  const toggleSelection = (id: string) => {
+    setSelectedIds(prev => 
+      prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]
+    );
+  };
+const handlePlayMusic = async () => {
+    const mood = entry.moodTag?.value;
+    if (!mood) return;
+
+    // Use the central helper to get the smart playlist (same as MoodTagScreen)
+    const playlist = getRecommendedPlaylist(mood);
+
+    if (playlist && playlist.url) {
+      try {
+        await Linking.openURL(playlist.url);
+      } catch (err) {
+        console.error("Failed to open link:", err);
+        alert("Could not open music app.");
+      }
+    } else {
+      alert(`No playlist found for ${mood}`);
+    }
+  };
+  const handleSelectAll = () => setSelectedIds(Object.keys(journals));
+  const handleClear = () => setSelectedIds([]);
+
+  const confirmShare = async () => {
+    if (selectedIds.length === 0) return;
     
     setIsSharing(true);
     try {
-      await addSharedEntry(currentJournalId, {
-        ...entry,
-        sharedAt: Date.now(),
-        originalDate: date,
-        author: "Partner" // You can fetch real name if available
-      });
-      alert("Sent to Shared Journal!");
+      // Send to all selected journals in parallel
+      const promises = selectedIds.map(jid => 
+        addSharedEntry(jid, {
+          ...entry,
+          sharedAt: Date.now(),
+          originalDate: date,
+          authorName: "Member" // Or fetch real user name
+        })
+      );
+      
+await Promise.all(promises);
+      
+      setShowShareModal(false);
+      const count = selectedIds.length;
+      alert(`Shared to ${count} group${count === 1 ? '' : 's'}!`);
     } catch (e) {
       console.error(e);
       alert("Failed to share.");
@@ -170,7 +218,7 @@ const handleShare = async () => {
       setIsSharing(false);
     }
   };
-  return (
+return (
     <LinearGradient
       colors={currentGradient.primary}
       style={styles.container}
@@ -178,132 +226,220 @@ const handleShare = async () => {
       end={{ x: 0, y: 1 }}
     >
       <SafeAreaView style={{ flex: 1 }} edges={['top']}>
-      <LinearGradient
-        colors={currentGradient.card}
-        style={styles.contentCard}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
->
-        <ScrollView contentContainerStyle={styles.scrollContent}>
-          {/* Header Row */}
-          <View style={styles.headerRow}>
-            <View style={{ width: 40 }} /> 
-            <View>
-              <Text style={[styles.title, { color: textMain }]}>Journal Entry</Text>
-              <Text style={[styles.date, { color: textSub }]}>{formattedDate}</Text>
-            </View>
-            <PremiumPressable
-              onPress={() => navigation.navigate('Write', { 
-                date, 
-                text: entry.text, 
-                prompt: entry.prompt || { text: entry.promptText || '' } 
-              })}
-              haptic="light"
-              style={[styles.iconBtn, { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)' }]}
-            >
-              <Pencil size={18} color={textMain} />
-            </PremiumPressable>
-          </View>
-
-          <Text style={[styles.time, { color: textSub }]}>{formatTime(entry)}</Text>
-
-          <Text style={[styles.label, { color: textSub }]}>Prompt</Text>
-          <Text style={[styles.prompt, { color: textMain }]}>{entry.prompt?.text || entry.promptText}</Text>
-
-{entry.imageUri && (
-            <View style={{ marginBottom: 20 }}>
-              <Image 
-                source={{ uri: entry.imageUri }} 
-                style={{ width: '100%', height: 200, borderRadius: 16 }} 
-                resizeMode="cover"
-              />
-            </View>
-          )}
-
-          <Text style={[styles.label, { color: textSub }]}>Your Reflection</Text>
-          <Text style={[styles.entry, { color: textMain }]}>{entry.text}</Text>
-
-          {entry.moodTag?.value && (
-            <View style={styles.moodSection}>
-              <Text style={[styles.label, { color: textSub }]}>Mood</Text>
-              <View
-                style={[
-                  styles.moodTag,
-                  {
-                    backgroundColor: isDark
-                      ? 'rgba(99,102,241,0.15)'
-                      : 'rgba(99,102,241,0.08)',
-                  },
-                ]}
-              >
-                <Text style={[styles.moodText, { color: '#6366F1' }]}>
-                  {entry.moodTag.value}
-                </Text>
+        <LinearGradient
+          colors={currentGradient.card}
+          style={styles.contentCard}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+        >
+          <ScrollView contentContainerStyle={styles.scrollContent}>
+            {/* Header Row */}
+            <View style={styles.headerRow}>
+              <View style={{ width: 40 }} /> 
+              <View>
+                <Text style={[styles.title, { color: textMain }]}>Journal Entry</Text>
+                <Text style={[styles.date, { color: textSub }]}>{formattedDate}</Text>
               </View>
-            </View>
-          )}
-
-{/* Buttons row */}
-          <View style={styles.buttonsRow}>
-            {/* Share Button (Only if connected) */}
-            {currentJournalId && (
               <PremiumPressable
-                onPress={handleShare}
-                haptic="medium"
-                style={[
-                  styles.copyBtn,
-                  { 
-                    backgroundColor: isDark ? 'rgba(16, 185, 129, 0.2)' : '#D1FAE5',
-                    borderColor: '#10B981',
-                    borderWidth: 1 
-                  }
-                ]}
+                onPress={() => navigation.navigate('Write', { 
+                  date, 
+                  text: entry.text, 
+                  prompt: entry.prompt || { text: entry.promptText || '' } 
+                })}
+                haptic="light"
+                style={[styles.iconBtn, { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)' }]}
               >
-                <Text style={[styles.copyBtnText, { color: '#059669' }]}>
-                  {isSharing ? "Sending..." : "Share w/ Partner"}
-                </Text>
+                <Pencil size={18} color={textMain} />
               </PremiumPressable>
+            </View>
+
+            <Text style={[styles.time, { color: textSub }]}>{formatTime(entry)}</Text>
+
+            <Text style={[styles.label, { color: textSub }]}>Prompt</Text>
+            <Text style={[styles.prompt, { color: textMain }]}>{entry.prompt?.text || entry.promptText}</Text>
+
+            {entry.imageUri && (
+              <View style={{ marginBottom: 20 }}>
+                <Image 
+                  source={{ uri: entry.imageUri }} 
+                  style={{ width: '100%', height: 200, borderRadius: 16 }} 
+                  resizeMode="cover"
+                />
+              </View>
             )}
 
-            <PremiumPressable
-              onPress={copyToClipboard}
-              haptic="light"
-              style={[
-                styles.copyBtn,
-                {
-                  borderColor: isDark
-                    ? "rgba(99,102,241,0.4)"
-                    : "rgba(99,102,241,0.3)",
-                },
-              ]}
-            >
-              <Text
-                style={[
-                  styles.copyBtnText,
-                  {
-                    color: "#6366F1",
-                  },
-                ]}
-              >
-                {copied ? "✓ Copied!" : "Copy to Clipboard"}
-              </Text>
-            </PremiumPressable>
+            <Text style={[styles.label, { color: textSub }]}>Your Reflection</Text>
+            <Text style={[styles.entry, { color: textMain }]}>{entry.text}</Text>
 
-            <PremiumPressable
-              onPress={exportEntry}
-              haptic="light"
-              style={[
-                styles.exportBtn,
-                { backgroundColor: '#6366F1' },
-              ]}
-            >
-              <Text style={[styles.exportText, { color: 'white' }]}>
-                Export Entry
-              </Text>
-            </PremiumPressable>
+            {entry.moodTag?.value && (
+              <View style={styles.moodSection}>
+                <Text style={[styles.label, { color: textSub }]}>Mood & Atmosphere</Text>
+                
+                <View style={styles.moodRow}>
+                  {/* Mood Pill */}
+                  <View
+                    style={[
+                      styles.moodTag,
+                      {
+                        backgroundColor: isDark
+                          ? 'rgba(99,102,241,0.15)'
+                          : 'rgba(99,102,241,0.08)',
+                      },
+                    ]}
+                  >
+                    <Text style={[styles.moodText, { color: '#6366F1' }]}>
+                      {entry.moodTag.value}
+                    </Text>
+                  </View>
+
+                  {/* Music Button - Indigo Theme */}
+                  <PremiumPressable
+                    onPress={handlePlayMusic}
+                    style={[
+                      styles.musicBtn,
+                      { 
+                        backgroundColor: isDark ? 'rgba(99, 102, 241, 0.1)' : 'rgba(99, 102, 241, 0.05)',
+                        borderColor: palette.accent,
+                        borderWidth: 1,
+                      }
+                    ]}
+                  >
+                    <PlayCircle size={16} color={palette.accent} />
+                    <Text style={[styles.musicBtnText, { color: palette.accent }]}>
+                      Play {entry.moodTag.value} Mix
+                    </Text>
+                  </PremiumPressable>
+                </View>
+              </View>
+            )}
+
+            {/* Actions Container */}
+            <View style={styles.actionContainer}>
+              {/* 1. Primary Action: Share to Group (if available) */}
+              {Object.keys(journals).length > 0 && (
+                <PremiumPressable
+                  onPress={openShareModal}
+                  haptic="medium"
+                  style={[
+                    styles.primaryActionBtn,
+                    { 
+                      backgroundColor: isDark ? 'rgba(16, 185, 129, 0.15)' : '#ECFDF5',
+                      borderColor: '#10B981',
+                    }
+                  ]}
+                >
+                  <Users size={20} color="#059669" />
+                  <Text style={[styles.btnText, { color: '#059669' }]}>
+                    {isSharing ? "Sending..." : "Share to Group"}
+                  </Text>
+                </PremiumPressable>
+              )}
+
+              {/* 2. Secondary Actions: Copy & Export */}
+              <View style={styles.secondaryActionsRow}>
+                <PremiumPressable
+                  onPress={copyToClipboard}
+                  haptic="light"
+                  style={[
+                    styles.secondaryBtn,
+                    {
+                      borderColor: isDark ? "rgba(99,102,241,0.4)" : "rgba(99,102,241,0.3)",
+                      backgroundColor: 'transparent',
+                    },
+                  ]}
+                >
+                  <Copy size={18} color="#6366F1" />
+                  <Text style={[styles.btnText, { color: "#6366F1" }]}>
+                    {copied ? "Copied" : "Copy"}
+                  </Text>
+                </PremiumPressable>
+
+                <PremiumPressable
+                  onPress={exportEntry}
+                  haptic="light"
+                  style={[
+                    styles.secondaryBtn,
+                    { backgroundColor: '#6366F1', borderColor: '#6366F1' },
+                  ]}
+                >
+                  <Share2 size={18} color="white" />
+                  <Text style={[styles.btnText, { color: 'white' }]}>
+                    Export
+                  </Text>
+                </PremiumPressable>
+              </View>
+            </View>
+          </ScrollView>
+        </LinearGradient>
+
+        {/* SHARE SELECTION MODAL */}
+        <Modal
+          visible={showShareModal}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setShowShareModal(false)}
+        >
+          <View style={styles.modalOverlay}>
+            <View style={[styles.modalCard, { backgroundColor: isDark ? '#1E293B' : 'white' }]}>
+              
+              {/* Header */}
+              <View style={styles.modalHeader}>
+                <Text style={[styles.modalTitle, { color: textMain }]}>Share to Groups</Text>
+                <TouchableOpacity onPress={() => setShowShareModal(false)}>
+                  <X size={24} color={textSub} />
+                </TouchableOpacity>
+              </View>
+
+              {/* Controls */}
+              <View style={styles.modalControls}>
+                <TouchableOpacity onPress={handleSelectAll}>
+                  <Text style={{ color: palette.accent, fontWeight: '600' }}>Select All</Text>
+                </TouchableOpacity>
+                <TouchableOpacity onPress={handleClear}>
+                  <Text style={{ color: textSub, fontWeight: '600' }}>Clear</Text>
+                </TouchableOpacity>
+              </View>
+
+              {/* List */}
+              <FlatList
+                data={Object.values(journals)}
+                keyExtractor={(item) => item.id}
+                style={{ maxHeight: 300 }}
+                renderItem={({ item }) => {
+                  const isSelected = selectedIds.includes(item.id);
+                  return (
+                    <TouchableOpacity 
+                      style={[styles.journalItem, { borderColor: palette.border }]} 
+                      onPress={() => toggleSelection(item.id)}
+                    >
+                      <Text style={[styles.journalName, { color: textMain }]}>{item.name}</Text>
+                      {isSelected 
+                        ? <CheckSquare size={22} color={palette.accent} />
+                        : <Square size={22} color={textSub} />
+                      }
+                    </TouchableOpacity>
+                  );
+                }}
+              />
+
+              {/* Confirm Button */}
+              <PremiumPressable
+                onPress={confirmShare}
+                style={[
+                  styles.confirmBtn,
+                  { backgroundColor: palette.accent, opacity: selectedIds.length === 0 ? 0.5 : 1 }
+                ]}
+                disabled={selectedIds.length === 0 || isSharing}
+              >
+                <Text style={styles.confirmBtnText}>
+                  {isSharing ? "Sending..." : `Share (${selectedIds.length})`}
+                </Text>
+              </PremiumPressable>
+
+            </View>
           </View>
-        </ScrollView>
-      </LinearGradient>
+        </Modal>
+
       </SafeAreaView>
     </LinearGradient>
   );
@@ -359,38 +495,71 @@ const styles = StyleSheet.create({
     lineHeight: 24,
     marginBottom: 16,
   },
-  moodSection: {
+moodSection: {
     marginBottom: 16,
   },
-  moodTag: {
-    alignSelf: 'flex-start',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 16,
+  moodRow: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: 12,
+  },
+  moodTag: {
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 20,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  musicBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 20,
+    borderWidth: 1,
   },
   moodText: {
     fontSize: 14,
     fontWeight: '600',
     textTransform: 'capitalize',
   },
-  buttonsRow: {
-    flexDirection: 'row',
-    gap: 10,
-    marginTop: 8,
+  musicBtnText: {
+    fontSize: 14,
+    fontWeight: '600',
   },
-  exportBtn: {
-    flex: 1,
-    paddingVertical: 14,
-    paddingHorizontal: 20,
-    borderRadius: 16,
+actionContainer: {
+    marginTop: 12,
+    gap: 12,
+  },
+  primaryActionBtn: {
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
+    paddingVertical: 14,
+    borderRadius: 16,
+    borderWidth: 1,
+    gap: 8,
+    width: '100%',
   },
-  exportText: {
+  secondaryActionsRow: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  secondaryBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 14,
+    borderRadius: 16,
+    borderWidth: 1,
+    gap: 8,
+  },
+  btnText: {
+    fontSize: 15,
     fontWeight: '700',
-    fontSize: 16,
   },
   date: {
     fontSize: 14,
@@ -410,9 +579,66 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
   },
-  copyBtnText: {
+copyBtnText: {
     fontSize: 15,
     fontWeight: "700",
     textAlign: "center",
+  },
+  // Modal Styles
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    padding: 20,
+  },
+  modalCard: {
+    borderRadius: 24,
+    padding: 20,
+    elevation: 5,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 10,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: '800',
+  },
+  modalControls: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 12,
+    paddingBottom: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(150,150,150,0.1)',
+  },
+  journalItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(150,150,150,0.1)',
+  },
+  journalName: {
+    fontSize: 16,
+    fontWeight: '500',
+  },
+  confirmBtn: {
+    marginTop: 20,
+    paddingVertical: 14,
+    borderRadius: 16,
+    alignItems: 'center',
+  },
+  confirmBtnText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: '700',
   },
 });
