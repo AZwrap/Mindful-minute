@@ -9,6 +9,7 @@ import { RootStackParamList } from '../navigation/RootStack';
 import { useJournalStore } from '../stores/journalStore';
 import { useSharedPalette } from '../hooks/useSharedPalette';
 import PremiumPressable from '../components/PremiumPressable';
+import { auth } from '../firebaseConfig';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'JournalList'>;
 
@@ -23,7 +24,8 @@ export default function JournalListScreen({ navigation }: Props) {
 
 // Helper to guard cloud features
   const requireAuth = (action: () => void) => {
-    if (currentUser) {
+    // Check auth.currentUser directly to prevent "stale state" bugs
+    if (auth.currentUser || currentUser) {
       action();
     } else {
       Alert.alert(
