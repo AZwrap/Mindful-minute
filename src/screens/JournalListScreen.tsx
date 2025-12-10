@@ -21,17 +21,34 @@ export default function JournalListScreen({ navigation }: Props) {
   const [isJoining, setIsJoining] = useState(false);
   const [joinCode, setJoinCode] = useState('');
 
-const handleCreate = () => {
-    navigation.navigate('Invite');
+// Helper to guard cloud features
+  const requireAuth = (action: () => void) => {
+    if (currentUser) {
+      action();
+    } else {
+      Alert.alert(
+        "Account Required",
+        "You need to sign in to use shared journals.",
+        [
+          { text: "Cancel", style: "cancel" },
+          { text: "Sign In", onPress: () => navigation.navigate("Auth") }
+        ]
+      );
+    }
   };
-const handleJoinSubmit = async () => {
+
+  const handleCreate = () => {
+    requireAuth(() => navigation.navigate('Invite'));
+  };
+
+  const handleJoinSubmit = async () => {
     if (!joinCode.trim()) {
       setIsJoining(false);
       return;
     }
     
     if (!currentUser) {
-      Alert.alert("Sign In Required", "You must be signed in to join a group.");
+      requireAuth(() => {}); // Trigger auth prompt
       return;
     }
 
@@ -50,9 +67,9 @@ const handleJoinSubmit = async () => {
     }
   };
 
-  const handleRestore = async () => {
+const handleRestore = async () => {
     if (!currentUser) {
-      Alert.alert("Sign In Required", "You must be signed in to restore your groups.");
+      requireAuth(() => {}); // Trigger auth prompt
       return;
     }
     
@@ -68,27 +85,24 @@ const handleJoinSubmit = async () => {
     <LinearGradient colors={[palette.bg, palette.bg]} style={styles.container}>
       <SafeAreaView style={{ flex: 1 }}>
 <View style={styles.headerColumn}>
-          <View style={styles.headerRow}>
+<View style={styles.headerRow}>
             <Text style={[styles.title, { color: palette.text }]}>My Groups</Text>
-            <View style={{ flexDirection: 'row', gap: 8 }}>
-              {/* Join Toggle */}
-              <PremiumPressable 
-                onPress={() => setIsJoining(!isJoining)} 
-                style={[styles.actionBtn, { backgroundColor: palette.card, borderWidth: 1, borderColor: palette.border }]}
-              >
-                <Text style={{ color: palette.text, fontWeight: '600' }}>{isJoining ? 'Cancel' : 'Join'}</Text>
-              </PremiumPressable>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16 }}>
+              {/* Restore (Icon Only) */}
+              <Pressable onPress={handleRestore} hitSlop={8} style={{ opacity: 0.7 }}>
+                <CloudDownload size={22} color={palette.text} />
+              </Pressable>
 
-{/* Restore Button */}
-              <PremiumPressable 
-                onPress={handleRestore} 
-                style={[styles.actionBtn, { backgroundColor: palette.card, borderWidth: 1, borderColor: palette.border, paddingHorizontal: 10 }]}
-              >
-                <CloudDownload size={18} color={palette.text} />
-              </PremiumPressable>
+              {/* Join Toggle (Icon Only) */}
+              <Pressable onPress={() => setIsJoining(!isJoining)} hitSlop={8} style={{ opacity: isJoining ? 1 : 0.7 }}>
+                <Users size={22} color={isJoining ? palette.accent : palette.text} />
+              </Pressable>
 
-              {/* Create Button */}
-              <PremiumPressable onPress={handleCreate} style={[styles.actionBtn, { backgroundColor: palette.accent }]}>
+              {/* Create Button (Primary) */}
+              <PremiumPressable 
+                onPress={handleCreate} 
+                style={[styles.actionBtn, { backgroundColor: palette.accent, paddingVertical: 8, paddingHorizontal: 16 }]}
+              >
                 <Plus color="white" size={18} />
                 <Text style={styles.btnTextWhite}>Create</Text>
               </PremiumPressable>

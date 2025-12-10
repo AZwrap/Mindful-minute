@@ -19,7 +19,8 @@ export default function SharedJournalScreen({ navigation, route }: Props) {
   const palette = useSharedPalette();
   
 const { 
-    joinJournal, 
+    joinJournal,
+    subscribeToJournal, // <--- Add this
     sharedEntries, 
     journalInfo, 
     currentUser,
@@ -52,7 +53,7 @@ const entries = sharedEntries[journalId] || [];
 
 // Load journal data on mount
   useEffect(() => {
-    joinJournal(journalId);
+    subscribeToJournal(journalId); // <--- Changed from joinJournal
     markAsRead(journalId);
     
     // Optional: Mark as read again when leaving to catch updates while open

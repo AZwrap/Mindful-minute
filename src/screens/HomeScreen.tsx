@@ -457,9 +457,15 @@ export default function HomeScreen() {
 
         </View>
 
-{/* GROUPED SECTION: Link + List */}
-        <View style={{ gap: 0 }}> 
-          {/* 1. Link */}
+{/* GROUPED SECTION: Integrated Shared Journals Card */}
+        <View style={[styles.card, { 
+          backgroundColor: palette.card, 
+          borderColor: palette.border, 
+          padding: 0, 
+          marginTop: 16, 
+          overflow: 'hidden' 
+        }]}>
+          {/* Header / Main Action (Always visible) */}
           <PremiumPressable
             onPress={() => navigation.navigate("Invite")}
             haptic="light"
@@ -467,54 +473,49 @@ export default function HomeScreen() {
               flexDirection: 'row',
               alignItems: 'center',
               justifyContent: 'space-between',
-              paddingVertical: 16, 
-              paddingHorizontal: 4,
-              marginTop: 8,
-              borderTopWidth: 1,
-              borderTopColor: palette.border,
+              padding: 16,
             }}
           >
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-              <Users size={20} color={palette.subtleText} />
-              <Text style={{ color: palette.text, fontSize: 15, fontWeight: '600' }}>
+              <Users size={20} color={palette.text} />
+              <Text style={{ color: palette.text, fontSize: 16, fontWeight: '600' }}>
                 Shared Journals
               </Text>
             </View>
-            <Text style={{ color: palette.subtleText, fontSize: 18, opacity: 0.5 }}>›</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+              {sharedJournalsList.length === 0 && (
+                <Text style={{ color: palette.sub, fontSize: 13 }}>Create or Join</Text>
+              )}
+              <Text style={{ color: palette.subtleText, fontSize: 18, opacity: 0.5 }}>›</Text>
+            </View>
           </PremiumPressable>
 
-          {/* 2. Box (Now immediately below the link) */}
+          {/* List of Joined Journals (Rendered inside the same card) */}
           {sharedJournalsList.length > 0 && (
-            <View
-              style={[
-                styles.card,
-                { 
-                  backgroundColor: palette.card, 
-                  borderColor: palette.border,
-                  marginTop: 0, // Zero margin!
-                },
-              ]}
-            >
-              <Text style={[styles.title, { color: palette.text }]}>
-                Joined Journals
-              </Text>
+            <View>
+              <View style={{ height: 1, backgroundColor: palette.border, marginLeft: 52 }} />
               {sharedJournalsList.map((j) => (
                 <Pressable
                   key={j.id}
                   onPress={() => navigation.navigate('JournalList')}
-                  style={{
-                    paddingVertical: 12,
-                    paddingHorizontal: 8,
-                    borderBottomWidth: 1,
-                    borderBottomColor: palette.border,
-                  }}
+                  style={({ pressed }) => ({
+                    paddingVertical: 14,
+                    paddingHorizontal: 16,
+                    paddingLeft: 52, // Indent to align with text above
+                    backgroundColor: pressed ? (isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)') : 'transparent',
+                    flexDirection: 'row',
+                    justifyContent: 'space-between',
+                    alignItems: 'center'
+                  })}
                 >
-                  <Text style={{ color: palette.text, fontSize: 15, fontWeight: "600" }}>
-                    {j.name}
-                  </Text>
-                  <Text style={{ color: palette.sub, fontSize: 12 }}>
-                    {j.members?.length || 0} members
-                  </Text>
+                  <View>
+                    <Text style={{ color: palette.text, fontSize: 15, fontWeight: "500" }}>
+                      {j.name}
+                    </Text>
+                    <Text style={{ color: palette.sub, fontSize: 12, marginTop: 2 }}>
+                      {j.members?.length || 0} members
+                    </Text>
+                  </View>
                 </Pressable>
               ))}
             </View>
