@@ -12,80 +12,151 @@ export interface MoodCategory {
 }
 
 export const MOOD_CATEGORIES: Record<string, string[]> = {
-  // Added Optimistic, Determined
   "High Energy Pleasant": ["Excited", "Happy", "Motivated", "Grateful", "Confident", "Energetic", "Optimistic", "Determined"],
-  // Added Focused, Reflective, Hopeful, Nostalgic
   "Low Energy Pleasant": ["Calm", "Relaxed", "Content", "Peaceful", "Thoughtful", "Balanced", "Focused", "Reflective", "Hopeful", "Nostalgic"],
   "High Energy Unpleasant": ["Anxious", "Stressed", "Frustrated", "Angry", "Overwhelmed", "Restless"],
   "Low Energy Unpleasant": ["Sad", "Tired", "Lonely", "Bored", "Disappointed", "Exhausted"]
 };
 
 export const MOOD_COLORS: Record<string, string> = {
-  // High Energy Pleasant (Yellows/Oranges)
+  // High Energy Pleasant
   Excited: '#F59E0B', Happy: '#FBBF24', Motivated: '#D97706',
   Grateful: '#FCD34D', Confident: '#B45309', Energetic: '#F59E0B',
-  Optimistic: '#F59E0B', Determined: '#EA580C', // New
+  Optimistic: '#F59E0B', Determined: '#EA580C',
 
-  // Low Energy Pleasant (Greens/Teals)
+  // Low Energy Pleasant
   Calm: '#10B981', Relaxed: '#34D399', Content: '#059669',
   Peaceful: '#6EE7B7', Thoughtful: '#047857', Balanced: '#10B981',
   Focused: '#059669', Reflective: '#047857', 
-  Hopeful: '#2DD4BF', Nostalgic: '#0D9488', // New
+  Hopeful: '#2DD4BF', Nostalgic: '#0D9488',
 
-  // High Energy Unpleasant (Reds)
+  // High Energy Unpleasant
   Anxious: '#EF4444', Stressed: '#DC2626', Frustrated: '#B91C1C',
   Angry: '#991B1B', Overwhelmed: '#F87171', Restless: '#EF4444',
 
-  // Low Energy Unpleasant (Blues)
+  // Low Energy Unpleasant
   Sad: '#3B82F6', Tired: '#60A5FA', Lonely: '#2563EB',
   Bored: '#93C5FD', Disappointed: '#1D4ED8', Exhausted: '#3B82F6',
   
   // Default
   Neutral: '#94A3B8',
 };
-// Maps specific moods to Spotify Playlist URLs (Generic Mood Playlists)
-export const MOOD_PLAYLISTS: Record<string, { url: string; label: string }> = {
+
+// --- 1. SEARCH TERMS ---
+// Optimized search queries that work across most platforms
+export const MOOD_SEARCH_TERMS: Record<string, string> = {
   // High Energy Pleasant
-  Excited: { url: 'https://open.spotify.com/playlist/37i9dQZF1DXdPec7aLTmlC', label: 'Happy Hits' },
-  Happy: { url: 'https://open.spotify.com/playlist/37i9dQZF1DXdPec7aLTmlC', label: 'Happy Hits' },
-  Motivated: { url: 'https://open.spotify.com/playlist/37i9dQZF1DX4sWSpwq3LiO', label: 'Peaceful Piano' },
-  Energetic: { url: 'https://open.spotify.com/playlist/37i9dQZF1DX76Wlfdnj7AP', label: 'Beast Mode' },
-  
+  Excited: 'Upbeat Pop Hits',
+  Happy: 'Feel Good Songs',
+  Motivated: 'Motivational Workout',
+  Confident: 'Confidence Boost',
+  Energetic: 'High Energy Hits',
+  Optimistic: 'Sunny Day Vibes',
+  Determined: 'Epic Cinematic',
+  Grateful: 'Acoustic Soul',
+
   // Low Energy Pleasant
-  Calm: { url: 'https://open.spotify.com/playlist/37i9dQZF1DWV7EzJMK2FUI', label: 'Calming Acoustic' },
-  Relaxed: { url: 'https://open.spotify.com/playlist/37i9dQZF1DWV7EzJMK2FUI', label: 'Calming Acoustic' },
-  Focused: { url: 'https://open.spotify.com/playlist/37i9dQZF1DX4sWSpwq3LiO', label: 'Deep Focus' },
-  Reflective: { url: 'https://open.spotify.com/playlist/37i9dQZF1DWV7EzJMK2FUI', label: 'Quiet Moments' },
+  Calm: 'Calming Acoustic',
+  Relaxed: 'Chill Lo-Fi',
+  Content: 'Coffee Shop Jazz',
+  Peaceful: 'Nature Sounds Piano',
+  Focused: 'Deep Focus Instrumental',
+  Reflective: 'Melancholy Piano',
+  Hopeful: 'Uplifting Instrumental',
+  Nostalgic: '80s 90s Throwback',
+  Balanced: 'Yoga Flow',
+  Thoughtful: 'Indie Folk',
 
-  // High Energy Unpleasant (Shift state -> Calming)
-  Anxious: { url: 'https://open.spotify.com/playlist/37i9dQZF1DWV7EzJMK2FUI', label: 'Calming Acoustic' },
-  Stressed: { url: 'https://open.spotify.com/playlist/37i9dQZF1DWU0ScTcjJBdj', label: 'Relax & Unwind' },
-  Angry: { url: 'https://open.spotify.com/playlist/37i9dQZF1DX76Wlfdnj7AP', label: 'Workout/Release' },
+  // High Energy Unpleasant (Shift State)
+  Anxious: 'Stress Relief Frequencies',
+  Stressed: 'Ambient Relaxation',
+  Frustrated: 'Rock Anthems',
+  Angry: 'Intense Metal Workout',
+  Overwhelmed: 'Deep Breathing Music',
+  Restless: 'Rhythmic Drumming',
 
-  // Low Energy Unpleasant (Match or Shift)
-  Sad: { url: 'https://open.spotify.com/playlist/37i9dQZF1DWSqBruwoIXkA', label: 'Sad Songs' },
-Tired: { url: 'https://open.spotify.com/playlist/37i9dQZF1DX4sWSpwq3LiO', label: 'Peaceful Piano' },
+  // Low Energy Unpleasant (Comfort)
+  Sad: 'Sad Songs Acoustic',
+  Tired: 'Gentle Wake Up',
+  Lonely: 'Comforting Indie',
+  Bored: 'Discover Weekly',
+  Disappointed: 'Soul and Blues',
+  Exhausted: 'Deep Sleep Waves',
 };
 
-// Helper to find a playlist by exact match or keyword
-export const getRecommendedPlaylist = (mood: string) => {
+// --- 2. PROVIDER SUPPORT ---
+export type MusicProvider = 
+  | 'spotify' 
+  | 'apple' 
+  | 'youtube' 
+  | 'deezer' 
+  | 'tidal' 
+  | 'amazon' 
+  | 'qobuz' 
+  | 'soundcloud' 
+  | 'pandora';
+
+export const getMusicLink = (term: string, provider: MusicProvider): string => {
+  const encoded = encodeURIComponent(term);
+  
+  switch (provider) {
+    case 'spotify':
+      return `spotify:search:${encoded}`;
+      
+    case 'apple':
+      return `https://music.apple.com/us/search?term=${encoded}`;
+      
+    case 'youtube':
+      return `https://music.youtube.com/search?q=${encoded}`;
+      
+    case 'deezer':
+      // Deezer Universal Link
+      return `https://www.deezer.com/search/${encoded}`;
+      
+    case 'tidal':
+      // Tidal Web Search (redirects to app)
+      return `https://listen.tidal.com/search?q=${encoded}`;
+      
+    case 'amazon':
+      // Amazon Music Search
+      return `https://music.amazon.com/search/${encoded}`;
+      
+    case 'qobuz':
+      return `https://open.qobuz.com/search?q=${encoded}`;
+      
+    case 'soundcloud':
+      return `https://soundcloud.com/search?q=${encoded}`;
+      
+    case 'pandora':
+      return `https://www.pandora.com/search/${encoded}`;
+      
+    default:
+      // Fallback to Spotify web if provider is unknown
+      return `https://open.spotify.com/search/${encoded}`;
+  }
+};
+
+// --- 3. MAIN HELPER ---
+export const getRecommendedPlaylist = (mood: string, provider: MusicProvider = 'spotify') => {
   if (!mood) return null;
   const normalized = mood.toLowerCase();
 
-  // 1. Check for exact key match
-  const exact = Object.keys(MOOD_PLAYLISTS).find(k => k.toLowerCase() === normalized);
-  if (exact) return MOOD_PLAYLISTS[exact];
+  // Find term by key
+  const exactKey = Object.keys(MOOD_SEARCH_TERMS).find(k => k.toLowerCase() === normalized);
+  let term = exactKey ? MOOD_SEARCH_TERMS[exactKey] : null;
 
-  // 2. Check if mood contains a key (e.g., "Very Happy" contains "Happy")
-  const keyword = Object.keys(MOOD_PLAYLISTS).find(k => normalized.includes(k.toLowerCase()));
-  if (keyword) return MOOD_PLAYLISTS[keyword];
+  // Fallback heuristics if no exact match
+  if (!term) {
+    if (normalized.includes('tired') || normalized.includes('sleep')) term = 'Deep Sleep';
+    else if (normalized.includes('stress') || normalized.includes('anxious')) term = 'Calming Piano';
+    else if (normalized.includes('happy') || normalized.includes('good')) term = 'Feel Good Hits';
+    else term = 'Relaxing Music'; // Ultimate fallback
+  }
 
-  // 3. Fallback for common custom words
-  if (normalized.includes('tired') || normalized.includes('sleepy') || normalized.includes('low')) return MOOD_PLAYLISTS['Tired'];
-  if (normalized.includes('stress') || normalized.includes('panic') || normalized.includes('busy')) return MOOD_PLAYLISTS['Stressed'];
-  if (normalized.includes('good') || normalized.includes('great')) return MOOD_PLAYLISTS['Happy'];
-  
-  return null;
+  return {
+    label: term,
+    url: getMusicLink(term, provider)
+  };
 };
 
 // Helper for Dropdowns

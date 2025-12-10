@@ -507,58 +507,55 @@ style={{ marginTop: 20 }}
                   </View>
                 )}
 
-                {/* ROW 3: Stats & Mood */}
+{/* ROW 3: Stats (Mood + Time) */}
                 <View style={styles.bentoRow}>
-                  {/* Left Col */}
-                  <View style={styles.bentoCol}>
-                    <View style={[styles.bentoCard, { backgroundColor: palette.card }]}>
-                      <Text style={[styles.bentoLabel, { color: textSub, marginTop: 0 }]}>Top Mood</Text>
-                      <Text 
-                        style={[styles.bentoValue, { color: palette.accent, fontSize: 22, textTransform: 'capitalize' }]}
-                        numberOfLines={1}
-                        adjustsFontSizeToFit
-                      >
-                        {moodStats[0]?.mood || '—'}
-                      </Text>
-                    </View>
-{/* Mindful Minutes Card */}
-                    <View style={[styles.bentoCard, { backgroundColor: palette.card }]}>
-                      <View style={{flexDirection:'row', alignItems:'center', gap:4}}>
-                        <Clock size={14} color={textSub} />
-                        <Text style={[styles.bentoLabel, { color: textSub, marginTop: 0 }]}>Mindful Time</Text>
-                      </View>
-                      <Text style={[styles.bentoValue, { color: textMain }]}>
-                        {estimateMindfulMinutes(writingAnalytics?.totalWords || 0)}
-                        <Text style={{fontSize: 14, fontWeight:'500', color: textSub}}> mins</Text>
-                      </Text>
-                    </View>
+                  <View style={[styles.bentoCard, { flex: 1, backgroundColor: palette.card }]}>
+                    <Text style={[styles.bentoLabel, { color: textSub, marginTop: 0 }]}>Top Mood</Text>
+                    <Text 
+                      style={[styles.bentoValue, { color: palette.accent, fontSize: 22, textTransform: 'capitalize' }]}
+                      numberOfLines={1}
+                      adjustsFontSizeToFit
+                    >
+                      {moodStats[0]?.mood || '—'}
+                    </Text>
                   </View>
 
-                  {/* Right Col: Consistency Strip (Last 7 Days) */}
                   <View style={[styles.bentoCard, { flex: 1, backgroundColor: palette.card }]}>
-                    <Text style={[styles.bentoLabel, { color: textSub, marginTop: 0 }]}>Last 7 Days</Text>
-                    <View style={styles.consistencyRow}>
-                      {statsData.consistency.map((day: any) => (
-                        <View key={day.date} style={{ alignItems: 'center', gap: 6 }}>
-                          <View 
-                            style={[
-                              styles.consistencyDot,
-                              { 
-                                backgroundColor: day.hasEntry ? palette.accent : (isDark ? '#334155' : '#E2E8F0'),
-                                borderColor: day.isToday ? palette.text : 'transparent',
-                                borderWidth: day.isToday ? 1 : 0
-                              }
-                            ]}
-                          >
-                            {day.hasEntry && <View style={{width: 4, height: 4, borderRadius: 2, backgroundColor: 'white'}} />}
-                          </View>
-                          <Text style={{ fontSize: 10, color: day.isToday ? palette.text : textSub, fontWeight: '600' }}>
-                            {day.dayLabel}
-                          </Text>
-                        </View>
-                      ))}
+                    <View style={{flexDirection:'row', alignItems:'center', gap:4}}>
+                      <Clock size={14} color={textSub} />
+                      <Text style={[styles.bentoLabel, { color: textSub, marginTop: 0 }]}>Mindful Time</Text>
                     </View>
-</View>
+                    <Text style={[styles.bentoValue, { color: textMain }]}>
+                      {estimateMindfulMinutes(writingAnalytics?.totalWords || 0)}
+                      <Text style={{fontSize: 14, fontWeight:'500', color: textSub}}> mins</Text>
+                    </Text>
+                  </View>
+                </View>
+
+                {/* ROW 4: Consistency Strip (Last 7 Days) - Full Width */}
+                <View style={[styles.bentoCard, { backgroundColor: palette.card, marginTop: 12 }]}>
+                  <Text style={[styles.bentoLabel, { color: textSub, marginTop: 0 }]}>Last 7 Days</Text>
+                  <View style={styles.consistencyRow}>
+                    {statsData.consistency.map((day: any) => (
+                      <View key={day.date} style={{ alignItems: 'center', gap: 6, flex: 1 }}> 
+                        <View 
+                          style={[
+                            styles.consistencyDot,
+                            { 
+                              backgroundColor: day.hasEntry ? palette.accent : (isDark ? '#334155' : '#E2E8F0'),
+                              borderColor: day.isToday ? palette.text : 'transparent',
+                              borderWidth: day.isToday ? 1 : 0
+                            }
+                          ]}
+                        >
+                          {day.hasEntry && <View style={{width: 4, height: 4, borderRadius: 2, backgroundColor: 'white'}} />}
+                        </View>
+                        <Text style={{ fontSize: 10, color: day.isToday ? palette.text : textSub, fontWeight: '600' }}>
+                          {day.dayLabel}
+                        </Text>
+                      </View>
+                    ))}
+                  </View>
                 </View>
 
                 {/* ROW 4: Writing Schedule Chart */}

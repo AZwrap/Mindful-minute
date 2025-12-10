@@ -574,8 +574,9 @@ return result;
                 sections={sections}
                 keyExtractor={(item) => item.date}
                 style={styles.entriesList}
+                contentContainerStyle={{ paddingBottom: 100 }} // FIX: Ensure last item is visible above tabs
                 showsVerticalScrollIndicator={true}
-                stickySectionHeadersEnabled={true}
+                stickySectionHeadersEnabled={false}
                 
                 // --- PERFORMANCE PROPS ---
                 removeClippedSubviews={true} // Unmounts off-screen items (critical for large lists)
@@ -655,11 +656,11 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  contentCard: {
+contentCard: {
     flex: 1,
     marginHorizontal: 4,
     marginTop: 8,
-    marginBottom: 16,
+    marginBottom: 0, // FIX: Extend card to bottom
     padding: 12,
     borderRadius: 24,
   },
@@ -763,12 +764,11 @@ statsWidget: {
     fontWeight: '600',
     textTransform: 'capitalize',
   },
-  entryReflection: {
+entryReflection: {
     fontSize: 14,
     lineHeight: 20,
     marginBottom: 8,
     fontStyle: 'italic',
-    textTransform: 'capitalize',
   },
   entryWrapper: {
     borderRadius: 12,

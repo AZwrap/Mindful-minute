@@ -111,7 +111,7 @@ export default function App() {
 <SafeAreaProvider>
       <GestureHandlerRootView style={{ flex: 1 }}>
         <NavigationContainer ref={navigationRef} linking={linking}>
-          <ThemeFadeWrapper>npm install
+          <ThemeFadeWrapper>
             <ErrorBoundary>
               <SecurityGate> 
                  <RootStack />
