@@ -1,9 +1,9 @@
 import React, { useEffect } from 'react';
-import { View, Text, StyleSheet, FlatList, Pressable, Alert } from 'react-native';
+import { View, Text, StyleSheet, FlatList, Pressable, Alert, TextInput } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { PenTool, Share2, LogOut } from 'lucide-react-native';
+import { PenTool, Share2, LogOut, Search, X } from 'lucide-react-native';
 
 import { RootStackParamList } from '../navigation/RootStack';
 import { useJournalStore } from '../stores/journalStore';
@@ -33,8 +33,22 @@ const {
     return new Date(val).toLocaleDateString(); // JS Date/Number
   };
 
-  const entries = sharedEntries[journalId] || [];
+const entries = sharedEntries[journalId] || [];
   const journal = useJournalStore(s => s.journals[journalId]) || journalInfo;
+
+  // Search State
+  const [searchText, setSearchText] = React.useState('');
+  const [isSearching, setIsSearching] = React.useState(false);
+
+  // Filter Logic
+  const filteredEntries = React.useMemo(() => {
+    if (!searchText.trim()) return entries;
+    const term = searchText.toLowerCase();
+    return entries.filter(e => 
+      (e.text && e.text.toLowerCase().includes(term)) || 
+      (e.authorName && e.authorName.toLowerCase().includes(term))
+    );
+  }, [entries, searchText]);
 
 // Load journal data on mount
   useEffect(() => {
@@ -101,14 +115,36 @@ onPress: async () => {
             <PremiumPressable onPress={handleInvite} style={[styles.iconBtn, { backgroundColor: palette.card }]}>
                 <Share2 size={20} color={palette.accent} />
             </PremiumPressable>
-            <PremiumPressable onPress={handleLeave} style={[styles.iconBtn, { backgroundColor: palette.card }]}>
+<PremiumPressable onPress={handleLeave} style={[styles.iconBtn, { backgroundColor: palette.card }]}>
                 <LogOut size={20} color="#EF4444" />
+            </PremiumPressable>
+            <PremiumPressable 
+              onPress={() => {
+                if (isSearching) setSearchText('');
+                setIsSearching(!isSearching);
+              }} 
+              style={[styles.iconBtn, { backgroundColor: palette.card }]}
+            >
+                {isSearching ? <X size={20} color={palette.text} /> : <Search size={20} color={palette.text} />}
             </PremiumPressable>
           </View>
         </View>
 
+        {isSearching && (
+          <View style={{ paddingHorizontal: 20, marginBottom: 12 }}>
+            <TextInput
+              style={[styles.searchInput, { color: palette.text, borderColor: palette.border, backgroundColor: palette.card }]}
+              placeholder="Search entries or authors..."
+              placeholderTextColor={palette.subtleText}
+              value={searchText}
+              onChangeText={setSearchText}
+              autoFocus
+            />
+          </View>
+        )}
+
 <FlatList
-          data={entries}
+          data={filteredEntries}
           keyExtractor={(item) => item.entryId}
           contentContainerStyle={styles.list}
           renderItem={({ item }) => (
@@ -156,7 +192,8 @@ const styles = StyleSheet.create({
   entryText: { fontSize: 16, lineHeight: 24, marginBottom: 12 },
   entryAuthor: { fontSize: 12, fontWeight: '700', fontStyle: 'italic' },
   fab: { position: 'absolute', bottom: 30, right: 24, width: 56, height: 56, borderRadius: 28, alignItems: 'center', justifyContent: 'center', shadowOpacity: 0.3, shadowRadius: 8, shadowOffset: { width: 0, height: 4 } },
-  empty: { padding: 40, alignItems: 'center' },
+empty: { padding: 40, alignItems: 'center' },
   emptyText: { fontSize: 16 },
   iconBtn: { padding: 10, borderRadius: 12 },
+  searchInput: { borderWidth: 1, borderRadius: 12, paddingHorizontal: 12, paddingVertical: 10, fontSize: 14 },
 });

@@ -44,6 +44,7 @@ import { useProgress } from '../stores/progressStore';
 import { useWritingSettings } from "../stores/writingSettingsStore";
 
 import { getMoodSuggestions } from '../utils/autoTagger';
+import { MediaService } from '../services/mediaService';
 import { MOOD_COLORS } from '../constants/moodCategories';
 import {
   generateSmartPrompt,
@@ -112,6 +113,7 @@ const [isPlaying, setIsPlaying] = useState(false);
   };
 
 // --- IMAGE LOGIC ---
+// --- IMAGE LOGIC ---
   const pickImage = () => {
     Alert.alert(
       "Add Photo",
@@ -121,24 +123,23 @@ const [isPlaying, setIsPlaying] = useState(false);
           text: "Take Photo",
           onPress: async () => {
             try {
-              // 1. Request Camera Permission
               const perm = await ImagePicker.requestCameraPermissionsAsync();
               if (!perm.granted) {
                 Alert.alert("Permission Required", "Camera access is needed to take photos.");
                 return;
               }
 
-              // 2. Launch Camera
               const result = await ImagePicker.launchCameraAsync({
                 mediaTypes: ImagePicker.MediaTypeOptions.Images,
                 allowsEditing: true,
                 aspect: [4, 3],
-                quality: 0.8,
+                quality: 0.3, // Low quality for Firestore
+                base64: true,
               });
 
-if (!result.canceled) {
-                const savedUri = await saveImageLocally(result.assets[0].uri);
-                setImageUri(savedUri);
+              if (!result.canceled && result.assets[0].base64) {
+                const base64Uri = `data:image/jpeg;base64,${result.assets[0].base64}`;
+                setImageUri(base64Uri);
               }
             } catch (e) {
               console.log(e);
@@ -154,12 +155,13 @@ if (!result.canceled) {
                 mediaTypes: ImagePicker.MediaTypeOptions.Images,
                 allowsEditing: true,
                 aspect: [4, 3],
-                quality: 0.8,
+                quality: 0.3, // Low quality for Firestore
+                base64: true,
               });
 
-if (!result.canceled) {
-                const savedUri = await saveImageLocally(result.assets[0].uri);
-                setImageUri(savedUri);
+              if (!result.canceled && result.assets[0].base64) {
+                const base64Uri = `data:image/jpeg;base64,${result.assets[0].base64}`;
+                setImageUri(base64Uri);
               }
             } catch (e) {
               Alert.alert("Error", "Could not pick image.");
@@ -334,65 +336,82 @@ setRunning, handleTick, skipBreak, handleReset, fade
   
 
 // --- SAVE & EXIT HANDLERS ---
-const saveAndExit = () => {
-    if (!text.trim() && !audioUri) return;
+  const saveAndExit = async () => {
+    if (!text.trim() && !audioUri && !imageUri) return;
     
-    isSaved.current = true; // Prevent timer reset on unmount
+    isSaved.current = true;
+    showToast("Saving...");
 
-// FIX: Save 'currentPrompt' (which contains the Smart Prompt)
-upsert({ 
+try {
+      // Base64 Bypass
+      const finalImageUri = imageUri;
+
+      upsert({ 
         date, 
         text: text.trim(), 
         prompt: { text: currentPrompt?.text || 'Free writing' }, 
         createdAt: Date.now() as any, 
         isComplete: false, 
         audioUri,
-        imageUri // NEW
-    });
-    
-    if (!preserveTimerProgress) setDraftTimer(date, writeDuration);
-    navigation.reset({ index: 0, routes: [{ name: 'MainTabs' }] });
+        imageUri: finalImageUri
+      });
+      
+      if (!preserveTimerProgress) setDraftTimer(date, writeDuration);
+      navigation.reset({ index: 0, routes: [{ name: 'MainTabs' }] });
+    } catch (e) {
+      showToast("Error saving image. Try again.");
+      isSaved.current = false; // Allow retry
+    }
   };
 
 const continueToMood = async () => {
-    if (!text.trim() && !audioUri) {
-      Alert.alert("Empty", "Please write something or record audio first.");
+    if (!text.trim() && !audioUri && !imageUri) {
+      Alert.alert("Empty", "Please write something, record audio, or add a photo.");
       return;
     }
-    isSaved.current = true; // Prevent timer reset on unmount
-    const completedGratitudeItems = gratitudeEntries.filter((entry) => entry?.trim()).length;
-    const isGratitudeEntry = completedGratitudeItems >= 2;
-    const xpBonus = isGratitudeEntry ? 10 : 0;
-
-    if (isGratitudeEntry) useProgress.getState().incrementTotalEntries(); 
-
-// Save locally
-    upsert({
-      date, 
-      text: text.trim(), 
-      prompt: { text: currentPrompt?.text || 'Free writing' }, 
-      createdAt: Date.now() as any,
-isComplete: false,
-      isGratitude: isGratitudeEntry, 
-      gratitudeItems: gratitudeEntries.filter(e => e?.trim()), 
-      xpBonus, 
-      audioUri,
-      imageUri // NEW
-    });
-
-    if (xpBonus > 0) showToast('+10 XP Gratitude Bonus!');
     
-// Pass selected mood and prompt text to next screen
-    setTimeout(() => {
-      navigation.navigate('MoodTag', { 
-          date, 
-          text, 
-          // FIX: Pass prompt as object so MoodTagScreen can read .text
-          prompt: { text: currentPrompt?.text || "Free writing" }, 
-          savedFrom: 'Write',
-          initialMood: selectedSuggestedMood || undefined,
+    isSaved.current = true;
+    showToast(imageUri ? "Uploading image..." : "Saving...");
+
+try {
+      // Base64 Bypass: No upload needed, imageUri contains the data
+      const finalImageUri = imageUri;
+
+      const completedGratitudeItems = gratitudeEntries.filter((entry) => entry?.trim()).length;
+      const isGratitudeEntry = completedGratitudeItems >= 2;
+      const xpBonus = isGratitudeEntry ? 10 : 0;
+
+      if (isGratitudeEntry) useProgress.getState().incrementTotalEntries(); 
+
+      upsert({
+        date, 
+        text: text.trim(), 
+        prompt: { text: currentPrompt?.text || 'Free writing' }, 
+        createdAt: Date.now() as any,
+        isComplete: false,
+        isGratitude: isGratitudeEntry, 
+        gratitudeItems: gratitudeEntries.filter(e => e?.trim()), 
+        xpBonus, 
+        audioUri,
+        imageUri: finalImageUri
       });
-    }, 50);
+
+      if (xpBonus > 0) showToast('+10 XP Gratitude Bonus!');
+      
+      setTimeout(() => {
+        navigation.navigate('MoodTag', { 
+            date, 
+            text, 
+            prompt: { text: currentPrompt?.text || "Free writing" }, 
+            savedFrom: 'Write',
+            initialMood: selectedSuggestedMood || undefined,
+        });
+      }, 50);
+
+    } catch (e) {
+      showToast("Error uploading image");
+      isSaved.current = false;
+    }
   };
 
   const handleTextChange = (newText: string) => {    

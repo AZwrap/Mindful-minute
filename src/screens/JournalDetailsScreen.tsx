@@ -114,17 +114,29 @@ export default function JournalDetailsScreen({ navigation, route }: Props) {
                 MEMBERS ({journal.members.length})
             </Text>
             
-            <FlatList
+<FlatList
                 data={journal.members}
                 keyExtractor={(item) => item}
-                renderItem={({ item }) => (
+                renderItem={({ item }) => {
+                   // Calculate initials (max 2 characters)
+                   const initials = item
+                      .split(' ')
+                      .map(n => n[0])
+                      .slice(0, 2)
+                      .join('')
+                      .toUpperCase();
+
+                   return (
                     <View style={[styles.memberRow, { backgroundColor: palette.card, borderColor: palette.border }]}>
                         <View style={[styles.avatar, { backgroundColor: palette.accent + '20' }]}>
-                            <Users size={18} color={palette.accent} />
+                            <Text style={{ color: palette.accent, fontWeight: '700', fontSize: 14 }}>
+                                {initials}
+                            </Text>
                         </View>
                         <Text style={[styles.memberName, { color: palette.text }]}>{item}</Text>
                     </View>
-                )}
+                   );
+                }}
                 contentContainerStyle={{ gap: 8 }}
             />
 

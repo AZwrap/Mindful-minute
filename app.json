@@ -1,23 +1,28 @@
 {
   "expo": {
-    "name": "mindful-minute",
+    "name": "Mindful Minute",
     "slug": "mindful-minute",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
-"userInterfaceStyle": "light",
+    "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
-"splash": {
+    "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
-      "backgroundColor": "#0F172A" 
+      "backgroundColor": "#0F172A"
     },
-"ios": {
+    "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.mindfulminute.app"
+      "bundleIdentifier": "com.mindfulminute.app",
+      "infoPlist": {
+        "NSCameraUsageDescription": "Mindful Minute needs access to your camera to let you attach photos to your journal entries.",
+        "NSPhotoLibraryUsageDescription": "Mindful Minute needs access to your photo library to let you select images for your journal.",
+        "NSMicrophoneUsageDescription": "Mindful Minute needs access to the microphone to record your voice reflections.",
+        "NSFaceIDUsageDescription": "Mindful Minute uses FaceID to lock your private journal entries."
+      }
     },
     "scheme": "mindfulminute",
-    
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
@@ -27,12 +32,36 @@
       "permissions": [
         "android.permission.RECORD_AUDIO",
         "android.permission.MODIFY_AUDIO_SETTINGS",
-        "android.permission.RECORD_AUDIO",
-        "android.permission.MODIFY_AUDIO_SETTINGS"
+        "android.permission.CAMERA",
+        "android.permission.READ_MEDIA_IMAGES",
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.USE_BIOMETRIC",
+        "android.permission.USE_FINGERPRINT"
       ],
       "package": "com.mindfulminute.app"
     },
-"web": {
+    "plugins": [
+      [
+        "expo-local-authentication",
+        {
+          "faceIDPermission": "Allow Mindful Minute to use FaceID to secure your journal."
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Allow Mindful Minute to access your photos to attach them to entries.",
+          "cameraPermission": "Allow Mindful Minute to access your camera to take photos for entries."
+        }
+      ],
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Allow Mindful Minute to access your camera."
+        }
+      ]
+    ],
+    "web": {
       "favicon": "./assets/favicon.png",
       "name": "Mindful Minute",
       "shortName": "Mindful",
@@ -40,17 +69,7 @@
       "display": "standalone",
       "backgroundColor": "#F8FAFC",
       "themeColor": "#6366F1",
-      "description": "Your daily mindful journaling companion.",
-      "orientation": "portrait",
-      "lang": "en-US",
-      "bundler": "metro"
-    },
-    "plugins": [
-      "@react-native-google-signin/google-signin",
-      "expo-sqlite",
-      "expo-audio",
-      "expo-asset",
-      "expo-quick-actions"
-    ]
+      "description": "Your daily mindful journaling companion."
+    }
   }
 }

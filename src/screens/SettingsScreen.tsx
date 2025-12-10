@@ -40,8 +40,9 @@ import { useTheme, ThemeType } from "../stores/themeStore";
 import { useWritingSettings } from "../stores/writingSettingsStore";
 import { saveBackupToCloud, restoreBackupFromCloud } from '../services/cloudBackupService';
 import { analyzeWritingAnalytics } from '../constants/writingAnalytics';
-import { scheduleDailyReminder } from '../lib/notifications'; // Removed runNotificationTest/cancelNotifications if not exported in your lib
+import { scheduleDailyReminder, cancelDailyReminders } from '../lib/notifications'; 
 import { exportBulkEntries } from '../utils/exportHelper';
+import DateTimePickerModal from "react-native-modal-datetime-picker";
 import { RootStackParamList } from '../navigation/RootStack';
 import { useSharedPalette } from '../hooks/useSharedPalette';
 
@@ -85,16 +86,18 @@ export default function SettingsScreen({ navigation }: Props) {
     hapticsEnabled, setHapticsEnabled,
     soundEnabled, setSoundEnabled,
 preserveTimerProgress, setPreserveTimerProgress,
-    gratitudeModeEnabled, setGratitudeModeEnabled,
+gratitudeModeEnabled, setGratitudeModeEnabled,
     zenModeEnabled, setZenModeEnabled,
     isBiometricsEnabled, setIsBiometricsEnabled,
-    smartRemindersEnabled, setSmartRemindersEnabled 
+    smartRemindersEnabled, setSmartRemindersEnabled,
+    reminderTime, setReminderTime
   } = useSettings();
 
   const entriesMap = useEntriesStore((s) => s.entries);
   
 // Local UI State
-const [themeDropdownOpen, setThemeDropdownOpen] = useState(false); 
+  const [isTimePickerVisible, setTimePickerVisibility] = useState(false);
+  const [themeDropdownOpen, setThemeDropdownOpen] = useState(false);
   const [accentDropdownOpen, setAccentDropdownOpen] = useState(false);
   // Track hue (0-360) and lightness (0-100) for the sliders
   const [hue, setHue] = useState(0); 
@@ -133,9 +136,56 @@ const {
       Keyboard.dismiss();
     } catch (e) {
       Alert.alert("Error", "Failed to update profile.");
+      const handleConfirmTime = async (date: Date) => {
+    const h = date.getHours();
+    const m = date.getMinutes();
+    setReminderTime(h, m);
+    setTimePickerVisibility(false);
+    
+    if (smartRemindersEnabled) {
+      await scheduleDailyReminder(h, m);
+      showToast(`Reminder set for ${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`);
+    }
+  };
+
+  const handleToggleReminders = async (val: boolean) => {
+     setSmartRemindersEnabled(val);
+     if (val) {
+       // Use stored time or default to 20:00
+       const { hour, minute } = reminderTime || { hour: 20, minute: 0 };
+       await scheduleDailyReminder(hour, minute);
+       showToast("Daily reminders enabled");
+     } else {
+       await cancelDailyReminders();
+     }
+  };
     } finally {
       setIsUpdatingProfile(false);
     }
+  };
+
+  const handleConfirmTime = async (date: Date) => {
+    const h = date.getHours();
+    const m = date.getMinutes();
+    setReminderTime(h, m);
+    setTimePickerVisibility(false);
+    
+    if (smartRemindersEnabled) {
+      await scheduleDailyReminder(h, m);
+      showToast(`Reminder set for ${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`);
+    }
+  };
+
+  const handleToggleReminders = async (val: boolean) => {
+     setSmartRemindersEnabled(val);
+     if (val) {
+       // Use stored time or default to 20:00
+       const { hour, minute } = reminderTime || { hour: 20, minute: 0 };
+       await scheduleDailyReminder(hour, minute);
+       showToast("Daily reminders enabled");
+     } else {
+       await cancelDailyReminders();
+     }
   };
 
 // --- EFFECTS ---
@@ -698,7 +748,7 @@ const SettingRow = ({ label, description, value, onValueChange, icon }: any) => 
                 />
               </View>
 
-              {/* 4. NOTIFICATIONS */}
+{/* 4. NOTIFICATIONS */}
               <View style={[styles.card, { backgroundColor: palette.card, borderColor: palette.border }]}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8 }}>
                   <Bell size={18} color={palette.accent} />
@@ -706,22 +756,40 @@ const SettingRow = ({ label, description, value, onValueChange, icon }: any) => 
                 </View>
                 
                 <SettingRow 
-                  label="Smart Reminders" 
-                  description="Nudge at your most productive time" 
+                  label="Daily Reminders" 
+                  description="Get a gentle nudge to journal" 
                   value={smartRemindersEnabled} 
-                  onValueChange={async (val: boolean) => {
-                    setSmartRemindersEnabled(val);
-                    if (val) {
-                      const entriesList = Object.values(entriesMap || {});
-                      const analytics = analyzeWritingAnalytics(entriesList);
-                      // Default to 20:00 if no analytics
-                      const hour = analytics?.timeStats?.mostActive === "Morning" ? 8 : 20;
-                      await scheduleDailyReminder(hour, 0);
-                      Alert.alert("Smart Scheduler", `Reminder set for ${hour}:00 based on your habits.`);
-                    } else {
-                      // await cancelNotifications(); 
-                    }
-                  }} 
+                  onValueChange={handleToggleReminders} 
+                />
+
+                {smartRemindersEnabled && (
+                  <View style={{ marginTop: 12, paddingTop: 12, borderTopWidth: 1, borderTopColor: palette.border }}>
+                    <Text style={[styles.label, { color: palette.sub, marginBottom: 8 }]}>Reminder Time</Text>
+                    <PremiumPressable 
+                      onPress={() => setTimePickerVisibility(true)}
+                      style={[styles.dropdownHeader, { backgroundColor: palette.bg, borderColor: palette.border }]}
+                    >
+                      <Text style={{ fontSize: 15, fontWeight: "600", color: palette.text }}>
+                        {reminderTime 
+                          ? `${String(reminderTime.hour).padStart(2, '0')}:${String(reminderTime.minute).padStart(2, '0')}` 
+                          : "20:00"}
+                      </Text>
+                      <Text style={{ fontSize: 12, color: palette.accent, fontWeight: "600" }}>Change</Text>
+                    </PremiumPressable>
+                  </View>
+                )}
+
+                <DateTimePickerModal
+                  isVisible={isTimePickerVisible}
+                  mode="time"
+                  onConfirm={handleConfirmTime}
+                  onCancel={() => setTimePickerVisibility(false)}
+                  date={(() => {
+                    const d = new Date();
+                    d.setHours(reminderTime?.hour || 20);
+                    d.setMinutes(reminderTime?.minute || 0);
+                    return d;
+                  })()}
                 />
               </View>
 

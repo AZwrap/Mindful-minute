@@ -11,6 +11,7 @@ interface SettingsState {
   preserveTimerProgress: boolean;
   gratitudeModeEnabled: boolean;
   zenModeEnabled: boolean; // New Setting
+  reminderTime: { hour: number; minute: number };
   hasOnboarded: boolean;
   isBiometricsEnabled: boolean;
   smartRemindersEnabled: boolean;
@@ -24,8 +25,9 @@ setPreserveTimerProgress: (val: boolean) => void;
   setGratitudeModeEnabled: (val: boolean) => void;
   setZenModeEnabled: (val: boolean) => void; // New Action
   setHasOnboarded: (val: boolean) => void;
-  setIsBiometricsEnabled: (val: boolean) => void;
+setIsBiometricsEnabled: (val: boolean) => void;
   setSmartRemindersEnabled: (val: boolean) => void;
+  setReminderTime: (hour: number, minute: number) => void; // New Action
   setLoaded: (val: boolean) => void;
 }
 
@@ -46,6 +48,7 @@ preserveTimerProgress: true,
       hasOnboarded: false,
       isBiometricsEnabled: false,
       smartRemindersEnabled: false,
+      reminderTime: { hour: 20, minute: 0 }, // Default to 8:00 PM
       
       loaded: false, 
 
@@ -56,8 +59,9 @@ setPreserveTimerProgress: (val) => set({ preserveTimerProgress: val }),
       setGratitudeModeEnabled: (val) => set({ gratitudeModeEnabled: val }),
       setZenModeEnabled: (val) => set({ zenModeEnabled: val }),
       setHasOnboarded: (val) => set({ hasOnboarded: val }),
-      setIsBiometricsEnabled: (val) => set({ isBiometricsEnabled: val }),
+setIsBiometricsEnabled: (val) => set({ isBiometricsEnabled: val }),
       setSmartRemindersEnabled: (val) => set({ smartRemindersEnabled: val }),
+      setReminderTime: (hour, minute) => set({ reminderTime: { hour, minute } }),
       
       setLoaded: (val) => set({ loaded: val }),
     }),
@@ -71,9 +75,10 @@ setPreserveTimerProgress: (val) => set({ preserveTimerProgress: val }),
 preserveTimerProgress: state.preserveTimerProgress,
         gratitudeModeEnabled: state.gratitudeModeEnabled,
         zenModeEnabled: state.zenModeEnabled,
-        hasOnboarded: state.hasOnboarded,
+hasOnboarded: state.hasOnboarded,
         isBiometricsEnabled: state.isBiometricsEnabled,
         smartRemindersEnabled: state.smartRemindersEnabled,
+        reminderTime: state.reminderTime,
       }),
       
       // FIXED: Added safe navigation operator (?.) to prevent crash if state is undefined

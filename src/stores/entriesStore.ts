@@ -1,42 +1,11 @@
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { db, auth } from "../firebaseConfig";
-import { doc, getDocs, collection, writeBatch } from "firebase/firestore";
+import { auth } from "../firebaseConfig";
+import { EntriesService, JournalEntry } from "../services/entriesService";
 
-// --------------------------------------------------
-// TYPES
-// --------------------------------------------------
-
-// 1. Define the shape of a single Journal Entry
-export interface JournalEntry {
-  date: string; // Key: "YYYY-MM-DD"
-  text?: string;
-  
-  // Prompt data can be stored in two ways (legacy vs new)
-  prompt?: { text: string; isSmart?: boolean }; 
-  promptText?: string; 
-  
-moodTag?: { 
-    value: string; 
-    type: 'default' | 'custom';
-  };
-
-  imageUri?: string; // NEW: Path to the attached photo
-  
-isComplete?: boolean;
-  createdAt?: number;
-  updatedAt?: number;
-  syncedAt?: number; // Tracks when this specific device last synced this entry
-
-  music?: {
-    trackId: string;
-    title: string;
-    artist: string;
-    url: string;
-  };
-  [key: string]: any; 
-}
+// Re-export for compatibility with other screens (e.g. HistoryScreen)
+export type { JournalEntry };
 
 // 2. Define Draft shape
 export interface Draft {
@@ -90,95 +59,15 @@ export const useEntriesStore = create<EntriesStore>()(
 // ACTIONS
 
       // Sync local entries with Firestore (Merge Strategy)
+// Sync local entries with Firestore (Merge Strategy)
       syncWithCloud: async () => {
         const user = auth.currentUser;
-        if (!user) return; // Not logged in
-
-        const localEntries = get().entries;
-        const userEntriesRef = collection(db, "users", user.uid, "entries");
+        if (!user) return;
 
         try {
-          // 1. Fetch Cloud Entries
-          const snapshot = await getDocs(userEntriesRef);
-          const cloudEntries: Record<string, JournalEntry> = {};
-          
-          snapshot.forEach((doc) => {
-             // Basic validation to ensure we have a date key
-             if (doc.id) cloudEntries[doc.id] = doc.data() as JournalEntry;
-          });
-
-// 2. Merge Logic (Conflict Resolution)
-          const mergedEntries = { ...localEntries };
-          const batch = writeBatch(db);
-          let hasBatchUpdates = false;
-
-          // A. Process Cloud Entries
-          Object.values(cloudEntries).forEach((cloudEntry) => {
-            const localEntry = localEntries[cloudEntry.date];
-            
-            // Case 1: New from Cloud (No local copy) -> Accept Cloud
-            if (!localEntry) {
-              mergedEntries[cloudEntry.date] = { ...cloudEntry, syncedAt: cloudEntry.updatedAt };
-              return;
-            }
-
-            const localSyncedAt = localEntry.syncedAt || 0;
-            const cloudUpdatedAt = cloudEntry.updatedAt || 0;
-            const localUpdatedAt = localEntry.updatedAt || 0;
-
-            // Case 2: Cloud has updates we haven't seen
-            if (cloudUpdatedAt > localSyncedAt) {
-              // Check if we ALSO have unsynced local changes (Conflict!)
-              if (localUpdatedAt > localSyncedAt) {
-                console.log(`Conflict detected for ${cloudEntry.date}`);
-                // Safety: Combine text so nothing is lost
-                const resolvedText = `${cloudEntry.text || ''}\n\n==========\n⚠️ [CONFLICT: LOCAL CHANGES PRESERVED BELOW]\n${localEntry.text || ''}`;
-                
-                mergedEntries[cloudEntry.date] = {
-                  ...localEntry,
-                  text: resolvedText,
-                  updatedAt: Date.now(), // Bump time so this "resolution" wins next push
-                  syncedAt: 0, // Mark as unsynced so it pushes back to cloud
-                };
-              } else {
-                // No local changes, safe to overwrite with Cloud version
-                mergedEntries[cloudEntry.date] = { ...cloudEntry, syncedAt: cloudUpdatedAt };
-              }
-            }
-            // Case 3: Cloud is older or same as syncedAt -> Keep Local
-          });
-
-          // B. Push Pending Local Changes to Cloud
-          const finalEntries: Record<string, JournalEntry> = {};
-
-          Object.values(mergedEntries).forEach((entry) => {
-            // Push if local is newer than its last sync time (or never synced)
-            if ((entry.updatedAt || 0) > (entry.syncedAt || 0)) {
-              const ref = doc(db, "users", user.uid, "entries", entry.date);
-              
-              // Prepare payload: Remove local-only metadata before upload
-              const payload = { ...entry };
-              delete payload.syncedAt; 
-              
-              batch.set(ref, payload);
-              hasBatchUpdates = true;
-              
-              // Mark as synced locally
-              finalEntries[entry.date] = { ...entry, syncedAt: entry.updatedAt };
-            } else {
-              finalEntries[entry.date] = entry;
-            }
-          });
-
-          // 3. Commit Writes
-          if (hasBatchUpdates) {
-            await batch.commit();
-          }
-
-          // 4. Update Store
+          const finalEntries = await EntriesService.syncEntries(user.uid, get().entries);
           set({ entries: finalEntries });
-          console.log("Cloud Sync Completed (Safe Mode)");
-          
+          console.log("Cloud Sync Completed (Service)");
         } catch (error) {
           console.error("Cloud Sync Error:", error);
         }

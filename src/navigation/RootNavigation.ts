@@ -3,7 +3,10 @@ import { RootStackParamList } from './RootStack';
 
 export const navigationRef = createNavigationContainerRef<RootStackParamList>();
 
-export function navigate(name: keyof RootStackParamList, params?: any) {
+export function navigate<RouteName extends keyof RootStackParamList>(
+  name: RouteName,
+  params?: RootStackParamList[RouteName]
+) {
   if (navigationRef.isReady()) {
     navigationRef.navigate(name, params);
   }

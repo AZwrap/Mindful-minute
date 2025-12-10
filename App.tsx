@@ -1,114 +1,28 @@
 import 'react-native-get-random-values';
-import React, { useEffect } from "react";
+import React from "react";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { NavigationContainer } from "@react-navigation/native";
 import { StatusBar } from "expo-status-bar";
-import * as SplashScreen from 'expo-splash-screen';
-import { useColorScheme, Platform, Alert } from "react-native"; // Removed Linking
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-import * as Linking from 'expo-linking';
 
-
-// Navigation & Stores
+// Navigation & Logic
 import RootStack from "./src/navigation/RootStack";
 import { navigationRef } from "./src/navigation/RootNavigation";
-import { useTheme } from "./src/stores/themeStore";
-import { useSettings } from "./src/stores/settingsStore";
-import { useEntriesStore } from "./src/stores/entriesStore";
+import { useAppInitialization } from "./src/hooks/useAppInitialization";
 
-// Components & Services
+// Components
 import ThemeFadeWrapper from "./src/components/ThemeFadeWrapper";
 import SecurityGate from './src/components/SecurityGate';
 import { ErrorBoundary } from "./src/components/ErrorBoundary";
-import { joinSharedJournal } from "./src/services/syncedJournalService";
 import './src/utils/ignoreWarnings';
-import * as Notifications from 'expo-notifications';
-import { scheduleDailyReminder, cancelDailyReminders, registerForPushNotificationsAsync } from "./src/lib/notifications";
-
-// Keep the splash screen visible while we fetch resources
-SplashScreen.preventAutoHideAsync().catch(console.warn);
 
 export default function App() {
-  const system = useColorScheme();
-  const { getCurrentTheme } = useTheme();
-  const theme = getCurrentTheme(system);
-  const settingsLoaded = useSettings((s) => s.loaded);
-  const smartRemindersEnabled = useSettings((s) => s.smartRemindersEnabled);
+  const { isReady, theme, linking } = useAppInitialization();
 
-  // 1. Hide splash screen only when settings are loaded
-  useEffect(() => {
-    if (settingsLoaded) {
-      setTimeout(() => {
-        SplashScreen.hideAsync();
-      }, 500); 
-    }
-  }, [settingsLoaded]);
-
-  // 2. Deep Linking Config
-  const linking = {
-    prefixes: [Linking.createURL('/'), 'mindfulminute://'],
-    config: {
-      screens: {
-        // This maps "mindfulminute://join/123" -> Invite Screen, passing "123" as route.params.journalId
-        Invite: 'join/:journalId', 
-      },
-    },
-  };
-   
-
-  // 4. Notifications (Schedule & Tap Handler)
-  useEffect(() => {
-    // A. Handle "Tap to Open"
-    const subscription = Notifications.addNotificationResponseReceivedListener((response) => {
-      // Navigate to Write screen with a default prompt
-      navigationRef.navigate("Write" as any, {
-        date: new Date().toISOString().split('T')[0],
-        prompt: { text: "Time for your daily mindful minute.", isSmart: false }
-      });
-    });
-
-    // B. Manage Schedule based on Settings
-    const manageSchedule = async () => {
-      if (smartRemindersEnabled) {
-        // Ensure we have permissions
-        const token = await registerForPushNotificationsAsync();
-        if (token !== undefined) {
-          // Schedule for 8:00 PM (20:00)
-          await scheduleDailyReminder(20, 0);
-        }
-      } else {
-        await cancelDailyReminders();
-      }
-    };
-
-    if (settingsLoaded) {
-      manageSchedule();
-    }
-
-    return () => subscription.remove();
-  }, [smartRemindersEnabled, settingsLoaded]);
-
-  // 5. Auto-Sync Personal Entries on Start
-  useEffect(() => {
-    const initSync = async () => {
-      // Wait briefly for Firebase Auth to restore session
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      
-      try {
-        await useEntriesStore.getState().syncWithCloud?.();
-      } catch (e) {
-        console.log("Background sync silent error:", e);
-      }
-    };
-    
-    initSync();
-  }, []);
-
-  // Don't render the app structure until settings are ready
-  if (!settingsLoaded) return null;
+  if (!isReady) return null;
 
   return (
-<SafeAreaProvider>
+    <SafeAreaProvider>
       <GestureHandlerRootView style={{ flex: 1 }}>
         <NavigationContainer ref={navigationRef} linking={linking}>
           <ThemeFadeWrapper>

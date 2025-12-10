@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, ScrollView, Alert } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Alert, Image } from 'react-native';
 import { Trash2, Edit2 } from 'lucide-react-native';
 import { useJournalStore } from '../stores/journalStore'; // Store access
 import { auth } from '../firebaseConfig'; // Auth for permission check
@@ -84,13 +84,22 @@ export default function SharedEntryDetailScreen({ navigation, route }: Props) {
            )}
         </View>
         
-        <ScrollView contentContainerStyle={styles.content}>
+<ScrollView contentContainerStyle={styles.content}>
            <Text style={[styles.date, { color: palette.subtleText }]}>
              {dateStr}
            </Text>
            <Text style={[styles.author, { color: palette.accent }]}>
              Written by {entry.authorName || 'Anonymous'}
            </Text>
+
+           {entry.imageUri && (
+             <Image 
+               source={{ uri: entry.imageUri }} 
+               style={styles.image} 
+               resizeMode="cover" 
+             />
+           )}
+
            <Text style={[styles.text, { color: palette.text }]}>
              {entry.text}
            </Text>
@@ -118,4 +127,12 @@ actionBtn: {
   date: { fontSize: 14, marginBottom: 4 },
   author: { fontSize: 16, fontWeight: '700', marginBottom: 24 },
   text: { fontSize: 18, lineHeight: 28 },
+  image: {
+    width: '100%',
+    height: 250,
+    borderRadius: 12,
+    marginTop: 12,
+    marginBottom: 12,
+  },
+  content: { padding: 20 },
 });

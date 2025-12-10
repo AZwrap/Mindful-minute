@@ -1,24 +1,9 @@
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { db } from "../firebaseConfig";
-import {
-  doc,
-setDoc,
-  getDoc,
-  updateDoc,
-  onSnapshot,
-  arrayUnion,
-  deleteDoc,
-collection,
-  query,
-  where, // Added
-  getDocs, // Added
-  orderBy,
-  addDoc,
-  Unsubscribe
-} from "firebase/firestore";
-import { auth } from "../firebaseConfig"; // Ensure Auth is imported
+import { Unsubscribe } from "firebase/firestore";
+import { auth } from "../firebaseConfig";
+import { JournalService, JournalMeta } from "../services/journalService";
 import { sendImmediateNotification } from "../lib/notifications";
 
 // --------------------------------------------------
@@ -60,8 +45,9 @@ interface JournalActions {
   subscribeToJournal: (journalId: string) => void;
   addSharedEntry: (entry: any) => Promise<void>;
   deleteSharedEntry: (journalId: string, entryId: string) => Promise<void>;
-  updateSharedEntry: (journalId: string, entryId: string, newText: string) => Promise<void>;
-  
+  loadMoreSharedEntries: (journalId: string) => Promise<void>;
+updateSharedEntry: (journalId: string, entryId: string, newText: string, imageUri?: string | null) => Promise<void>;
+
   // Helpers for SyncedService
   setSharedEntries: (journalId: string, entries: any[]) => void;
   updateJournalMeta: (journalId: string, data: any) => void;
@@ -77,12 +63,7 @@ interface JournalActions {
 
 type JournalStore = JournalState & JournalActions;
 
-// --------------------------------------------------
-// UTILS
-// --------------------------------------------------
-function generateId() {
-  return "jid_" + Math.random().toString(36).slice(2, 10);
-}
+// Utils removed (moved to service)
 
 // --------------------------------------------------
 // STORE
@@ -110,21 +91,8 @@ currentJournalId: null,
 
 // Create a new shared journal
       createJournal: async (journalName: string, ownerName: string) => {
-        const journalId = generateId();
-        const uid = auth.currentUser?.uid;
-        
-        const ref = doc(db, "journals", journalId);
-
-        const newJournal: JournalMeta = {
-          id: journalId,
-          name: journalName || "Shared Journal",
-          members: [ownerName],
-          memberIds: uid ? [uid] : [], // Store UID for recovery
-          owner: uid,
-          createdAt: Date.now(),
-        };
-
-        await setDoc(ref, newJournal);
+        const newJournal = await JournalService.createJournal(journalName, ownerName);
+        const journalId = newJournal.id;
 
         set((state) => ({
           currentJournalId: journalId,
@@ -136,26 +104,9 @@ currentJournalId: null,
         return journalId;
       },
 
-      // Join an existing journal
+// Join an existing journal
       joinJournal: async (journalId, memberName = "User") => {
-        const ref = doc(db, "journals", journalId);
-        const snap = await getDoc(ref);
-
-        if (!snap.exists()) {
-          throw new Error("Journal does not exist");
-        }
-
-const updates: any = {
-          members: arrayUnion(memberName)
-        };
-        
-        if (auth.currentUser?.uid) {
-          updates.memberIds = arrayUnion(auth.currentUser.uid);
-        }
-
-        await updateDoc(ref, updates);
-
-        const info = snap.data() as JournalMeta;
+        const info = await JournalService.joinJournal(journalId, memberName);
 
         set((state) => ({
           currentJournalId: journalId,
@@ -167,35 +118,21 @@ const updates: any = {
         return true;
       },
 
-      // Restore groups from Cloud
+// Restore groups from Cloud
       restoreJournals: async () => {
         const uid = auth.currentUser?.uid;
         if (!uid) throw new Error("Must be logged in to restore journals.");
 
         set({ isLoading: true });
         try {
-          // Query journals where 'memberIds' contains the current user's UID
-          const q = query(collection(db, "journals"), where("memberIds", "array-contains", uid));
-          const snapshot = await getDocs(q);
+          const restored = await JournalService.getUserJournals(uid);
           
-          if (snapshot.empty) {
-            set({ isLoading: false });
-            return 0;
-          }
-
-          const restored: Record<string, JournalMeta> = {};
-          snapshot.forEach((doc) => {
-            const data = doc.data() as JournalMeta;
-            restored[data.id] = data;
-          });
-
-          // Merge with existing
           set((state) => ({
             journals: { ...state.journals, ...restored },
             isLoading: false
           }));
           
-          return snapshot.size;
+          return Object.keys(restored).length;
         } catch (error) {
           console.error("Restore failed:", error);
           set({ isLoading: false });
@@ -203,40 +140,24 @@ const updates: any = {
         }
       },
 
-      // Subscribe to real-time updates
+// Subscribe to real-time updates
       subscribeToJournal: (journalId) => {
-        // Clean previous listener
         const oldUnsub = get()._unsubscribe;
-        if (oldUnsub) {
-          oldUnsub();
-        }
+        if (oldUnsub) oldUnsub();
 
         set({ isLoading: true });
 
-        // SCHEMA FIXED: Listen to sub-collection 'entries'
-        const entriesRef = collection(db, "journals", journalId, "entries");
-        const q = query(entriesRef, orderBy("createdAt", "desc"));
-
-const unsub = onSnapshot(
-          q,
-          (snapshot) => {
-            // 1. Convert docs to entries
-            const entries = snapshot.docs.map((doc) => ({
-              entryId: doc.id,
-              ...doc.data(),
-            }));
-
-            // 2. Check for NEW arrivals (Notification Trigger)
-            // We ignore initial load (snapshot.size === changes.length usually implies first sync)
-            // We also ignore our own local writes (hasPendingWrites)
-            if (!snapshot.metadata.hasPendingWrites) {
-              snapshot.docChanges().forEach((change) => {
+        // Listen to the top 20 entries
+        const unsub = JournalService.subscribeToEntries(
+          journalId,
+          20, // Limit
+          (recents, changes, isLocal) => {
+            // Check for NEW arrivals (Notification Trigger)
+            if (!isLocal) {
+              changes.forEach((change) => {
                 if (change.type === "added") {
                   const data = change.doc.data();
-                  // Only notify if the entry is recent (e.g., within last minute) to prevent blast on reconnect
                   const isRecent = Date.now() - (data.createdAt || 0) < 60000;
-                  
-                  // Don't notify for own actions
                   const isOthers = data.owner !== get().currentUser && data.userId !== get().currentUser;
 
                   if (isRecent && isOthers) {
@@ -247,14 +168,48 @@ const unsub = onSnapshot(
               });
             }
 
-            // 3. Update Store
+            loadMoreSharedEntries: async (journalId) => {
+        const currentList = get().sharedEntries[journalId] || [];
+        if (currentList.length === 0) return;
+
+        const lastEntry = currentList[currentList.length - 1];
+        if (!lastEntry.createdAt) return;
+
+        try {
+          const older = await JournalService.fetchOlderEntries(journalId, lastEntry.createdAt, 20);
+          
+          if (older.length > 0) {
             set((state) => ({
               sharedEntries: {
                 ...state.sharedEntries,
-                [journalId]: entries,
-              },
-              isLoading: false,
+                [journalId]: [...(state.sharedEntries[journalId] || []), ...older]
+              }
             }));
+          }
+        } catch (e) {
+          console.error("Pagination failed:", e);
+        }
+      },
+
+set((state) => {
+              const currentList = state.sharedEntries[journalId] || [];
+              
+              // Smart Merge: Keep the new 'recents' at the top, preserve older entries at the bottom
+              // 1. Create a Map of the new real-time entries for O(1) lookup
+              const recentMap = new Map(recents.map(e => [e.entryId, e]));
+              
+              // 2. Filter out any 'old' entries that are now being reported by the listener (updates)
+              //    or duplicates. Then append the rest of the old history.
+              const validHistory = currentList.filter(e => !recentMap.has(e.entryId));
+              
+              // 3. Combine: [New Real-Time Window] + [Old History]
+              const merged = [...recents, ...validHistory];
+
+              return {
+                sharedEntries: { ...state.sharedEntries, [journalId]: merged },
+                isLoading: false,
+              };
+            });
           },
           (error) => {
             console.error("Shared Journal Sync Error:", error);
@@ -265,40 +220,16 @@ const unsub = onSnapshot(
         set({ _unsubscribe: unsub });
       },
 
-// Add entry to shared journal
-      addSharedEntry: async (entry) => {
+addSharedEntry: async (entry) => {
         const targetId = entry.journalId || get().currentJournalId;
         if (!targetId) return;
-
-        const timestamp = Date.now();
-        const entriesCol = collection(db, "journals", targetId, "entries");
-        const journalRef = doc(db, "journals", targetId);
-        
-        // 1. Add the Entry
-        await addDoc(entriesCol, {
-          ...entry,
-          createdAt: timestamp,
-        });
-
-        // 2. Update Journal Metadata (Snippet)
-        // This allows the list screen to show "User: Hello..." without fetching all entries
-        await updateDoc(journalRef, {
-          lastEntry: {
-            text: entry.text.substring(0, 50),
-            author: entry.authorName,
-            createdAt: timestamp
-          },
-          updatedAt: timestamp
-        });
+        await JournalService.addEntry(targetId, entry);
       },
 
-      // Delete an entry
       deleteSharedEntry: async (journalId: string, entryId: string) => {
         try {
-          const ref = doc(db, "journals", journalId, "entries", entryId);
-          await deleteDoc(ref);
-          
-          // Optimistic update: Remove from local state immediately
+          await JournalService.deleteEntry(journalId, entryId);
+          // Optimistic update
           const currentEntries = get().sharedEntries[journalId] || [];
           set((state) => ({
             sharedEntries: {
@@ -312,14 +243,9 @@ const unsub = onSnapshot(
         }
       },
 
-      // Update an entry
-      updateSharedEntry: async (journalId: string, entryId: string, newText: string) => {
+updateSharedEntry: async (journalId: string, entryId: string, newText: string, imageUri?: string | null) => {
         try {
-          const ref = doc(db, "journals", journalId, "entries", entryId);
-          await updateDoc(ref, {
-            text: newText,
-            updatedAt: Date.now(),
-          });
+          await JournalService.updateEntry(journalId, entryId, newText, imageUri);
         } catch (error) {
           console.error("Failed to update entry:", error);
           throw error;

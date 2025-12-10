@@ -35,27 +35,31 @@ const [isLocked, setIsLocked] = useState(true);
     authenticate();
   }, [loaded, isBiometricsEnabled]);
 
-  // 2. Background Listener & Privacy Curtain
+// 2. Background Listener & Privacy Curtain
   useEffect(() => {
     const subscription = AppState.addEventListener('change', (nextAppState) => {
-      // A. Privacy Curtain Logic (Immediate Blur)
-      // On iOS, 'inactive' happens while swiping up for multitasking.
+      // A. Going to Background/Inactive -> LOCK IMMEDIATELY
       if (nextAppState === 'inactive' || nextAppState === 'background') {
         setIsObscured(true);
-      } else if (nextAppState === 'active') {
+        if (isBiometricsEnabled) {
+          setIsLocked(true); 
+        }
+      } 
+      
+      // B. Coming to Active -> UNVEIL (if auth passes)
+      else if (nextAppState === 'active') {
         setIsObscured(false);
-      }
-
-      // B. Security Lock Logic (Require FaceID on return)
-      if (
-        appState.current.match(/inactive|background/) &&
-        nextAppState === 'active'
-      ) {
-        if (isBiometricsEnabled && !isAuthenticating.current) {
-          setIsLocked(true);
+        
+        // If we just came from background, trigger auth
+        if (
+          appState.current.match(/inactive|background/) && 
+          isBiometricsEnabled && 
+          !isAuthenticating.current
+        ) {
           authenticate();
         }
       }
+
       appState.current = nextAppState;
     });
 
