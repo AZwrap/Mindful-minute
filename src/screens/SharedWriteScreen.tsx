@@ -157,17 +157,9 @@ const styles = StyleSheet.create({
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 16, borderBottomWidth: 1, borderBottomColor: 'rgba(0,0,0,0.05)' },
   postBtn: { paddingVertical: 8, paddingHorizontal: 16, borderRadius: 20 },
   postText: { color: 'white', fontWeight: '700' },
-  input: { fontSize: 16, minHeight: 120, textAlignVertical: 'top' },
+  input: { flex: 1, padding: 20, fontSize: 18, lineHeight: 28, textAlignVertical: 'top' },
   toolbar: { padding: 12, borderTopWidth: 1 },
   mediaBtn: { flexDirection: 'row', alignItems: 'center', gap: 8, padding: 12, borderRadius: 12, alignSelf: 'flex-start' },
   previewImage: { width: '100%', height: 250, borderRadius: 12 },
   removeImageBtn: { position: 'absolute', top: 8, right: 8, borderRadius: 12 },
-});
-
-const styles = StyleSheet.create({
-  container: { flex: 1 },
-  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 16, borderBottomWidth: 1, borderBottomColor: 'rgba(0,0,0,0.05)' },
-  postBtn: { paddingVertical: 8, paddingHorizontal: 16, borderRadius: 20 },
-  postText: { color: 'white', fontWeight: '700' },
-  input: { flex: 1, padding: 20, fontSize: 18, lineHeight: 28, textAlignVertical: 'top' },
 });

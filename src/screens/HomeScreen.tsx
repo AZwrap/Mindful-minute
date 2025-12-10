@@ -7,6 +7,7 @@ import {
   useColorScheme, 
   Animated,
   AccessibilityInfo,
+  ScrollView,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
@@ -305,7 +306,7 @@ export default function HomeScreen() {
     >
       <SafeAreaView style={{ flex: 1 }} edges={['top']}>
       <Animated.View style={{ opacity: contentFadeAnim, flex: 1 }}>
-      <LinearGradient
+<LinearGradient
         colors={currentGradient.card}
         style={styles.contentCard}
         start={{ x: 0, y: 0 }}
@@ -313,8 +314,12 @@ export default function HomeScreen() {
         accessible={true}
         accessibilityRole="summary"
       >
-{/* New Header: Greeting + Streak */}
-        <View style={styles.headerRow}>
+        <ScrollView 
+          contentContainerStyle={styles.scrollContent} 
+          showsVerticalScrollIndicator={false}
+        >
+          {/* New Header: Greeting + Streak */}
+          <View style={styles.headerRow}>
           <View>
             <Text style={[styles.greetingSub, { color: textSub }]}>{getGreeting()},</Text>
             <Text style={[styles.greetingTitle, { color: textMain }]}>Ready to reflect?</Text>
@@ -452,31 +457,71 @@ export default function HomeScreen() {
 
         </View>
 
-        {/* Shared Journals Link */}
-        <PremiumPressable
-          onPress={() => navigation.navigate("Invite")}
-          haptic="light"
-          style={{
-            flexDirection: 'row',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            paddingVertical: 16, 
-            paddingHorizontal: 4,
-            marginTop: 8,
-            borderTopWidth: 1,
-            borderTopColor: palette.border,
-          }}
-        >
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-            <Users size={20} color={palette.subtleText} />
-            <Text style={{ color: palette.text, fontSize: 15, fontWeight: '600' }}>
-              Shared Journals
-            </Text>
-          </View>
-          <Text style={{ color: palette.subtleText, fontSize: 18, opacity: 0.5 }}>›</Text>
-        </PremiumPressable>
+{/* GROUPED SECTION: Link + List */}
+        <View style={{ gap: 0 }}> 
+          {/* 1. Link */}
+          <PremiumPressable
+            onPress={() => navigation.navigate("Invite")}
+            haptic="light"
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              paddingVertical: 16, 
+              paddingHorizontal: 4,
+              marginTop: 8,
+              borderTopWidth: 1,
+              borderTopColor: palette.border,
+            }}
+          >
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+              <Users size={20} color={palette.subtleText} />
+              <Text style={{ color: palette.text, fontSize: 15, fontWeight: '600' }}>
+                Shared Journals
+              </Text>
+            </View>
+            <Text style={{ color: palette.subtleText, fontSize: 18, opacity: 0.5 }}>›</Text>
+          </PremiumPressable>
 
-        {/* Inline toast */}
+          {/* 2. Box (Now immediately below the link) */}
+          {sharedJournalsList.length > 0 && (
+            <View
+              style={[
+                styles.card,
+                { 
+                  backgroundColor: palette.card, 
+                  borderColor: palette.border,
+                  marginTop: 0, // Zero margin!
+                },
+              ]}
+            >
+              <Text style={[styles.title, { color: palette.text }]}>
+                Joined Journals
+              </Text>
+              {sharedJournalsList.map((j) => (
+                <Pressable
+                  key={j.id}
+                  onPress={() => navigation.navigate('JournalList')}
+                  style={{
+                    paddingVertical: 12,
+                    paddingHorizontal: 8,
+                    borderBottomWidth: 1,
+                    borderBottomColor: palette.border,
+                  }}
+                >
+                  <Text style={{ color: palette.text, fontSize: 15, fontWeight: "600" }}>
+                    {j.name}
+                  </Text>
+                  <Text style={{ color: palette.sub, fontSize: 12 }}>
+                    {j.members?.length || 0} members
+                  </Text>
+                </Pressable>
+              ))}
+            </View>
+          )}
+        </View>
+
+        {/* 3. Toast (Moved outside the flow) */}
         <Animated.View
           pointerEvents="none"
           style={[
@@ -494,39 +539,7 @@ export default function HomeScreen() {
           </Text>
         </Animated.View>
 
-        {/* Shared Journals List (Optional display) */}
-        {sharedJournalsList.length > 0 && (
-          <View
-            style={[
-              styles.card,
-              { backgroundColor: palette.card, borderColor: palette.border },
-            ]}
-          >
-            <Text style={[styles.title, { color: palette.text }]}>
-              Joined Journals
-            </Text>
-            {sharedJournalsList.map((j) => (
-              <Pressable
-                key={j.id}
-                onPress={() => navigation.navigate('JournalList')}
-                style={{
-                  paddingVertical: 12,
-                  paddingHorizontal: 8,
-                  borderBottomWidth: 1,
-                  borderBottomColor: palette.border,
-                }}
-              >
-                <Text style={{ color: palette.text, fontSize: 15, fontWeight: "600" }}>
-                  {j.name}
-                </Text>
-                <Text style={{ color: palette.sub, fontSize: 12 }}>
-                  {j.members?.length || 0} members
-                </Text>
-              </Pressable>
-            ))}
-          </View>
-        )}
-
+        </ScrollView>
       </LinearGradient>
       </Animated.View>
       </SafeAreaView>
@@ -538,13 +551,12 @@ const styles = StyleSheet.create({
   container: { 
     flex: 1,
   },
-  contentCard: {
+contentCard: {
     flex: 1,
     margin: 16,
     marginTop: 10,
-    padding: 16,
     borderRadius: 24,
-    gap: 20,
+    overflow: 'hidden',
   },
 headerRow: {
     flexDirection: 'row',
@@ -560,6 +572,11 @@ headerRow: {
   greetingTitle: {
     fontSize: 24,
     fontWeight: '800',
+  },
+  scrollContent: {
+    padding: 16,
+    gap: 20,
+    paddingBottom: 60, // <--- THIS is the safe spacing you asked for!
   },
   streakBadge: {
     flexDirection: 'row',
@@ -633,12 +650,15 @@ headerRow: {
     fontWeight: '700',
     fontSize: 14,
   },
-  toastInline: {
+toastInline: {
+    position: 'absolute', // Float over content
+    bottom: 20,           // Stick to bottom
     alignSelf: 'center',
     paddingVertical: 8,
     paddingHorizontal: 16,
     borderRadius: 999,
     borderWidth: 1,
+    zIndex: 100,          // Ensure it's on top
   },
   customPromptBtn: {
     alignSelf: 'center',
@@ -650,7 +670,7 @@ headerRow: {
     fontWeight: '600',
   },
   card: {
-    marginTop: 12,
+    marginTop: 0,
     borderWidth: 1,
     borderRadius: 16,
     padding: 12,
