@@ -98,8 +98,8 @@ export async function joinSharedJournal(journalId: string, userId: string): Prom
 
 // 5. Add Entry
 export async function addSharedEntry(journalId: string, entry: any): Promise<void> {
-  // Delegate to store, or handle here if specific logic needed
-  await useJournalStore.getState().addSharedEntry(entry);
+  // Delegate to store, ensuring the journalId is attached so the store knows where to send it
+  await useJournalStore.getState().addSharedEntry({ ...entry, journalId });
 }
 
 // 5.5 Create Invite Link (New)

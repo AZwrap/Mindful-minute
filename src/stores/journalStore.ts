@@ -34,9 +34,10 @@ interface JournalState {
   journalInfo: JournalMeta | null;
   isLoading: boolean;
   _unsubscribe: Unsubscribe | null;
-journals: Record<string, JournalMeta>;
+  journals: Record<string, JournalMeta>;
   currentUser: string | null;
   lastRead: Record<string, number>; // { [journalId]: timestamp }
+  deletedDocDates: string[]; // <--- New: Track deleted dates to kill ghosts
 }
 
 interface JournalActions {
@@ -142,11 +143,14 @@ currentJournalId: null,
       },
 
 // Subscribe to real-time updates
-      subscribeToJournal: (journalId) => {
+subscribeToJournal: (journalId) => {
         const oldUnsub = get()._unsubscribe;
         if (oldUnsub) oldUnsub();
 
         set({ isLoading: true });
+
+        // Flag to prevent notifications on the initial load
+        let isFirstRun = true;
 
         // Listen to the top 20 entries
         const unsub = JournalService.subscribeToEntries(
@@ -154,7 +158,7 @@ currentJournalId: null,
           20, // Limit
           (recents, changes, isLocal) => {
             // Check for NEW arrivals (Notification Trigger)
-            if (!isLocal) {
+            if (!isLocal && !isFirstRun) {
               changes.forEach((change) => {
                 if (change.type === "added") {
                   const data = change.doc.data();
@@ -163,54 +167,87 @@ currentJournalId: null,
 
                   if (isRecent && isOthers) {
                     const author = data.authorName || "Someone";
-                    sendImmediateNotification("New Journal Entry", `${author} added a new entry.`);
+                    sendImmediateNotification(
+                      "New Journal Entry", 
+                      `${author} added a new entry.`,
+                      { journalId }
+                    );
                   }
                 }
               });
             }
 
-            loadMoreSharedEntries: async (journalId) => {
-        const currentList = get().sharedEntries[journalId] || [];
-        if (currentList.length === 0) return;
-
-        const lastEntry = currentList[currentList.length - 1];
-        if (!lastEntry.createdAt) return;
-
-        try {
-          const older = await JournalService.fetchOlderEntries(journalId, lastEntry.createdAt, 20);
-          
-          if (older.length > 0) {
-            set((state) => ({
-              sharedEntries: {
-                ...state.sharedEntries,
-                [journalId]: [...(state.sharedEntries[journalId] || []), ...older]
-              }
-            }));
-          }
-        } catch (e) {
-          console.error("Pagination failed:", e);
-        }
-      },
-
-set((state) => {
+            set((state) => {
               const currentList = state.sharedEntries[journalId] || [];
+              const deletedDates = state.deletedDocDates || [];
+
+              // 0. AUTO-DELETE Check (Tombstones)
+              recents.forEach(async (e) => {
+                 if (e.originalDate && deletedDates.includes(e.originalDate) && !e.entryId.startsWith('temp_')) {
+                     console.log("Auto-deleting resurrected entry:", e.entryId);
+                     await JournalService.deleteEntry(journalId, e.entryId);
+                 }
+              });
+
+              // 1. Prepare "Kill Lists" using RAW recents (before filtering)
+              // We need to know if the server has data for a date, even if we are about to hide it.
+              const rawRecentMap = new Map(recents.map(e => [e.entryId, e]));
+              const rawRecentDates = new Set(recents.map(e => e.originalDate).filter(Boolean));
+
+              // 2. Filter recents (Hide tombstones from UI)
+              const validRecents = recents.filter(e => !e.originalDate || !deletedDates.includes(e.originalDate));
+
+              // 3. Filter history (Remove Ghosts & Duplicates)
+              const validHistory = currentList.filter(e => {
+                 // Remove if updated/replaced by a real entry (using RAW map)
+                 if (rawRecentMap.has(e.entryId)) return false;
+
+                 // Remove if it's a "Ghost" (temp_) AND the server sent a real entry for this date (using RAW dates)
+                 if (typeof e.entryId === 'string' && e.entryId.startsWith('temp_') && e.originalDate && rawRecentDates.has(e.originalDate)) {
+                     return false;
+                 }
+                 
+                 return true;
+              });
               
-              // Smart Merge: Keep the new 'recents' at the top, preserve older entries at the bottom
-              // 1. Create a Map of the new real-time entries for O(1) lookup
-              const recentMap = new Map(recents.map(e => [e.entryId, e]));
-              
-              // 2. Filter out any 'old' entries that are now being reported by the listener (updates)
-              //    or duplicates. Then append the rest of the old history.
-              const validHistory = currentList.filter(e => !recentMap.has(e.entryId));
-              
-              // 3. Combine: [New Real-Time Window] + [Old History]
-              const merged = [...recents, ...validHistory];
+              // 4. Combine
+              const merged = [...validRecents, ...validHistory];
+
+              // 5. UPDATE PREVIEW: Sync "Last Entry" to the Journal List
+              let updatedJournals = state.journals;
+              const currentJournal = state.journals[journalId];
+
+              if (currentJournal) {
+                  const latest = merged.length > 0 ? merged[0] : null;
+                  const newMeta = { ...currentJournal };
+
+                  if (latest) {
+                      newMeta.lastEntry = {
+                          text: latest.text || "",
+                          author: latest.authorName || "Anonymous",
+                          createdAt: latest.createdAt
+                      };
+                      newMeta.updatedAt = latest.createdAt;
+                  } else {
+                      // No entries left -> Clear preview
+                      delete newMeta.lastEntry;
+                      newMeta.lastEntry = undefined;
+                  }
+
+                  updatedJournals = {
+                      ...state.journals,
+                      [journalId]: newMeta
+                  };
+              }
 
               return {
                 sharedEntries: { ...state.sharedEntries, [journalId]: merged },
+                journals: updatedJournals,
                 isLoading: false,
               };
             });
+            
+            isFirstRun = false;
           },
           (error) => {
             console.error("Shared Journal Sync Error:", error);
@@ -228,10 +265,13 @@ addSharedEntry: async (entry) => {
       },
 
 deleteSharedEntry: async (journalId: string, entryId: string) => {
-        // 1. Snapshot previous state (for rollback if error)
+        // 1. Snapshot previous state (for rollback AND lookup)
         const prevState = get();
 
-        // 2. Optimistic Update: Remove from UI IMMEDIATELY
+        // 2. Lookup the entry BEFORE we delete it to get metadata (like originalDate)
+        const entryToDelete = prevState.sharedEntries[journalId]?.find(e => e.entryId === entryId);
+
+        // 3. Optimistic Update: Remove from UI IMMEDIATELY
         set((state) => {
             const currentEntries = state.sharedEntries[journalId] || [];
             const newEntries = currentEntries.filter(e => e.entryId !== entryId);
@@ -268,12 +308,26 @@ deleteSharedEntry: async (journalId: string, entryId: string) => {
             };
         });
 
+        // 4. Handle Temporary Entry Deletion (Stop here if temp)
+        if (typeof entryId === 'string' && entryId.startsWith('temp_')) {
+            console.log("Deleted local temporary entry:", entryId);
+            
+            // FIX: Use the 'entryToDelete' we grabbed from prevState
+            if (entryToDelete?.originalDate) {
+                console.log("Adding tombstone for date:", entryToDelete.originalDate);
+                set(s => ({ deletedDocDates: [...(s.deletedDocDates || []), entryToDelete.originalDate] }));
+            } else {
+                console.warn("Could not find originalDate for temp entry, it might resurrect.");
+            }
+            return;
+        }
+
         try {
-          // 3. Perform DB Delete in Background
+          // 5. Perform DB Delete in Background
           await JournalService.deleteEntry(journalId, entryId);
         } catch (error) {
           console.error("Failed to delete entry, rolling back:", error);
-          // 4. Revert UI on error
+          // 6. Revert UI on error
           set({ 
             sharedEntries: prevState.sharedEntries, 
             journals: prevState.journals 
@@ -348,11 +402,16 @@ updateJournalMeta: (journalId, data) =>
         }
 
         set({
-          currentJournalId: null,
-          // Note: We don't clear sharedEntries here so they persist offline if needed,
-          // but we clear the active pointer
-          journalInfo: null,
-          _unsubscribe: null,
+// STATE
+      currentJournalId: null,
+      journals: {},                    // { [id]: JournalMeta } - Stores details of all joined journals
+      sharedEntries: {},               // { [journalId]: Entry[] }
+      journalInfo: null,               // Legacy fallback
+      isLoading: false,
+      _unsubscribe: null,
+      currentUser: null,
+      lastRead: {},
+      deletedDocDates: [], // <--- Initial state
         });
       },
 
@@ -369,8 +428,9 @@ updateJournalMeta: (journalId, data) =>
         journalInfo: state.journalInfo,
         journals: state.journals,
 sharedEntries: state.sharedEntries, 
-        currentUser: state.currentUser,
-        lastRead: state.lastRead, // Persist read status
+currentUser: state.currentUser,
+        lastRead: state.lastRead, 
+        deletedDocDates: state.deletedDocDates, // Persist tombstones
       }),
     }
   )

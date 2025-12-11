@@ -9,6 +9,8 @@ interface Suggestion {
 // ['Calm','Grateful','Anxious','Focused','Happy','Reflective','Tired','Energetic','Optimistic','Overwhelmed']
 const KEYWORDS: Record<string, string[]> = {
   // High Priority (Exact Matches)
+  Sad: ['sad', 'unhappy', 'cry', 'crying', 'tears', 'upset', 'down', 'blue', 'grief', 'heartbroken', 'sorrow'],
+  Lonely: ['lonely', 'alone', 'miss', 'missing', 'isolate', 'ignored', 'left out'],
   Tired: ['tired', 'sleepy', 'exhausted', 'drained', 'fatigue', 'weary', 'low energy', 'need sleep'],
   Anxious: ['anxious', 'nervous', 'worry', 'worried', 'scared', 'fear', 'uneasy', 'panic', 'tension'],
   Overwhelmed: ['overwhelmed', 'too much', 'busy', 'drowning', 'pressure', 'stress', 'hectic', 'chaos'],

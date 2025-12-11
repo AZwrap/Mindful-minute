@@ -18,6 +18,7 @@ import { useEntriesStore, JournalEntry } from "../stores/entriesStore";
 import { useTheme } from '../stores/themeStore';
 import { useSharedPalette } from '../hooks/useSharedPalette';
 import { useJournalStore } from '../stores/journalStore';
+import { auth } from '../firebaseConfig';
 // @ts-ignore
 import { addSharedEntry } from '../services/syncedJournalService';
 
@@ -62,10 +63,10 @@ export default function EntryDetailScreen({ route, navigation }: Props) {
 
 const { date } = route.params;
 
-  // Select entry from store
+// Select entry from store
   const entry = useEntriesStore((s) => s.entries[date]);
-  const { journals, currentJournalId } = useJournalStore(); // Get full list
-  
+const { journals, currentJournalId, sharedEntries, setSharedEntries } = useJournalStore(); // Get full list, data & setter
+
   const [isSharing, setIsSharing] = useState(false);
   const [showShareModal, setShowShareModal] = useState(false);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
@@ -153,15 +154,24 @@ const copyToClipboard = async () => {
     }
   };
 
-  // --- SHARE LOGIC ---
+// --- SHARE LOGIC ---
   const openShareModal = () => {
     const allIds = Object.keys(journals);
     if (allIds.length === 0) {
       alert("No Shared Groups Found. Go to the 'Together' tab to create or join one first.");
       return;
     }
-    // Default to current journal if available, otherwise empty
-    setSelectedIds(currentJournalId ? [currentJournalId] : []);
+    
+    // Default to current journal ONLY if it doesn't already have the entry
+    let initialIds: string[] = [];
+    if (currentJournalId) {
+        const isAlreadyShared = sharedEntries[currentJournalId]?.some((e: any) => e.originalDate === date);
+        if (!isAlreadyShared) {
+            initialIds = [currentJournalId];
+        }
+    }
+
+    setSelectedIds(initialIds);
     setShowShareModal(true);
   };
 
@@ -188,36 +198,61 @@ const handlePlayMusic = async () => {
       alert(`No playlist found for ${mood}`);
     }
   };
-  const handleSelectAll = () => setSelectedIds(Object.keys(journals));
+const handleSelectAll = () => {
+    // Filter out journals where this entry is already shared
+    const availableIds = Object.keys(journals).filter(jid => {
+       const isAlreadyShared = sharedEntries[jid]?.some((e: any) => e.originalDate === date);
+       return !isAlreadyShared;
+    });
+    setSelectedIds(availableIds);
+  };
   const handleClear = () => setSelectedIds([]);
 
-  const confirmShare = async () => {
-    if (selectedIds.length === 0) return;
+const confirmShare = async () => {
+    // Safety: Filter out already shared IDs just in case they were selected
+    const validIds = selectedIds.filter(jid => {
+         const isShared = sharedEntries[jid]?.some((e: any) => e.originalDate === date);
+         return !isShared;
+    });
+
+    if (validIds.length === 0) return;
     
-    setIsSharing(true);
+    // 1. Prepare data
+    const sharedEntryData = {
+        ...entry,
+        // Generate a temp ID to prevent "unique key" warnings and delete crashes until cloud sync finishes
+        entryId: `temp_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+        sharedAt: Date.now(),
+        originalDate: date,
+        authorName: auth.currentUser?.displayName || "Member"
+    };
+
+    // 2. OPTIMISTIC UPDATE: Update UI immediately (Don't wait for Cloud)
+    validIds.forEach(jid => {
+       const currentList = sharedEntries[jid] || [];
+       if (!currentList.some((e: any) => e.originalDate === date)) {
+           setSharedEntries(jid, [sharedEntryData, ...currentList]); // Add to top
+       }
+    });
+
+    // 3. Close Modal & Reset immediately
+    setShowShareModal(false);
+    setSelectedIds([]); 
+    const count = validIds.length;
+    alert(`Shared to ${count} group${count === 1 ? '' : 's'}!`);
+
+    // 4. Send to Cloud in Background (Fire & Forget)
     try {
-      // Send to all selected journals in parallel
-      const promises = selectedIds.map(jid => 
-        addSharedEntry(jid, {
-          ...entry,
-          sharedAt: Date.now(),
-          originalDate: date,
-          authorName: "Member" // Or fetch real user name
-        })
+      const promises = validIds.map(jid => 
+        addSharedEntry(jid, sharedEntryData)
       );
-      
-await Promise.all(promises);
-      
-      setShowShareModal(false);
-      const count = selectedIds.length;
-      alert(`Shared to ${count} group${count === 1 ? '' : 's'}!`);
+      await Promise.all(promises);
     } catch (e) {
-      console.error(e);
-      alert("Failed to share.");
-    } finally {
-      setIsSharing(false);
+      console.error("Background share failed:", e);
+      // Optional: Show a subtle toast here if it fails, but for now we assume success to keep it fast.
     }
   };
+
 return (
     <LinearGradient
       colors={currentGradient.primary}
@@ -316,10 +351,10 @@ return (
               </View>
             )}
 
-            {/* Actions Container */}
+{/* Actions Container */}
             <View style={styles.actionContainer}>
               {/* 1. Primary Action: Share to Group (if available) */}
-              {Object.keys(journals).length > 0 && (
+              {auth.currentUser && Object.keys(journals).length > 0 && (
                 <PremiumPressable
                   onPress={openShareModal}
                   haptic="medium"
@@ -403,22 +438,37 @@ return (
                 </TouchableOpacity>
               </View>
 
-              {/* List */}
+{/* List */}
               <FlatList
                 data={Object.values(journals)}
                 keyExtractor={(item) => item.id}
                 style={{ maxHeight: 300 }}
                 renderItem={({ item }) => {
                   const isSelected = selectedIds.includes(item.id);
+                  // Check if entry is already in this journal (matched by originalDate)
+                  const isAlreadyShared = sharedEntries[item.id]?.some((e: any) => e.originalDate === date);
+
                   return (
                     <TouchableOpacity 
-                      style={[styles.journalItem, { borderColor: palette.border }]} 
-                      onPress={() => toggleSelection(item.id)}
+                      style={[styles.journalItem, { borderColor: palette.border, opacity: isAlreadyShared ? 0.6 : 1 }]} 
+                      onPress={() => !isAlreadyShared && toggleSelection(item.id)}
+                      disabled={isAlreadyShared}
                     >
-                      <Text style={[styles.journalName, { color: textMain }]}>{item.name}</Text>
-                      {isSelected 
-                        ? <CheckSquare size={22} color={palette.accent} />
-                        : <Square size={22} color={textSub} />
+                      <View>
+                        <Text style={[styles.journalName, { color: textMain }]}>{item.name}</Text>
+                        {isAlreadyShared && (
+                          <Text style={{ fontSize: 10, color: palette.sub, fontWeight: '600', marginTop: 2 }}>
+                            Already Shared
+                          </Text>
+                        )}
+                      </View>
+                      
+                      {isAlreadyShared 
+                        ? <CheckSquare size={22} color={palette.sub} />
+                        : (isSelected 
+                            ? <CheckSquare size={22} color={palette.accent} />
+                            : <Square size={22} color={textSub} />
+                          )
                       }
                     </TouchableOpacity>
                   );

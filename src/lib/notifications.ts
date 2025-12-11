@@ -72,11 +72,12 @@ export async function scheduleDailyReminder(hour: number, minute: number) {
     return undefined;
   }
 }
+
 // Trigger an immediate local alert (mimicking a push notification)
-export async function sendImmediateNotification(title: string, body: string) {
+export async function sendImmediateNotification(title: string, body: string, data?: any) {
   try {
     await Notifications.scheduleNotificationAsync({
-      content: { title, body },
+      content: { title, body, data }, // Pass data payload (e.g., { journalId: '...' })
       trigger: null, // null means "show immediately"
     });
   } catch (e) {

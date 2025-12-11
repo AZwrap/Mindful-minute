@@ -286,10 +286,15 @@ const handleBulkExport = () => {
           style: "destructive",
           onPress: async () => {
              try {
-               await AsyncStorage.clear();
+await AsyncStorage.clear();
                
-               // Reset Stores
-               useEntriesStore.setState({ entries: {}, drafts: {} });
+               // Reset Stores - Explicitly clear timers and pomodoro state to prevent ghosting
+               useEntriesStore.setState({ 
+                 entries: {}, 
+                 drafts: {}, 
+                 draftTimers: {}, 
+                 pomodoroState: {} 
+               });
                useSettings.setState({ hasOnboarded: false, isBiometricsEnabled: false });
                useJournalStore.setState({ sharedEntries: {}, journalInfo: null });
                
@@ -420,12 +425,20 @@ const SettingRow = ({ label, description, value, onValueChange, icon }: any) => 
               {/* 1. APPEARANCE CARD */}
               <View style={[styles.card, { backgroundColor: palette.card, borderColor: palette.border, paddingBottom: 12 }]}>
                 <Text style={[styles.title, { color: palette.text }]}>Appearance</Text>
-                <SettingRow 
+<SettingRow 
                     label="Show Timer" 
                     value={showTimer} 
                     onValueChange={setShowTimer} 
-                    icon={<RotateCcw size={18} color={palette.sub} />}
                 />
+
+                {showTimer && (
+                  <SettingRow 
+                      label="Save Timer Progress" 
+                      description="Resume timer on 'Save & Exit'"
+                      value={preserveTimerProgress} 
+                      onValueChange={setPreserveTimerProgress} 
+                  />
+                )}
                 
                 {/* THEME DROPDOWN */}
                 <View style={{ marginTop: 12 }}>
@@ -834,7 +847,7 @@ const SettingRow = ({ label, description, value, onValueChange, icon }: any) => 
               </View>
 
               {/* 6. DANGER ZONE */}
-              <View style={{ marginTop: 12, marginBottom: 80 }}>
+              <View style={{ marginTop: 12, marginBottom: -80 }}>
                 <PremiumPressable 
                   onPress={handleFactoryReset} 
                   style={{ 

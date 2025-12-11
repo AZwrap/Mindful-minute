@@ -84,7 +84,7 @@ const handleForgotPassword = async () => {
     }
 
     setLoading(true);
-    try {
+try {
       if (isLogin) {
         await signInWithEmailAndPassword(auth, email, password);
       } else {
@@ -93,19 +93,20 @@ const handleForgotPassword = async () => {
       // On success
       setHasOnboarded(true);
       navigation.replace('MainTabs');
+      // Do NOT call setLoading(false) here because component unmounts
     } catch (error: any) {
+      setLoading(false); // Only stop loading on error (component remains mounted)
+      
       let msg = error.message;
       if (msg.includes('auth/invalid-email')) msg = 'Invalid email address.';
       if (msg.includes('auth/user-not-found')) msg = 'No account found with this email.';
       if (msg.includes('auth/wrong-password')) msg = 'Incorrect password.';
       if (msg.includes('auth/email-already-in-use')) msg = 'Email is already registered.';
       Alert.alert('Authentication Error', msg);
-    } finally {
-      setLoading(false);
     }
   };
 
-  const handleGuest = () => {
+const handleGuest = () => {
     Alert.alert(
       "Continue as Guest?",
       "Your data will only be stored on this device. You can sync later in Settings.",
@@ -114,8 +115,11 @@ const handleForgotPassword = async () => {
         { 
           text: "Continue", 
           onPress: () => {
-            setHasOnboarded(true);
-            navigation.replace('MainTabs');
+            // Wrap navigation in setTimeout to allow Alert to fully close (Fixes Android crash/warning)
+            setTimeout(() => {
+              setHasOnboarded(true);
+              navigation.replace('MainTabs');
+            }, 500);
           }
         }
       ]

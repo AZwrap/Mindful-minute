@@ -15,6 +15,7 @@ import { useFocusEffect, useNavigation, useRoute } from '@react-navigation/nativ
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Users } from 'lucide-react-native';
+import { auth } from '../firebaseConfig';
 
 // Logic & Config
 import { todayISO, promptOfDay } from '../lib/prompts';
@@ -91,9 +92,13 @@ export default function HomeScreen() {
     return 'Good Evening';
   };
 
+// Check Guest Status
+  const isGuest = !auth.currentUser;
+
   const sharedJournalsList = useMemo(() => {
+    if (isGuest) return []; // Hide journals for guests
     return Object.values(sharedJournals || {});
-  }, [sharedJournals]);
+  }, [sharedJournals, isGuest]);
 
   const entries = useMemo(() => {
     return Object.entries(map || {})
@@ -191,14 +196,16 @@ export default function HomeScreen() {
     });
   }, []);
 
-  // 6. Determine CTA State
+// 6. Determine CTA State
   const entryToday = map?.[date] || null;
   const draftText = drafts?.[date]?.text || '';
 
-  const hasFinal = !!(entryToday?.text && entryToday?.moodTag?.value);
+  // Use explicit isComplete flag if available, otherwise fallback to legacy check (text + mood)
+  const hasFinal = entryToday?.isComplete ?? !!(entryToday?.text && entryToday?.moodTag?.value);
+
   const hasInProgress = !hasFinal && (
     (draftText && draftText.trim().length > 0) ||
-    (entryToday?.text && !entryToday?.moodTag)
+    (entryToday?.text && entryToday.text.trim().length > 0)
   );
 
   let primaryLabel = 'Start Journaling';
@@ -465,9 +472,9 @@ export default function HomeScreen() {
           marginTop: 16, 
           overflow: 'hidden' 
         }]}>
-          {/* Header / Main Action (Always visible) */}
+{/* Header / Main Action (Always visible) */}
           <PremiumPressable
-            onPress={() => navigation.navigate("Invite")}
+            onPress={() => isGuest ? navigation.navigate("Auth" as any) : navigation.navigate("Invite")}
             haptic="light"
             style={{
               flexDirection: 'row',
@@ -484,7 +491,9 @@ export default function HomeScreen() {
             </View>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
               {sharedJournalsList.length === 0 && (
-                <Text style={{ color: palette.sub, fontSize: 13 }}>Create or Join</Text>
+                <Text style={{ color: palette.sub, fontSize: 13 }}>
+                  {isGuest ? "Login to Join" : "Create or Join"}
+                </Text>
               )}
               <Text style={{ color: palette.subtleText, fontSize: 18, opacity: 0.5 }}>›</Text>
             </View>

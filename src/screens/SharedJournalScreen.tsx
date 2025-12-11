@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, FlatList, Pressable, Alert, TextInput, Share, Animated, LayoutAnimation, Platform, UIManager, Image } from 'react-native';
 import { Swipeable } from 'react-native-gesture-handler';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -19,6 +19,16 @@ type Props = NativeStackScreenProps<RootStackParamList, 'SharedJournal'>;
 export default function SharedJournalScreen({ navigation, route }: Props) {
   const { journalId } = route.params;
   const palette = useSharedPalette();
+
+  // Ref to track the currently open swipeable row
+  const openSwipeableRef = useRef<Swipeable | null>(null);
+
+  const onRowOpen = (ref: any) => {
+    if (openSwipeableRef.current && openSwipeableRef.current !== ref) {
+      openSwipeableRef.current.close();
+    }
+    openSwipeableRef.current = ref;
+  };
   
 const { 
     subscribeToJournal, 
@@ -50,12 +60,15 @@ const entries = sharedEntries[journalId] || [];
     }
   }, []);
 
-  // Filter Logic
-  // Filter Logic
+// Filter Logic
   const filteredEntries = React.useMemo(() => {
-    if (!searchText.trim()) return entries;
+    // Safety: Filter out invalid entries (missing ID) to prevent key warnings & crashes
+    const validEntries = entries.filter(e => e && e.entryId);
+
+    if (!searchText.trim()) return validEntries;
+    
     const term = searchText.toLowerCase();
-    return entries.filter(e => 
+    return validEntries.filter(e => 
       (e.text && e.text.toLowerCase().includes(term)) || 
       (e.authorName && e.authorName.toLowerCase().includes(term))
     );
@@ -170,7 +183,7 @@ renderItem={({ item }) => {
             const myRole = journal?.roles?.[currentUserId || ''];
             const isAdmin = myRole === 'admin' || myRole === 'owner';
 
-            return (
+return (
               <SharedEntryItem
                 item={item}
                 isOwner={journal?.owner === currentUserId}
@@ -180,6 +193,7 @@ renderItem={({ item }) => {
                 navigation={navigation}
                 palette={palette}
                 safeDate={safeDate}
+                onRowOpen={onRowOpen} // <--- Pass the handler
               />
             );
           }}
@@ -202,7 +216,9 @@ renderItem={({ item }) => {
 }
 
 // Sub-component to handle deletion animation smoothly
-const SharedEntryItem = ({ item, isOwner, isAdmin, currentUserId, onDelete, navigation, palette, safeDate }: any) => {
+const SharedEntryItem = ({ item, isOwner, isAdmin, currentUserId, onDelete, navigation, palette, safeDate, onRowOpen }: any) => {
+  const swipeableRef = useRef<Swipeable>(null); // <--- Local ref
+
   const isAuthor = item.userId === currentUserId;
   // Allow delete if: Owner, Admin, or Author
   const canDelete = isOwner || isAdmin || isAuthor;
@@ -225,8 +241,11 @@ const SharedEntryItem = ({ item, isOwner, isAdmin, currentUserId, onDelete, navi
     }
   };
 
-  return (
+return (
     <Swipeable
+      ref={swipeableRef}
+      friction={1} // <--- Makes the close animation faster and snappier
+      onSwipeableWillOpen={() => onRowOpen(swipeableRef.current)}
       renderLeftActions={(progress, dragX) => {
         const scale = dragX.interpolate({ inputRange: [0, 100], outputRange: [0, 1], extrapolate: 'clamp' });
         return (
@@ -252,8 +271,9 @@ const SharedEntryItem = ({ item, isOwner, isAdmin, currentUserId, onDelete, navi
       overshootLeft={false}
       overshootRight={false}
     >
-      <PremiumPressable 
+<PremiumPressable 
         onPress={() => navigation.navigate('SharedEntryDetail', { entry: item })}
+        onTouchStart={() => onRowOpen(swipeableRef.current)} // <--- Instantly close others on touch
         style={[styles.entryCard, { backgroundColor: palette.card, borderColor: palette.border }]}
       >
         <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
