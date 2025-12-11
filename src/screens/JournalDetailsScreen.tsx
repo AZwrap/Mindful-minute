@@ -11,7 +11,7 @@ import { useJournalStore } from '../stores/journalStore';
 import { useSharedPalette } from '../hooks/useSharedPalette';
 import { JournalService } from '../services/journalService';
 import { MediaService } from '../services/mediaService';
-import { leaveSharedJournal } from '../services/syncedJournalService';
+import { leaveSharedJournal, kickMember, updateMemberRole } from '../services/syncedJournalService';
 import { exportSharedJournalPDF } from '../utils/exportHelper';
 import { auth } from '../firebaseConfig';
 import PremiumPressable from '../components/PremiumPressable';
@@ -47,21 +47,20 @@ export default function JournalDetailsScreen({ navigation, route }: Props) {
     await exportSharedJournalPDF(journal?.name || "Journal", entries);
   };
 
-  const handleMemberPress = (memberId: string) => {
+const handleMemberPress = (memberId: string, memberName: string) => {
     if (!isAdmin || memberId === currentUserId) return;
 
-    Alert.alert(
+Alert.alert(
       "Manage Member",
-      "Choose an action",
+      `Manage ${memberName}`,
       [
         { text: "Cancel", style: "cancel" },
         { 
-          text: "Kick User", 
+          text: "Remove from Group", 
           style: "destructive",
           onPress: async () => {
              try {
-               await JournalService.kickMember(journalId, memberId);
-               Alert.alert("Success", "User removed.");
+               await kickMember(journalId, memberId);
              } catch (e) {
                Alert.alert("Error", "Failed to remove user.");
              }
@@ -71,8 +70,7 @@ export default function JournalDetailsScreen({ navigation, route }: Props) {
           text: "Make Admin", 
           onPress: async () => {
              try {
-               await JournalService.updateMemberRole(journalId, memberId, 'admin');
-               Alert.alert("Success", "User promoted to Admin.");
+               await updateMemberRole(journalId, memberId, 'admin');
              } catch (e) {
                Alert.alert("Error", "Failed to promote user.");
              }
@@ -82,8 +80,7 @@ export default function JournalDetailsScreen({ navigation, route }: Props) {
             text: "Demote to Member", 
             onPress: async () => {
                try {
-                 await JournalService.updateMemberRole(journalId, memberId, 'member');
-                 Alert.alert("Success", "User is now a member.");
+                 await updateMemberRole(journalId, memberId, 'member');
                } catch (e) {
                  Alert.alert("Error", "Failed to demote user.");
                }
@@ -269,18 +266,22 @@ export default function JournalDetailsScreen({ navigation, route }: Props) {
                 MEMBERS ({journal.memberIds?.length || 0})
             </Text>
             
-            <FlatList
+<FlatList
                 data={journal.memberIds || []}
                 keyExtractor={(item) => item}
                 scrollEnabled={false}
-                renderItem={({ item }) => {
+                renderItem={({ item, index }) => {
                   const role = journal.roles?.[item] || 'member';
                   const isMe = item === currentUserId;
                   const displayRole = role.charAt(0).toUpperCase() + role.slice(1);
-    
+                  
+                  // Match ID to Name using the index (assuming arrays are synced)
+                  const rawName = journal.members?.[index] || "Unknown User";
+                  const displayName = isMe ? "You" : rawName;
+
                   return (
                     <PremiumPressable 
-                      onPress={() => handleMemberPress(item)}
+                      onPress={() => handleMemberPress(item, rawName)}
                       style={[styles.memberRow, { borderColor: palette.border, marginBottom: 8, justifyContent: 'space-between' }]}
                     >
                       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>

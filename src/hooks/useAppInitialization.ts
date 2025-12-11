@@ -1,5 +1,7 @@
 import { useEffect } from 'react';
 import { useColorScheme } from 'react-native';
+import { auth } from '../firebaseConfig'; // <--- Add this
+import { useJournalStore } from '../stores/journalStore'; // <--- Add this
 import * as SplashScreen from 'expo-splash-screen';
 import * as Linking from 'expo-linking';
 import * as Notifications from 'expo-notifications';
@@ -69,6 +71,30 @@ if (token !== undefined) {
     if (settingsLoaded) {
       manageSchedule();
     }
+
+// 5. Shared Journals: Restore & Listen for Notifications
+  useEffect(() => {
+    const initShared = async () => {
+      // Small delay to ensure Firebase Auth is ready
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      
+      const user = auth.currentUser;
+      if (user) {
+        try {
+          // 1. Restore the user's groups from the cloud
+          await useJournalStore.getState().restoreJournals();
+          
+          // 2. Start listening to ALL groups for notifications (New)
+          // This keeps the socket open so "onSnapshot" can trigger alerts
+          useJournalStore.getState().subscribeToAllJournals();
+        } catch (e) {
+          console.warn("Failed to init shared journals:", e);
+        }
+      }
+    };
+
+    initShared();
+  }, []);
 
 return () => subscription.remove();
   }, [smartRemindersEnabled, reminderTime, settingsLoaded]);

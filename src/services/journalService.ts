@@ -116,10 +116,10 @@ const updates: any = { members: arrayUnion(memberName) };
     const entriesRef = collection(db, "journals", journalId, "entries");
     const q = query(entriesRef, orderBy("createdAt", "desc"), limit(limitCount));
 
-    return onSnapshot(q, (snapshot) => {
+return onSnapshot(q, (snapshot) => {
       const entries = snapshot.docs.map((doc) => ({
-        entryId: doc.id,
-        ...doc.data(),
+        ...doc.data(), // 1. Spread data first
+        entryId: doc.id, // 2. Then force the real ID to win
       }));
       
       onUpdate(entries, snapshot.docChanges(), snapshot.metadata.hasPendingWrites);
@@ -143,13 +143,17 @@ const updates: any = { members: arrayUnion(memberName) };
     }));
   },
 
-  // CRUD Actions
-  async addEntry(journalId: string, entry: any) {
+// CRUD Actions
+async addEntry(journalId: string, entry: any) {
     const timestamp = Date.now();
-    const entriesCol = collection(db, "journals", journalId, "entries");
+    // Use the ID provided by the screen (so local & cloud match)
+    const docId = entry.entryId || this.generateId();
+
+    const entryRef = doc(db, "journals", journalId, "entries", docId);
     const journalRef = doc(db, "journals", journalId);
 
-    await addDoc(entriesCol, { ...entry, createdAt: timestamp });
+    // Use setDoc to enforce our ID
+    await setDoc(entryRef, { ...entry, createdAt: timestamp });
     
 // Update meta
     await updateDoc(journalRef, {
