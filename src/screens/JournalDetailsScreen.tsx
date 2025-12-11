@@ -1,9 +1,14 @@
 import React from 'react';
-import { View, Text, StyleSheet, FlatList, Alert, Share } from 'react-native';
+import { View, Text, StyleSheet, FlatList, Alert, Share, Image, TouchableOpacity } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { Users, Copy, LogOut, ChevronLeft, Download, Shield, Trash2, MoreVertical } from 'lucide-react-native';
+import { Users, Copy, LogOut, ChevronLeft, Download, Shield, Trash2, MoreVertical, Camera } from 'lucide-react-native';
+import * as ImagePicker from 'expo-image-picker';
+import { auth } from '../firebaseConfig';
+
+import { MediaService } from '../services/mediaService';
+import { JournalService } from '../services/journalService';
 import { exportSharedJournalPDF } from '../utils/exportHelper';
 
 import { RootStackParamList } from '../navigation/RootStack';
@@ -18,9 +23,10 @@ export default function JournalDetailsScreen({ navigation, route }: Props) {
   const { journalId } = route.params;
   const palette = useSharedPalette();
   
-  // Get sharedEntries so handleExport doesn't crash
-  const { journals, currentUser, leaveJournal, removeJournal, sharedEntries } = useJournalStore();
+// Get sharedEntries so handleExport doesn't crash
+  const { journals, leaveJournal, removeJournal, sharedEntries, updateJournalMeta } = useJournalStore();
   const journal = journals[journalId];
+  const currentUser = auth.currentUser;
 
   // Logic: Export PDF
   const handleExport = async () => {
@@ -32,10 +38,10 @@ export default function JournalDetailsScreen({ navigation, route }: Props) {
 await exportSharedJournalPDF(journal.name, entries);
   };
 
-  // Logic: Member Management
-  const isOwner = journal.owner === currentUser?.uid;
+// Logic: Member Management
+  const isOwner = journal?.owner === auth.currentUser?.uid;
   
-  const handleMemberPress = (memberId: string) => {
+const handleMemberPress = (memberId: string) => {
     if (!isOwner || memberId === currentUser?.uid) return;
 
     Alert.alert(
@@ -47,22 +53,29 @@ await exportSharedJournalPDF(journal.name, entries);
           text: "Kick User", 
           style: "destructive",
           onPress: async () => {
-             await kickMember(journalId, memberId);
+             await JournalService.kickMember(journalId, memberId);
              Alert.alert("Success", "User removed.");
           }
         },
         { 
           text: "Make Admin", 
           onPress: async () => {
-             await updateMemberRole(journalId, memberId, 'admin');
+             await JournalService.updateMemberRole(journalId, memberId, 'admin');
              Alert.alert("Success", "User promoted to Admin.");
           }
-        }
+        },
+        { 
+            text: "Demote to Member", 
+            onPress: async () => {
+               await JournalService.updateMemberRole(journalId, memberId, 'member');
+               Alert.alert("Success", "User is now a member.");
+            }
+          }
       ]
     );
   };
 
-  const handleDeleteGroup = () => {
+const handleDeleteGroup = () => {
     Alert.alert(
       "Delete Group",
       "Are you sure? This will remove the journal for EVERYONE. This action cannot be undone.",
@@ -72,7 +85,8 @@ await exportSharedJournalPDF(journal.name, entries);
           text: "Delete Forever", 
           style: "destructive", 
           onPress: async () => {
-             await deleteSharedJournal(journalId);
+             await JournalService.deleteJournal(journalId);
+             removeJournal(journalId);
              navigation.reset({
                index: 0,
                routes: [{ name: 'MainTabs' }],
@@ -115,6 +129,39 @@ await exportSharedJournalPDF(journal.name, entries);
         }
       ]
     );
+  const handleUpdatePhoto = async () => {
+    if (!isOwner) return;
+
+    try {
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaType.Images, // Correct: New API
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.5,
+      });
+
+      if (!result.canceled && result.assets[0].uri) {
+        // 1. Convert/Upload
+        const uploadUrl = await MediaService.uploadImage(result.assets[0].uri);
+        
+        if (uploadUrl) {
+           // 2. Save to Firestore
+           await JournalService.updateJournalPhoto(journalId, uploadUrl);
+           
+           // 3. Fetch fresh data to ensure consistency
+           const updatedJournal = await JournalService.getJournal(journalId);
+           
+           if (updatedJournal) {
+             // 4. Update Store with fresh data (Updates UI immediately)
+             updateJournalMeta(journalId, updatedJournal);
+             Alert.alert("Success", "Group photo updated!");
+           }
+        }
+      }
+    } catch (e) {
+      console.error("Photo Update Error:", e);
+      Alert.alert("Error", "Failed to update photo.");
+    }
   };
 
   if (!journal) {
@@ -138,12 +185,30 @@ await exportSharedJournalPDF(journal.name, entries);
             <ChevronLeft size={24} color={palette.text} />
           </PremiumPressable>
           <Text style={[styles.headerTitle, { color: palette.text }]}>Group Info</Text>
-          <View style={{ width: 24 }} /> 
-        </View>
+         <View style={{ width: 24 }} /> 
+      </View>
 
-        <View style={styles.content}>
-            {/* INFO CARD */}
-            <View style={[styles.card, { backgroundColor: palette.card, borderColor: palette.border }]}>
+      <View style={styles.content}>
+          {/* GROUP PHOTO */}
+          <View style={{ alignItems: 'center', marginBottom: 24 }}>
+            <TouchableOpacity onPress={handleUpdatePhoto} disabled={!isOwner} activeOpacity={0.8}>
+              <View style={[styles.groupAvatar, { backgroundColor: palette.card, borderColor: palette.border }]}>
+                {journal.photoUrl ? (
+                  <Image source={{ uri: journal.photoUrl }} style={styles.groupAvatarImage} />
+                ) : (
+                  <Users size={40} color={palette.subtleText} />
+                )}
+                {isOwner && (
+                  <View style={[styles.editBadge, { backgroundColor: palette.accent }]}>
+                    <Camera size={12} color="white" />
+                  </View>
+                )}
+              </View>
+            </TouchableOpacity>
+          </View>
+
+          {/* INFO CARD */}
+          <View style={[styles.card, { backgroundColor: palette.card, borderColor: palette.border }]}>
                 <Text style={[styles.label, { color: palette.subtleText }]}>JOURNAL NAME</Text>
                 <Text style={[styles.value, { color: palette.text }]}>{journal.name}</Text>
                 
@@ -162,18 +227,17 @@ await exportSharedJournalPDF(journal.name, entries);
 
 {/* MEMBERS LIST */}
             <Text style={[styles.sectionTitle, { color: palette.subtleText }]}>
-                MEMBERS ({journal.members.length})
+                MEMBERS ({journal.members?.length || 0})
             </Text>
             
-            <FlatList
-                data={journal.members}
+<FlatList
+                data={journal.members || []}
                 keyExtractor={(item) => item}
                 scrollEnabled={false}
                 renderItem={({ item }) => {
-                  // @ts-ignore - Check roles from Firestore map
-                  const role = journal.membersMap?.[item];
+                  const role = journal.roles?.[item] || 'member';
                   const isMe = item === currentUser?.uid;
-                  const displayRole = role === 'owner' ? 'Owner' : role === 'admin' ? 'Admin' : 'Member';
+                  const displayRole = role.charAt(0).toUpperCase() + role.slice(1);
     
                   return (
                     <PremiumPressable 
@@ -245,9 +309,10 @@ await exportSharedJournalPDF(journal.name, entries);
             )}
         </View>
 
-      </SafeAreaView>
+</SafeAreaView>
     </LinearGradient>
   );
+}
 }
 
 const styles = StyleSheet.create({
@@ -268,6 +333,11 @@ const styles = StyleSheet.create({
   memberName: { fontSize: 16, fontWeight: '500' },
   leaveBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, padding: 16, borderRadius: 16, borderWidth: 1, marginTop: 'auto' },
   leaveText: { color: '#EF4444', fontWeight: '700', fontSize: 15 },
-  actionRow: { flexDirection: 'row', alignItems: 'center', padding: 16, borderRadius: 12, borderWidth: 1, gap: 12 },
+actionRow: { flexDirection: 'row', alignItems: 'center', padding: 16, borderRadius: 12, borderWidth: 1, gap: 12 },
   actionText: { fontSize: 16, fontWeight: '600' },
+
+  // Group Avatar Styles
+  groupAvatar: { width: 100, height: 100, borderRadius: 30, borderWidth: 1, alignItems: 'center', justifyContent: 'center', marginBottom: 8 },
+  groupAvatarImage: { width: '100%', height: '100%', borderRadius: 30 },
+  editBadge: { position: 'absolute', bottom: -6, right: -6, padding: 6, borderRadius: 20, borderWidth: 2, borderColor: 'white' },
 });

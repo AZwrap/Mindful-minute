@@ -11,9 +11,11 @@ query,
   orderBy,
   limit,
   startAfter,
-  addDoc,
+addDoc,
   onSnapshot,
   arrayUnion,
+  arrayRemove,
+  deleteField,
   DocumentChange,
   Unsubscribe
 } from "firebase/firestore";
@@ -23,6 +25,8 @@ export interface JournalMeta {
   name: string;
   members: string[]; 
   memberIds?: string[];
+  photoUrl?: string;
+  roles?: Record<string, 'owner' | 'admin' | 'member'>;
   createdAt?: any;
   owner?: string;
   updatedAt?: number;
@@ -44,11 +48,12 @@ export const JournalService = {
     const journalId = this.generateId();
     const uid = auth.currentUser?.uid;
     
-    const newJournal: JournalMeta = {
+const newJournal: JournalMeta = {
       id: journalId,
       name: journalName || "Shared Journal",
       members: [ownerName],
       memberIds: uid ? [uid] : [],
+      roles: uid ? { [uid]: 'owner' } : {},
       owner: uid,
       createdAt: Date.now(),
     };
@@ -67,13 +72,25 @@ export const JournalService = {
       throw new Error("Journal does not exist");
     }
 
-    const updates: any = { members: arrayUnion(memberName) };
+const updates: any = { members: arrayUnion(memberName) };
     if (auth.currentUser?.uid) {
       updates.memberIds = arrayUnion(auth.currentUser.uid);
+      updates[`roles.${auth.currentUser.uid}`] = 'member';
     }
 
     await updateDoc(ref, updates);
     return snap.data() as JournalMeta;
+  },
+  
+  // Get single journal (for refreshing data)
+  async getJournal(journalId: string) {
+    const ref = doc(db, "journals", journalId);
+    const snap = await getDoc(ref);
+    return snap.exists() ? (snap.data() as JournalMeta) : null;
+  },
+  async updateJournalPhoto(journalId: string, photoUrl: string) {
+    const ref = doc(db, "journals", journalId);
+    await updateDoc(ref, { photoUrl, updatedAt: Date.now() });
   },
 
   // Restore
@@ -159,6 +176,25 @@ async updateEntry(journalId: string, entryId: string, newText: string, imageUri?
     }
     
     await updateDoc(ref, updates);
+  },
+  async updateMemberRole(journalId: string, userId: string, role: 'admin' | 'member') {
+    const ref = doc(db, "journals", journalId);
+    await updateDoc(ref, {
+      [`roles.${userId}`]: role
+    });
+  },
+
+  async kickMember(journalId: string, userId: string) {
+    const ref = doc(db, "journals", journalId);
+    await updateDoc(ref, {
+      memberIds: arrayRemove(userId),
+      [`roles.${userId}`]: deleteField()
+    });
+  },
+
+  async deleteJournal(journalId: string) {
+    const ref = doc(db, "journals", journalId);
+    await deleteDoc(ref);
   }
 };
 

@@ -1,5 +1,4 @@
-import { storage, auth } from "../firebaseConfig";
-import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
+import * as FileSystem from 'expo-file-system/legacy';
 
 export const MediaService = {
   async uploadImage(uri: string): Promise<string | null> {
@@ -9,26 +8,17 @@ export const MediaService = {
     if (uri.startsWith('http')) return uri;
 
     try {
-      const user = auth.currentUser;
-      if (!user) throw new Error("User not authenticated");
-
-      // 1. Fetch the file logic for React Native
-      const response = await fetch(uri);
-      const blob = await response.blob();
-
-      // 2. Create Reference
-      const filename = uri.split('/').pop() || `image-${Date.now()}`;
-      const storageRef = ref(storage, `users/${user.uid}/journal_images/${filename}`);
-
-      // 3. Upload
-      await uploadBytes(storageRef, blob);
-
-      // 4. Get URL
-      const downloadUrl = await getDownloadURL(storageRef);
-      return downloadUrl;
+      // Strategy: Convert image to Base64 string to store directly in Firestore.
+      // This bypasses the need for Firebase Storage configuration or rules.
+const base64 = await FileSystem.readAsStringAsync(uri, { 
+        encoding: 'base64'
+      });
+      
+      // Return the data URI that <Image /> can render
+      return `data:image/jpeg;base64,${base64}`;
 
     } catch (error) {
-      console.error("Image Upload Failed:", error);
+      console.error("Image Conversion Failed:", error);
       throw error;
     }
   }

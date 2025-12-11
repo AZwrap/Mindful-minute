@@ -16,6 +16,7 @@ export interface JournalMeta {
   name: string;
   members: string[]; 
   memberIds?: string[]; // New: Stores UIDs for restoring
+  photoUrl?: string;    // <--- Added this field
   createdAt?: any;
   owner?: string;
   updatedAt?: number;
@@ -263,12 +264,20 @@ updateSharedEntry: async (journalId: string, entryId: string, newText: string, i
           },
         })),
 
-      updateJournalMeta: (journalId, data) =>
+updateJournalMeta: (journalId, data) =>
         set((state) => ({
           journalInfo: {
             ...(state.journalInfo || { id: journalId, name: 'Unknown', members: [] }),
             ...data,
           },
+          // Fix: Also update the specific journal in the list, which the UI reads
+          journals: {
+            ...state.journals,
+            [journalId]: {
+              ...(state.journals[journalId] || {}),
+              ...data
+            }
+          }
         })),
 
       addSharedEntryList: (journalId, entries) =>

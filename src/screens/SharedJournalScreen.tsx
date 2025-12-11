@@ -162,12 +162,12 @@ return (
           data={filteredEntries}
           keyExtractor={(item) => item.entryId}
           contentContainerStyle={styles.list}
-          renderItem={({ item }) => {
-            // @ts-ignore - Check if current user is admin in the membersMap
-            const isAdmin = journal?.membersMap?.[currentUserId] === 'admin';
+renderItem={({ item }) => {
+            const myRole = journal?.roles?.[currentUserId || ''];
+            const isAdmin = myRole === 'admin' || myRole === 'owner';
 
             return (
-              <SharedEntryItem 
+              <SharedEntryItem
                 item={item}
                 isOwner={journal?.owner === currentUserId}
                 isAdmin={isAdmin}
