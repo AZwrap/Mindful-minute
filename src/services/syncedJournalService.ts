@@ -98,8 +98,35 @@ export async function joinSharedJournal(journalId: string, userId: string): Prom
 
 // 5. Add Entry
 export async function addSharedEntry(journalId: string, entry: any): Promise<void> {
-  // Delegate to store, ensuring the journalId is attached so the store knows where to send it
-  await useJournalStore.getState().addSharedEntry({ ...entry, journalId });
+  // 1. Sanitize Data: Strip 'undefined' or complex objects that crash Firestore
+  const cleanEntry = JSON.parse(JSON.stringify(entry));
+  
+  // 2. Determine ID: Use existing ID if valid, otherwise generate a NEW unique ID (replacing "temp_")
+  const isTemp = cleanEntry.entryId && cleanEntry.entryId.startsWith('temp_');
+  const docId = (!cleanEntry.entryId || isTemp) ? uuidv4() : cleanEntry.entryId;
+  
+  // 3. Prepare Data
+  const finalData = {
+    ...cleanEntry,
+    entryId: docId, // Ensure the Cloud has the real UUID
+    journalId: journalId, // Ensure it knows its parent
+    updatedAt: Date.now(),
+  };
+
+  // 4. Write to Firestore: journals -> {id} -> entries -> {docId}
+  const entryRef = doc(db, "journals", journalId, "entries", docId);
+  await setDoc(entryRef, finalData);
+
+  // 5. Update Journal Preview (Last Entry) so the main list updates
+  const journalRef = doc(db, "journals", journalId);
+  await updateDoc(journalRef, {
+    updatedAt: Date.now(),
+    lastEntry: {
+      text: (cleanEntry.text || "").substring(0, 100), // Preview snippet
+      author: cleanEntry.authorName || "Member",
+      createdAt: cleanEntry.createdAt || Date.now()
+    }
+  });
 }
 
 // 5.5 Create Invite Link (New)

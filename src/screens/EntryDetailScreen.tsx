@@ -217,14 +217,19 @@ const confirmShare = async () => {
 
     if (validIds.length === 0) return;
     
-    // 1. Prepare data
+// 1. Prepare data
+    // We use JSON.parse/stringify to strip 'undefined' values which crash Firestore
+    const cleanEntry = JSON.parse(JSON.stringify(entry));
+    
     const sharedEntryData = {
-        ...entry,
+        ...cleanEntry,
         // Generate a temp ID to prevent "unique key" warnings and delete crashes until cloud sync finishes
         entryId: `temp_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
         sharedAt: Date.now(),
         originalDate: date,
-        authorName: auth.currentUser?.displayName || "Member"
+        userId: auth.currentUser?.uid, // <--- CRITICAL: Required for Firestore security rules
+        authorName: auth.currentUser?.displayName || "Member",
+        createdAt: entry.createdAt || new Date().toISOString(), // Ensure sorting works
     };
 
     // 2. OPTIMISTIC UPDATE: Update UI immediately (Don't wait for Cloud)
