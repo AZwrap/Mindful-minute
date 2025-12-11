@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, FlatList, Pressable, StyleSheet, Alert, TextInput, Keyboard, RefreshControl } from 'react-native';
+import { View, Text, FlatList, Pressable, StyleSheet, Alert, TextInput, Keyboard, RefreshControl, Image } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -170,15 +170,20 @@ const lastMsg = item.lastEntry;
             const lastReadTime = lastRead[item.id] || 0;
             const isUnread = (item.updatedAt || 0) > lastReadTime;
 
-            return (
+return (
               <PremiumPressable
                 onPress={() => navigation.navigate('SharedJournal', { journalId: item.id })}
                 style={[styles.card, { backgroundColor: palette.card, borderColor: palette.border }]}
               >
                 <View style={styles.cardContent}>
-                  <View style={[styles.iconBox, { backgroundColor: palette.accent + '20' }]}>
-                    <Users size={20} color={palette.accent} />
-                  </View>
+                  {item.photoUrl ? (
+                    <Image source={{ uri: item.photoUrl }} style={styles.groupIcon} />
+                  ) : (
+                    <View style={[styles.iconBox, { backgroundColor: palette.accent + '20' }]}>
+                      <Users size={20} color={palette.accent} />
+                    </View>
+                  )}
+                  
                   <View style={{ flex: 1 }}>
 <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
                       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
@@ -192,10 +197,10 @@ const lastMsg = item.lastEntry;
                       )}
                     </View>
                     
-                    <Text style={[styles.cardSub, { color: palette.subtleText }]} numberOfLines={1}>
+<Text style={[styles.cardSub, { color: palette.subtleText }]} numberOfLines={1}>
                       {lastMsg 
                         ? `${lastMsg.author}: ${lastMsg.text}` 
-                        : `${item.members.length} member${item.members.length !== 1 ? 's' : ''}`
+                        : `${item.memberIds?.length || item.members.length} member${(item.memberIds?.length || item.members.length) !== 1 ? 's' : ''}`
                       }
                     </Text>
                   </View>
@@ -223,10 +228,11 @@ const styles = StyleSheet.create({
   joinInput: { flex: 1, height: 44, borderRadius: 12, paddingHorizontal: 16, borderWidth: 1, fontSize: 16 },
   joinConfirmBtn: { width: 44, height: 44, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
 
-  list: { padding: 16, paddingTop: 10 },
+list: { padding: 16, paddingTop: 10 },
   card: { borderRadius: 16, borderWidth: 1, marginBottom: 12, padding: 16 },
   cardContent: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   iconBox: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
+  groupIcon: { width: 40, height: 40, borderRadius: 20, borderWidth: 1, borderColor: 'rgba(0,0,0,0.1)' },
   cardTitle: { fontSize: 16, fontWeight: '700' },
   cardSub: { fontSize: 13, marginTop: 2 },
   empty: { marginTop: 40, alignItems: 'center' },

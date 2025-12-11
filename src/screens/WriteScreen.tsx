@@ -89,8 +89,11 @@ export default function WriteScreen({ navigation, route }: Props) {
   const isDark = currentTheme === 'dark';
   const palette = useSharedPalette(); 
 
-  // Extract params safely
+// Extract params safely
   const { date, prompt, text: initialText } = route.params;
+  
+  // Fetch existing entry to restore mood selection
+  const existingEntry = useEntriesStore(s => s.entries[date]);
 
   // --- VOICE MEMO STATE ---
   const [recording, setRecording] = useState<Audio.Recording | undefined | null>(null);
@@ -264,8 +267,19 @@ const [isPlaying, setIsPlaying] = useState(false);
   const [wordCount, setWordCount] = useState(
     () => (initialText || '').trim().split(/\s+/).filter((w) => w.length > 0).length
   );
-  const [suggestedMoods, setSuggestedMoods] = useState<Suggestion[]>([]);
-  const [selectedSuggestedMood, setSelectedSuggestedMood] = useState<string | null>(null);
+const [suggestedMoods, setSuggestedMoods] = useState<Suggestion[]>([]);
+  
+  // Restore selected mood if it was previously saved
+  const [selectedSuggestedMood, setSelectedSuggestedMood] = useState<string | null>(
+    existingEntry?.moodTag?.value || null
+  );
+
+  // Automatically generate suggestions on mount if text exists
+  useEffect(() => {
+    if (text.length > 2) {
+      setSuggestedMoods(getMoodSuggestions(text));
+    }
+  }, []);
 
   const inputRef = useRef<TextInput>(null);
 
@@ -346,14 +360,16 @@ try {
       // Base64 Bypass
       const finalImageUri = imageUri;
 
-      upsert({ 
+upsert({ 
         date, 
         text: text.trim(), 
         prompt: { text: currentPrompt?.text || 'Free writing' }, 
         createdAt: Date.now() as any, 
         isComplete: false, 
         audioUri,
-        imageUri: finalImageUri
+        imageUri: finalImageUri,
+        // Persist the selected mood tag
+        moodTag: selectedSuggestedMood ? { value: selectedSuggestedMood, type: 'default' } : undefined
       });
       
       if (!preserveTimerProgress) setDraftTimer(date, writeDuration);
@@ -451,8 +467,14 @@ try {
 
   const content = (
     <LinearGradient colors={currentGradientColors} style={styles.container} start={{ x: 0, y: 0 }} end={{ x: 0, y: 1 }}>
-      <SafeAreaView style={{ flex: 1 }} edges={['top']}>
-        <ScrollView ref={scrollRef} style={styles.container} contentContainerStyle={[styles.scrollContent, { paddingBottom: 20 + keyboardHeight }]} keyboardShouldPersistTaps="handled">
+<SafeAreaView style={{ flex: 1 }} edges={['top']}>
+        <ScrollView 
+          ref={scrollRef} 
+          style={styles.container} 
+          contentContainerStyle={[styles.scrollContent, { paddingBottom: 20 + keyboardHeight }]} 
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="on-drag" // <--- Added this
+        >
           <View style={styles.contentCard}>
 {/* PROMPT */}
             <Text style={[styles.prompt, { color: promptColor }]}>
@@ -685,14 +707,11 @@ onBlur={() => handleInputFocusAnim(0)}
     </LinearGradient>
   );
 
-const dismissKeyboard = () => Keyboard.dismiss();
-
+// Removed TouchableWithoutFeedback to fix scrolling issue
   const wrapper = (
-    <TouchableWithoutFeedback onPress={dismissKeyboard}>
-      <View style={{ flex: 1 }}>
-        {content}
-      </View>
-    </TouchableWithoutFeedback>
+    <View style={{ flex: 1 }}>
+      {content}
+    </View>
   );
 
   if (Platform.OS === 'ios') return <KeyboardAvoidingView style={{ flex: 1 }} behavior="padding" keyboardVerticalOffset={90}>{wrapper}</KeyboardAvoidingView>;

@@ -1,20 +1,19 @@
-import React from 'react';
-import { View, Text, StyleSheet, FlatList, Alert, Share, Image, TouchableOpacity } from 'react-native';
+import React, { useState } from 'react';
+import { View, Text, StyleSheet, FlatList, Alert, Share, Image, TouchableOpacity, Modal, Pressable, ScrollView } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { Users, Copy, LogOut, ChevronLeft, Download, Shield, Trash2, MoreVertical, Camera } from 'lucide-react-native';
+import { Users, Copy, LogOut, ChevronLeft, Download, Shield, Trash2, MoreVertical, Camera, X } from 'lucide-react-native';
 import * as ImagePicker from 'expo-image-picker';
-import { auth } from '../firebaseConfig';
-
-import { MediaService } from '../services/mediaService';
-import { JournalService } from '../services/journalService';
-import { exportSharedJournalPDF } from '../utils/exportHelper';
 
 import { RootStackParamList } from '../navigation/RootStack';
 import { useJournalStore } from '../stores/journalStore';
 import { useSharedPalette } from '../hooks/useSharedPalette';
-import { leaveSharedJournal, kickMember, updateMemberRole, deleteSharedJournal } from '../services/syncedJournalService';
+import { JournalService } from '../services/journalService';
+import { MediaService } from '../services/mediaService';
+import { leaveSharedJournal } from '../services/syncedJournalService';
+import { exportSharedJournalPDF } from '../utils/exportHelper';
+import { auth } from '../firebaseConfig';
 import PremiumPressable from '../components/PremiumPressable';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'JournalDetails'>;
@@ -22,11 +21,21 @@ type Props = NativeStackScreenProps<RootStackParamList, 'JournalDetails'>;
 export default function JournalDetailsScreen({ navigation, route }: Props) {
   const { journalId } = route.params;
   const palette = useSharedPalette();
+  const [showFullScreen, setShowFullScreen] = useState(false);
   
-// Get sharedEntries so handleExport doesn't crash
-  const { journals, leaveJournal, removeJournal, sharedEntries, updateJournalMeta } = useJournalStore();
+  // Get store actions and data
+  const { journals, removeJournal, sharedEntries, updateJournalMeta, leaveJournal } = useJournalStore();
+  
+  // 1. Safety Check: Get journal or fallback
   const journal = journals[journalId];
-  const currentUser = auth.currentUser;
+
+  // 2. Logic: Permissions
+  const currentUserId = auth.currentUser?.uid;
+  const userRole = journal?.roles?.[currentUserId || ''] || 'member';
+  
+  // Admin Privileges: Owner OR Admin
+  const isAdmin = journal?.owner === currentUserId || userRole === 'admin' || userRole === 'owner';
+  const isOwner = journal?.owner === currentUserId;
 
   // Logic: Export PDF
   const handleExport = async () => {
@@ -35,14 +44,11 @@ export default function JournalDetailsScreen({ navigation, route }: Props) {
       Alert.alert("No Data", "There are no entries to export yet.");
       return;
     }
-await exportSharedJournalPDF(journal.name, entries);
+    await exportSharedJournalPDF(journal?.name || "Journal", entries);
   };
 
-// Logic: Member Management
-  const isOwner = journal?.owner === auth.currentUser?.uid;
-  
-const handleMemberPress = (memberId: string) => {
-    if (!isOwner || memberId === currentUser?.uid) return;
+  const handleMemberPress = (memberId: string) => {
+    if (!isAdmin || memberId === currentUserId) return;
 
     Alert.alert(
       "Manage Member",
@@ -53,29 +59,41 @@ const handleMemberPress = (memberId: string) => {
           text: "Kick User", 
           style: "destructive",
           onPress: async () => {
-             await JournalService.kickMember(journalId, memberId);
-             Alert.alert("Success", "User removed.");
+             try {
+               await JournalService.kickMember(journalId, memberId);
+               Alert.alert("Success", "User removed.");
+             } catch (e) {
+               Alert.alert("Error", "Failed to remove user.");
+             }
           }
         },
         { 
           text: "Make Admin", 
           onPress: async () => {
-             await JournalService.updateMemberRole(journalId, memberId, 'admin');
-             Alert.alert("Success", "User promoted to Admin.");
+             try {
+               await JournalService.updateMemberRole(journalId, memberId, 'admin');
+               Alert.alert("Success", "User promoted to Admin.");
+             } catch (e) {
+               Alert.alert("Error", "Failed to promote user.");
+             }
           }
         },
         { 
             text: "Demote to Member", 
             onPress: async () => {
-               await JournalService.updateMemberRole(journalId, memberId, 'member');
-               Alert.alert("Success", "User is now a member.");
+               try {
+                 await JournalService.updateMemberRole(journalId, memberId, 'member');
+                 Alert.alert("Success", "User is now a member.");
+               } catch (e) {
+                 Alert.alert("Error", "Failed to demote user.");
+               }
             }
           }
       ]
     );
   };
 
-const handleDeleteGroup = () => {
+  const handleDeleteGroup = () => {
     Alert.alert(
       "Delete Group",
       "Are you sure? This will remove the journal for EVERYONE. This action cannot be undone.",
@@ -85,12 +103,16 @@ const handleDeleteGroup = () => {
           text: "Delete Forever", 
           style: "destructive", 
           onPress: async () => {
-             await JournalService.deleteJournal(journalId);
-             removeJournal(journalId);
-             navigation.reset({
-               index: 0,
-               routes: [{ name: 'MainTabs' }],
-             });
+             try {
+               await JournalService.deleteJournal(journalId);
+               removeJournal(journalId);
+               navigation.reset({
+                 index: 0,
+                 routes: [{ name: 'MainTabs' }],
+               });
+             } catch (e) {
+               Alert.alert("Error", "Failed to delete group.");
+             }
           }
         }
       ]
@@ -99,7 +121,7 @@ const handleDeleteGroup = () => {
 
   // Logic: Share Deep Link
   const handleShareLink = async () => {
-    const link = `mindfulminute://join/${journal.id}`;
+    const link = `mindfulminute://join/${journal?.id}`;
     try {
       await Share.share({
         message: `Join my shared journal on Mindful Minute! Tap here:\n${link}`,
@@ -119,22 +141,25 @@ const handleDeleteGroup = () => {
           text: "Leave", 
           style: "destructive", 
           onPress: async () => {
-            if (currentUser) {
-                await leaveSharedJournal(journalId, currentUser);
-                leaveJournal();
-                removeJournal(journalId);
+            if (currentUserId) {
+                await leaveSharedJournal(journalId, currentUserId);
+                leaveJournal(); // Clear active
+                removeJournal(journalId); // Remove from list
                 navigation.reset({ index: 0, routes: [{ name: 'MainTabs' }] });
             }
           }
         }
       ]
     );
+  };
+
   const handleUpdatePhoto = async () => {
-    if (!isOwner) return;
+    // Permission: Admins can update photo
+    if (!isAdmin) return;
 
     try {
       const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaType.Images, // Correct: New API
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
         allowsEditing: true,
         aspect: [1, 1],
         quality: 0.5,
@@ -152,9 +177,9 @@ const handleDeleteGroup = () => {
            const updatedJournal = await JournalService.getJournal(journalId);
            
            if (updatedJournal) {
-             // 4. Update Store with fresh data (Updates UI immediately)
+             // 4. Update Store with fresh data
              updateJournalMeta(journalId, updatedJournal);
-             Alert.alert("Success", "Group photo updated!");
+             // Silent success (UI updates automatically)
            }
         }
       }
@@ -164,6 +189,7 @@ const handleDeleteGroup = () => {
     }
   };
 
+  // 3. Render Fallback if loading failed
   if (!journal) {
     return (
       <View style={[styles.container, { backgroundColor: palette.bg, justifyContent: 'center', alignItems: 'center' }]}>
@@ -185,36 +211,49 @@ const handleDeleteGroup = () => {
             <ChevronLeft size={24} color={palette.text} />
           </PremiumPressable>
           <Text style={[styles.headerTitle, { color: palette.text }]}>Group Info</Text>
-         <View style={{ width: 24 }} /> 
-      </View>
+          <View style={{ width: 24 }} /> 
+        </View>
 
-      <View style={styles.content}>
-          {/* GROUP PHOTO */}
-          <View style={{ alignItems: 'center', marginBottom: 24 }}>
-            <TouchableOpacity onPress={handleUpdatePhoto} disabled={!isOwner} activeOpacity={0.8}>
-              <View style={[styles.groupAvatar, { backgroundColor: palette.card, borderColor: palette.border }]}>
-                {journal.photoUrl ? (
-                  <Image source={{ uri: journal.photoUrl }} style={styles.groupAvatarImage} />
-                ) : (
-                  <Users size={40} color={palette.subtleText} />
-                )}
-                {isOwner && (
-                  <View style={[styles.editBadge, { backgroundColor: palette.accent }]}>
-                    <Camera size={12} color="white" />
+        <ScrollView style={styles.content}>
+            
+            {/* GROUP PHOTO */}
+            <View style={{ alignItems: 'center', marginBottom: 24 }}>
+              <View>
+                {/* View Image Action */}
+                <TouchableOpacity 
+                  onPress={() => journal.photoUrl && setShowFullScreen(true)} 
+                  activeOpacity={0.9}
+                  disabled={!journal.photoUrl}
+                >
+                  <View style={[styles.groupAvatar, { backgroundColor: palette.card, borderColor: palette.border }]}>
+                    {journal.photoUrl ? (
+                      <Image source={{ uri: journal.photoUrl }} style={styles.groupAvatarImage} />
+                    ) : (
+                      <Users size={40} color={palette.subtleText} />
+                    )}
                   </View>
+                </TouchableOpacity>
+
+                {/* Edit Image Action (Admins Only) */}
+                {isAdmin && (
+                  <TouchableOpacity 
+                    onPress={handleUpdatePhoto}
+                    style={[styles.editBadge, { backgroundColor: palette.accent }]}
+                  >
+                    <Camera size={12} color="white" />
+                  </TouchableOpacity>
                 )}
               </View>
-            </TouchableOpacity>
-          </View>
+            </View>
 
-          {/* INFO CARD */}
-          <View style={[styles.card, { backgroundColor: palette.card, borderColor: palette.border }]}>
+            {/* INFO CARD */}
+            <View style={[styles.card, { backgroundColor: palette.card, borderColor: palette.border }]}>
                 <Text style={[styles.label, { color: palette.subtleText }]}>JOURNAL NAME</Text>
                 <Text style={[styles.value, { color: palette.text }]}>{journal.name}</Text>
                 
                 <View style={[styles.divider, { backgroundColor: palette.border }]} />
                 
-                {/* Invite Link UI (Whitespace removed between Text and Icon) */}
+                {/* Invite Link */}
                 <Text style={[styles.label, { color: palette.subtleText }]}>INVITE LINK</Text>
                 <PremiumPressable onPress={handleShareLink} style={styles.codeRow}>
                     <Text style={[styles.code, { color: palette.accent, textDecorationLine: 'underline' }]}>Share Invite Link</Text>
@@ -225,18 +264,18 @@ const handleDeleteGroup = () => {
                 </Text>
             </View>
 
-{/* MEMBERS LIST */}
+            {/* MEMBERS LIST */}
             <Text style={[styles.sectionTitle, { color: palette.subtleText }]}>
-                MEMBERS ({journal.members?.length || 0})
+                MEMBERS ({journal.memberIds?.length || 0})
             </Text>
             
-<FlatList
-                data={journal.members || []}
+            <FlatList
+                data={journal.memberIds || []}
                 keyExtractor={(item) => item}
                 scrollEnabled={false}
                 renderItem={({ item }) => {
                   const role = journal.roles?.[item] || 'member';
-                  const isMe = item === currentUser?.uid;
+                  const isMe = item === currentUserId;
                   const displayRole = role.charAt(0).toUpperCase() + role.slice(1);
     
                   return (
@@ -258,7 +297,7 @@ const handleDeleteGroup = () => {
                         </View>
                       </View>
                       
-                      {isOwner && !isMe && (
+                      {isAdmin && !isMe && (
                          <MoreVertical size={20} color={palette.subtleText} />
                       )}
                     </PremiumPressable>
@@ -279,8 +318,19 @@ const handleDeleteGroup = () => {
                 <Text style={[styles.actionText, { color: palette.text }]}>Export PDF</Text>
             </PremiumPressable>
 
-{/* DANGER ZONE */}
-            {isOwner ? (
+            {/* DANGER ZONE */}
+            
+            {/* 1. Leave Group (Visible to EVERYONE) */}
+            <PremiumPressable 
+                onPress={handleLeave}
+                style={[styles.leaveBtn, { borderColor: palette.border, backgroundColor: 'transparent', marginBottom: 12 }]}
+            >
+                <LogOut size={18} color={palette.text} />
+                <Text style={[styles.leaveText, { color: palette.text }]}>Leave Journal</Text>
+            </PremiumPressable>
+
+            {/* 2. Delete Group (Admin/Owner Only) */}
+            {isAdmin && (
                 <PremiumPressable 
                     onPress={handleDeleteGroup}
                     style={[styles.leaveBtn, { borderColor: '#EF4444' + '40', backgroundColor: '#EF4444' + '10' }]}
@@ -288,31 +338,30 @@ const handleDeleteGroup = () => {
                     <Trash2 size={18} color="#EF4444" />
                     <Text style={styles.leaveText}>Delete Group</Text>
                 </PremiumPressable>
-            ) : (
-                <PremiumPressable 
-                    onPress={() => {
-                        Alert.alert("Leave Journal", "Are you sure?", [
-                            { text: "Cancel", style: "cancel" },
-                            { text: "Leave", style: "destructive", onPress: async () => {
-                                if (currentUser?.uid) {
-                                    await leaveSharedJournal(journalId, currentUser.uid);
-                                    navigation.goBack();
-                                }
-                            }}
-                        ]);
-                    }}
-                    style={[styles.leaveBtn, { borderColor: '#EF4444' + '40', backgroundColor: '#EF4444' + '10' }]}
-                >
-                    <LogOut size={18} color="#EF4444" />
-                    <Text style={styles.leaveText}>Leave Journal</Text>
-                </PremiumPressable>
             )}
-        </View>
+            
+            <View style={{ height: 40 }} />
+        </ScrollView>
 
-</SafeAreaView>
+        {/* Full Screen Image Modal */}
+        <Modal visible={showFullScreen} transparent={true} animationType="fade" onRequestClose={() => setShowFullScreen(false)}>
+          <View style={styles.fullScreenContainer}>
+            <Pressable style={styles.closeBtn} onPress={() => setShowFullScreen(false)}>
+              <X color="white" size={30} />
+            </Pressable>
+            {journal.photoUrl && (
+              <Image 
+                source={{ uri: journal.photoUrl }} 
+                style={styles.fullScreenImage} 
+                resizeMode="contain" 
+              />
+            )}
+          </View>
+        </Modal>
+
+      </SafeAreaView>
     </LinearGradient>
   );
-}
 }
 
 const styles = StyleSheet.create({
@@ -333,11 +382,16 @@ const styles = StyleSheet.create({
   memberName: { fontSize: 16, fontWeight: '500' },
   leaveBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, padding: 16, borderRadius: 16, borderWidth: 1, marginTop: 'auto' },
   leaveText: { color: '#EF4444', fontWeight: '700', fontSize: 15 },
-actionRow: { flexDirection: 'row', alignItems: 'center', padding: 16, borderRadius: 12, borderWidth: 1, gap: 12 },
+  actionRow: { flexDirection: 'row', alignItems: 'center', padding: 16, borderRadius: 12, borderWidth: 1, gap: 12 },
   actionText: { fontSize: 16, fontWeight: '600' },
-
+  
   // Group Avatar Styles
   groupAvatar: { width: 100, height: 100, borderRadius: 30, borderWidth: 1, alignItems: 'center', justifyContent: 'center', marginBottom: 8 },
   groupAvatarImage: { width: '100%', height: '100%', borderRadius: 30 },
-  editBadge: { position: 'absolute', bottom: -6, right: -6, padding: 6, borderRadius: 20, borderWidth: 2, borderColor: 'white' },
+  editBadge: { position: 'absolute', bottom: 0, right: -6, padding: 8, borderRadius: 20, borderWidth: 2, borderColor: 'white', zIndex: 10 },
+
+  // Full Screen Modal
+  fullScreenContainer: { flex: 1, backgroundColor: 'rgba(0,0,0,0.95)', justifyContent: 'center', alignItems: 'center' },
+  fullScreenImage: { width: '100%', height: '80%' },
+  closeBtn: { position: 'absolute', top: 50, right: 20, padding: 10, zIndex: 20 },
 });

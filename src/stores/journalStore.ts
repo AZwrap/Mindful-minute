@@ -227,19 +227,57 @@ addSharedEntry: async (entry) => {
         await JournalService.addEntry(targetId, entry);
       },
 
-      deleteSharedEntry: async (journalId: string, entryId: string) => {
-        try {
-          await JournalService.deleteEntry(journalId, entryId);
-          // Optimistic update
-          const currentEntries = get().sharedEntries[journalId] || [];
-          set((state) => ({
-            sharedEntries: {
-              ...state.sharedEntries,
-              [journalId]: currentEntries.filter(e => e.entryId !== entryId)
+deleteSharedEntry: async (journalId: string, entryId: string) => {
+        // 1. Snapshot previous state (for rollback if error)
+        const prevState = get();
+
+        // 2. Optimistic Update: Remove from UI IMMEDIATELY
+        set((state) => {
+            const currentEntries = state.sharedEntries[journalId] || [];
+            const newEntries = currentEntries.filter(e => e.entryId !== entryId);
+            
+            // Recalculate "Last Entry" for the cover card locally
+            const sorted = [...newEntries].sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+            const latest = sorted.length > 0 ? sorted[0] : null;
+
+            const currentJournal = state.journals[journalId];
+            if (!currentJournal) return { sharedEntries: { ...state.sharedEntries, [journalId]: newEntries } };
+
+            const updatedJournal = { ...currentJournal };
+
+            if (latest) {
+                updatedJournal.lastEntry = {
+                    text: latest.text || "",
+                    author: latest.authorName || latest.author || "Anonymous",
+                    createdAt: latest.createdAt
+                };
+            } else {
+                delete updatedJournal.lastEntry;
+                updatedJournal.lastEntry = undefined;
             }
-          }));
+
+            return {
+              sharedEntries: {
+                ...state.sharedEntries,
+                [journalId]: newEntries
+              },
+              journals: {
+                ...state.journals,
+                [journalId]: updatedJournal
+              }
+            };
+        });
+
+        try {
+          // 3. Perform DB Delete in Background
+          await JournalService.deleteEntry(journalId, entryId);
         } catch (error) {
-          console.error("Failed to delete entry:", error);
+          console.error("Failed to delete entry, rolling back:", error);
+          // 4. Revert UI on error
+          set({ 
+            sharedEntries: prevState.sharedEntries, 
+            journals: prevState.journals 
+          });
           throw error;
         }
       },

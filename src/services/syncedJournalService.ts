@@ -112,20 +112,58 @@ export async function createInviteLink(journalId: string, user?: any): Promise<s
   return `${name} invited you to a Shared Journal on Mindful Minute!\n\nTap to join:\n${url}`;
 }
 
-// 6. Leave Journal
+// 6. Leave Journal (With Ownership Transfer)
 export async function leaveSharedJournal(journalId: string, userId: string): Promise<void> {
   try {
     const journalRef = doc(db, "journals", journalId);
+    const snap = await getDoc(journalRef);
     
-    // Remove user from the Firestore members map
-    await updateDoc(journalRef, {
+    if (!snap.exists()) return;
+
+    const data = snap.data();
+    const members = (data.members || []) as string[];
+    const membersMap = data.membersMap || {};
+    const remainingMembers = members.filter(id => id !== userId);
+
+    // If no one is left, delete the journal
+    if (remainingMembers.length === 0) {
+      await deleteDoc(journalRef);
+      useJournalStore.getState().removeJournal(journalId);
+      return;
+    }
+
+    const updates: any = {
+      members: arrayRemove(userId),
       [`membersMap.${userId}`]: deleteField()
-    });
+    };
+
+    // Check if the leaving user was the Owner or the last Admin
+    const isOwner = data.owner === userId;
+    // Check if there are any other admins/owners left
+    const hasOtherAdmin = remainingMembers.some(id => 
+      membersMap[id] === 'owner' || membersMap[id] === 'admin'
+    );
+
+    // Transfer Authority Logic:
+    // If Owner leaves OR (Admin leaves AND no other admins exist)
+    if (isOwner || (!hasOtherAdmin && membersMap[userId] === 'admin')) {
+        const newAdminId = remainingMembers[0]; // Next oldest member
+        
+        // If owner left, transfer ownership completely
+        if (isOwner) {
+            updates.owner = newAdminId;
+            updates[`membersMap.${newAdminId}`] = 'owner';
+        } else {
+            // Otherwise just make them admin to ensure someone is in charge
+            updates[`membersMap.${newAdminId}`] = 'admin';
+        }
+    }
+
+    await updateDoc(journalRef, updates);
 
     // Remove locally
     useJournalStore.getState().removeJournal(journalId);
     
-    console.log(`User ${userId} left journal ${journalId}`);
   } catch (error) {
     console.error("Error leaving journal:", error);
     throw error;

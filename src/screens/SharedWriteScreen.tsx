@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, TextInput, StyleSheet, Text, KeyboardAvoidingView, Platform, Alert, Image, Pressable, ScrollView } from 'react-native';
+import { View, TextInput, StyleSheet, Text, KeyboardAvoidingView, Platform, Alert, Image, Pressable, ScrollView, ActivityIndicator } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -21,12 +21,13 @@ export default function SharedWriteScreen({ navigation, route }: Props) {
   // State
   const [text, setText] = useState(entry?.text || '');
   const [imageUri, setImageUri] = useState<string | null>(entry?.imageUri || null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   
   const palette = useSharedPalette();
   const { addSharedEntry, updateSharedEntry } = useJournalStore();
   
   // --- IMAGE LOGIC (Base64 for Alpha) ---
-  const pickImage = () => {
+const pickImage = () => {
     Alert.alert(
       "Add Photo",
       "Capture a moment or choose from your gallery.",
@@ -42,8 +43,7 @@ export default function SharedWriteScreen({ navigation, route }: Props) {
               }
               const result = await ImagePicker.launchCameraAsync({
                 mediaTypes: ImagePicker.MediaTypeOptions.Images,
-                allowsEditing: true,
-                aspect: [4, 3],
+                allowsEditing: false, // <--- Disabled cropping
                 quality: 0.3, 
                 base64: true,
               });
@@ -59,8 +59,7 @@ export default function SharedWriteScreen({ navigation, route }: Props) {
             try {
               const result = await ImagePicker.launchImageLibraryAsync({
                 mediaTypes: ImagePicker.MediaTypeOptions.Images,
-                allowsEditing: true,
-                aspect: [4, 3],
+                allowsEditing: false, // <--- Disabled cropping
                 quality: 0.3,
                 base64: true,
               });
@@ -76,13 +75,20 @@ export default function SharedWriteScreen({ navigation, route }: Props) {
   };
 
   const handlePost = async () => {
-    if (!text.trim() && !imageUri) return;
+    if ((!text.trim() && !imageUri) || isSubmitting) return;
+
+    // 1. Lock UI
+    setIsSubmitting(true);
+
+    // 2. Optimistic Navigation: Go back IMMEDIATELY.
+    // The upload will continue in the background.
+    navigation.goBack();
 
     try {
-if (isEditing) {
-      // UPDATE MODE
-      await updateSharedEntry(journalId, entry.entryId, text.trim(), imageUri);
-    } else {
+      if (isEditing) {
+        // UPDATE MODE
+        await updateSharedEntry(journalId, entry.entryId, text.trim(), imageUri);
+      } else {
         // CREATE
         const user = auth.currentUser;
         const authorName = user?.displayName || user?.email?.split('@')[0] || 'Anonymous';
@@ -95,9 +101,9 @@ if (isEditing) {
           journalId,
         });
       }
-      navigation.goBack();
     } catch (e) {
-      Alert.alert("Error", "Failed to post entry.");
+      console.error("Post failed in background:", e);
+      // Optional: You could show a generic error toast here if you had a global toast system
     }
   };
 
@@ -111,8 +117,16 @@ if (isEditing) {
             <PremiumPressable onPress={() => navigation.goBack()}>
                 <Text style={{ color: palette.subtleText, fontWeight: '600' }}>Cancel</Text>
             </PremiumPressable>
-            <PremiumPressable onPress={handlePost} style={[styles.postBtn, { backgroundColor: palette.accent }]}>
-                <Text style={styles.postText}>{isEditing ? "Update" : "Post"}</Text>
+            <PremiumPressable 
+              onPress={handlePost} 
+              disabled={isSubmitting}
+              style={[styles.postBtn, { backgroundColor: palette.accent, opacity: isSubmitting ? 0.7 : 1 }]}
+            >
+                {isSubmitting ? (
+                  <ActivityIndicator color="white" size="small" />
+                ) : (
+                  <Text style={styles.postText}>{isEditing ? "Update" : "Post"}</Text>
+                )}
             </PremiumPressable>
           </View>
           
@@ -155,7 +169,7 @@ if (isEditing) {
 const styles = StyleSheet.create({
   container: { flex: 1 },
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 16, borderBottomWidth: 1, borderBottomColor: 'rgba(0,0,0,0.05)' },
-  postBtn: { paddingVertical: 8, paddingHorizontal: 16, borderRadius: 20 },
+  postBtn: { paddingVertical: 8, paddingHorizontal: 16, borderRadius: 20, minWidth: 70, alignItems: 'center', justifyContent: 'center' },
   postText: { color: 'white', fontWeight: '700' },
   input: { flex: 1, padding: 20, fontSize: 18, lineHeight: 28, textAlignVertical: 'top' },
   toolbar: { padding: 12, borderTopWidth: 1 },

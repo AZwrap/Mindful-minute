@@ -509,11 +509,11 @@ export default function HomeScreen() {
                   })}
                 >
                   <View>
-                    <Text style={{ color: palette.text, fontSize: 15, fontWeight: "500" }}>
+<Text style={{ color: palette.text, fontSize: 15, fontWeight: "500" }}>
                       {j.name}
                     </Text>
                     <Text style={{ color: palette.sub, fontSize: 12, marginTop: 2 }}>
-                      {j.members?.length || 0} members
+                      {j.memberIds?.length || j.members?.length || 0} member{(j.memberIds?.length || j.members?.length) !== 1 ? 's' : ''}
                     </Text>
                   </View>
                 </Pressable>

@@ -15,9 +15,10 @@ addDoc,
   onSnapshot,
   arrayUnion,
   arrayRemove,
-  deleteField,
+deleteField,
   DocumentChange,
-  Unsubscribe
+  Unsubscribe,
+  getDocs // <--- Added this
 } from "firebase/firestore";
 
 export interface JournalMeta {
@@ -161,9 +162,40 @@ const updates: any = { members: arrayUnion(memberName) };
     });
   },
 
-  async deleteEntry(journalId: string, entryId: string) {
+async deleteEntry(journalId: string, entryId: string) {
+    // 1. Delete the entry document
     const ref = doc(db, "journals", journalId, "entries", entryId);
     await deleteDoc(ref);
+
+    // 2. Find the NEW last entry to update the cover text
+    // We fetch 5 just in case the deleted one still shows up in the query cache
+    const entriesRef = collection(db, "journals", journalId, "entries");
+    const q = query(entriesRef, orderBy("createdAt", "desc"), limit(5));
+    const snap = await getDocs(q);
+
+    const journalRef = doc(db, "journals", journalId);
+
+    // Filter out the ID we just deleted to be safe
+    const remaining = snap.docs.filter(d => d.id !== entryId);
+
+    if (remaining.length > 0) {
+        // Set to the next most recent entry
+        const latest = remaining[0].data();
+        await updateDoc(journalRef, {
+            lastEntry: {
+                text: (latest.text || "").substring(0, 50),
+                author: latest.authorName || latest.author || "Anonymous",
+                createdAt: latest.createdAt
+            },
+            updatedAt: Date.now()
+        });
+    } else {
+        // No entries left -> Clear the preview
+        await updateDoc(journalRef, {
+            lastEntry: deleteField(),
+            updatedAt: Date.now()
+        });
+    }
   },
 
 async updateEntry(journalId: string, entryId: string, newText: string, imageUri?: string | null) {
@@ -197,6 +229,3 @@ async updateEntry(journalId: string, entryId: string, newText: string, imageUri?
     await deleteDoc(ref);
   }
 };
-
-// Helper for getDocs inside this file to avoid extra imports in Store if we missed it
-import { getDocs } from "firebase/firestore";

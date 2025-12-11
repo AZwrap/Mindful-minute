@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { View, Text, StyleSheet, FlatList, Pressable, Alert, TextInput, Share, Animated, LayoutAnimation, Platform, UIManager } from 'react-native';
+import { View, Text, StyleSheet, FlatList, Pressable, Alert, TextInput, Share, Animated, LayoutAnimation, Platform, UIManager, Image } from 'react-native';
 import { Swipeable } from 'react-native-gesture-handler';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -118,11 +118,15 @@ return (
         <View style={styles.header}>
           <PremiumPressable onPress={() => navigation.navigate('JournalDetails', { journalId })}>
              <View>
-                <Text style={[styles.title, { color: palette.text }]}>
+<Text style={[styles.title, { color: palette.text }]}>
                   {journal?.name || 'Shared Journal'} <Text style={{ fontSize: 16, color: palette.subtleText }}>ⓘ</Text>
                 </Text>
-                <Text style={[styles.subtitle, { color: palette.subtleText }]}>
-                    {journal?.members?.length || 1} Members • {entries.length} Entries
+<Text style={[styles.subtitle, { color: palette.subtleText }]}>
+                    {(() => {
+                       const count = journal?.memberIds?.length || journal?.members?.length || 1;
+                       const entryCount = entries.length;
+                       return `${count} ${count === 1 ? 'Member' : 'Members'} • ${entryCount} ${entryCount === 1 ? 'Entry' : 'Entries'}`;
+                    })()}
                 </Text>
              </View>
           </PremiumPressable>
@@ -203,20 +207,12 @@ const SharedEntryItem = ({ item, isOwner, isAdmin, currentUserId, onDelete, navi
   // Allow delete if: Owner, Admin, or Author
   const canDelete = isOwner || isAdmin || isAuthor;
   
-  // Local state to hide item BEFORE data deletion to prevent jumping
-  const [isDeleted, setIsDeleted] = React.useState(false);
-
   const handleDelete = () => {
-    // 1. Configure Layout Animation (Collapse effect)
+    // 1. Configure Layout Animation for the list update
     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
     
-    // 2. Visually remove item immediately (Collapse)
-    setIsDeleted(true);
-
-    // 3. Actually delete data after animation completes
-    setTimeout(() => {
-       onDelete(item.entryId);
-    }, 400);
+    // 2. Delete immediately (The Store's optimistic update will remove it from props instantly)
+    onDelete(item.entryId);
   };
 
   const handleShare = async () => {
@@ -228,9 +224,6 @@ const SharedEntryItem = ({ item, isOwner, isAdmin, currentUserId, onDelete, navi
       console.log(e);
     }
   };
-
-  // If marked as deleted, render nothing (LayoutAnimation will smooth the gap closing)
-  if (isDeleted) return null;
 
   return (
     <Swipeable
@@ -274,6 +267,15 @@ const SharedEntryItem = ({ item, isOwner, isAdmin, currentUserId, onDelete, navi
         <Text style={[styles.entryAuthor, { color: palette.accent }]}>
           — {item.authorName || 'Anonymous'}
         </Text>
+        
+        {/* Render image preview if exists */}
+        {item.imageUri && (
+          <Image 
+            source={{ uri: item.imageUri }} 
+            style={{ width: '100%', height: 150, borderRadius: 8, marginTop: 12 }} 
+            resizeMode="cover"
+          />
+        )}
       </PremiumPressable>
     </Swipeable>
   );
