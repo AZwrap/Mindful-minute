@@ -10,7 +10,7 @@ import {
 } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import { useSharedPalette } from '../hooks/useSharedPalette';
-// import { Achievement } from '../stores/achievementStore'; // Removed dependency
+import { useTheme } from '../stores/themeStore';
 
 // Define locally or import from progressStore
 interface Achievement {
@@ -28,7 +28,9 @@ interface AchievementPopupProps {
 
 export default function AchievementPopup({ achievement, onClose, isVisible }: AchievementPopupProps) {
   const scheme = useColorScheme();
-  const isDark = scheme === 'dark';
+  const { getCurrentTheme } = useTheme();
+  const currentTheme = getCurrentTheme(scheme);
+  const isDark = currentTheme === 'dark';
   const palette = useSharedPalette();
 
   const scaleAnim = useRef(new Animated.Value(0)).current;

@@ -1,14 +1,17 @@
 // src/services/syncedJournalService.ts
 import { db } from "../firebaseConfig";
+import * as Linking from 'expo-linking'; // <--- Add this
 import {
-  doc,
+doc,
   setDoc,
+  deleteDoc, // <--- Added
   getDoc,
 updateDoc,
   collection,
   onSnapshot,
-  deleteField,
+deleteField,
   arrayUnion, 
+  arrayRemove, // <--- Added this
   DocumentData,
 } from "firebase/firestore";
 
@@ -99,6 +102,16 @@ export async function addSharedEntry(journalId: string, entry: any): Promise<voi
   await useJournalStore.getState().addSharedEntry(entry);
 }
 
+// 5.5 Create Invite Link (New)
+export async function createInviteLink(journalId: string, user?: any): Promise<string> {
+  // 1. Generate deep link (matches config: 'join/:journalId')
+  const url = Linking.createURL(`join/${journalId}`);
+  
+  // 2. Create message
+  const name = user?.displayName || "A friend";
+  return `${name} invited you to a Shared Journal on Mindful Minute!\n\nTap to join:\n${url}`;
+}
+
 // 6. Leave Journal
 export async function leaveSharedJournal(journalId: string, userId: string): Promise<void> {
   try {
@@ -115,6 +128,36 @@ export async function leaveSharedJournal(journalId: string, userId: string): Pro
     console.log(`User ${userId} left journal ${journalId}`);
   } catch (error) {
     console.error("Error leaving journal:", error);
+    throw error;
+  }
+}
+// 7. Manage Members (Admin)
+export async function kickMember(journalId: string, userId: string): Promise<void> {
+  const journalRef = doc(db, "journals", journalId);
+  await updateDoc(journalRef, {
+    members: arrayRemove(userId),
+    [`membersMap.${userId}`]: deleteField()
+  });
+}
+
+export async function updateMemberRole(journalId: string, userId: string, role: 'admin' | 'member'): Promise<void> {
+  const journalRef = doc(db, "journals", journalId);
+  await updateDoc(journalRef, {
+    [`membersMap.${userId}`]: role
+  });
+}
+// 8. Delete Entire Journal (Owner Only)
+export async function deleteSharedJournal(journalId: string): Promise<void> {
+  try {
+    const journalRef = doc(db, "journals", journalId);
+    await deleteDoc(journalRef); // Deletes the meta document
+    
+    // Note: Firestore does not auto-delete subcollections (entries). 
+    // In a production app, you'd use a Cloud Function for this.
+    // For now, we clean up the local store reference.
+    useJournalStore.getState().removeJournal(journalId);
+  } catch (error) {
+    console.error("Error deleting journal:", error);
     throw error;
   }
 }

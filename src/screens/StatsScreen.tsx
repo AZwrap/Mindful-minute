@@ -25,9 +25,10 @@ import {
   Calendar, 
   TrendingUp, 
   Flame, 
-  Type, 
+Type, 
   Smile,
-  Zap
+  Zap,
+  FileText
 } from 'lucide-react-native';
 
 // Stores & Types
@@ -43,6 +44,7 @@ import EmptyState from '../components/EmptyState';
 import { analyzeMoodTrends, getMoodInsights } from '../utils/moodTrends';
 import { analyzeWritingInsights, getWritingInsights } from '../utils/writingInsights';
 import { analyzeMoodCorrelations, getMoodCorrelationSummary } from '../utils/moodAnalysis';
+import { generateTherapistReport } from '../utils/generateTherapistReport';
 
 // --------------------------------------------------
 // TYPES
@@ -626,10 +628,65 @@ style={{ marginTop: 20 }}
                         </View>
                       );
                     })}
-                  </View>
+</View>
                 </View>
               </View>
               )}
+
+              {/* Therapist Report Card */}
+              <View style={[styles.bentoCard, { backgroundColor: palette.card, marginTop: 12 }]}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 12 }}>
+                  <View style={[styles.bentoIcon, { backgroundColor: isDark ? 'rgba(99,102,241,0.2)' : '#EEF2FF' }]}>
+                    <FileText size={20} color="#6366F1" />
+                  </View>
+<View style={{ flex: 1 }}>
+                    <Text style={[styles.bentoLabel, { color: textMain, marginTop: 0, fontSize: 15, opacity: 1 }]}>
+                      Therapist Report
+                    </Text>
+                    <Text style={{ fontSize: 12, color: textSub }}>
+                      Generate a monthly summary for your therapist
+                    </Text>
+                  </View>
+                </View>
+
+{statsData.entries.length >= 30 ? (
+                  <PremiumPressable
+                    onPress={() => generateTherapistReport(statsData.entries)}
+                    style={{
+                      backgroundColor: '#6366F1',
+                      paddingVertical: 12,
+                      borderRadius: 12,
+                      alignItems: 'center',
+                      marginTop: 4
+                    }}
+                  >
+                    <Text style={{ color: 'white', fontWeight: '700', fontSize: 14 }}>
+                      Generate PDF Report
+                    </Text>
+                  </PremiumPressable>
+                ) : (
+                  <View style={{ gap: 8 }}>
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                      <Text style={{ fontSize: 12, color: textSub, fontWeight: '600' }}>
+                        {statsData.entries.length} / 30 Entries
+                      </Text>
+                      <Text style={{ fontSize: 12, color: '#6366F1', fontWeight: '600' }}>
+                        {Math.round((statsData.entries.length / 30) * 100)}%
+                      </Text>
+                    </View>
+                    <View style={{ height: 6, backgroundColor: isDark ? '#334155' : '#E2E8F0', borderRadius: 3, overflow: 'hidden' }}>
+                      <View 
+                        style={{ 
+                          height: '100%', 
+                          backgroundColor: '#6366F1', 
+                          width: `${Math.min(100, (statsData.entries.length / 30) * 100)}%`,
+                          borderRadius: 3 
+                        }} 
+                      />
+                    </View>
+                  </View>
+                )}
+              </View>
 
               {/* Weekly Recap Button */}
               <View style={styles.bottomRecapContainer}>

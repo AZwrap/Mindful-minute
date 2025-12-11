@@ -5,11 +5,13 @@ import {
   StyleSheet,
   Pressable,
   useColorScheme,
-  Animated,
+Animated,
   Alert,
-RefreshControl,
+  RefreshControl,
   Platform,
-  SectionList, // Changed from FlatList
+  SectionList,
+  LayoutAnimation, // <--- Added
+  UIManager,       // <--- Added
   TextInput,
   StyleProp,
   ViewStyle,
@@ -72,34 +74,26 @@ const SwipeableEntry = memo(({
 }: SwipeableEntryProps) => {
   const swipeableRef = useRef<Swipeable>(null);
 
-  const renderRightActions = (progress: Animated.AnimatedInterpolation<number>, dragX: Animated.AnimatedInterpolation<number>) => {
-    const opacity = progress.interpolate({
-      inputRange: [0, 0.1],
-      outputRange: [0, 1],
+const renderRightActions = (progress: Animated.AnimatedInterpolation<number>, dragX: Animated.AnimatedInterpolation<number>) => {
+    const scale = dragX.interpolate({
+      inputRange: [-100, 0],
+      outputRange: [1, 0],
       extrapolate: 'clamp',
     });
 
     return (
-      <Animated.View 
-        style={[
-          styles.deleteButtonWrapper, 
-          { opacity, zIndex: -1 }
-        ]}
+      <Pressable 
+        onPress={() => {
+          swipeableRef.current?.close();
+          onDelete(entry.date);
+        }} 
+        style={styles.rightAction}
       >
-        <Pressable
-          onPress={() => {
-            swipeableRef.current?.close();
-            onDelete(entry.date);
-          }}
-          style={({ pressed }) => [
-            styles.deleteButton,
-            { backgroundColor: pressed ? '#DC2626' : '#EF4444' }
-          ]}
-        >
+        <Animated.View style={{ transform: [{ scale }], alignItems: 'center' }}>
           <Trash2 size={24} color="white" />
-          <Text style={styles.swipeActionText}>Delete</Text>
-        </Pressable>
-      </Animated.View>
+          <Text style={styles.actionText}>Delete</Text>
+        </Animated.View>
+      </Pressable>
     );
   };
 
@@ -115,37 +109,27 @@ const SwipeableEntry = memo(({
     });
   }
 
-  return (
-    <View
-      style={[
-        styles.entryWrapper,
-        {
-          backgroundColor: 'transparent', 
-          borderColor,
-        },
-      ]}
+return (
+    <Swipeable
+      ref={swipeableRef}
+      renderRightActions={renderRightActions}
+      rightThreshold={30}
+      friction={2}
+      overshootFriction={8}
+      containerStyle={{ marginBottom: 8 }} // Applied margin directly to Swipeable container
     >
-      <Swipeable
-        ref={swipeableRef}
-        renderRightActions={renderRightActions}
-        rightThreshold={30}
-        friction={2}
-        overshootFriction={8}
-      >
-<Pressable
+      <Pressable
           onPress={onPress}
           onLongPress={onLongPress}
           delayLongPress={500} // Increased delay for export menu
           hitSlop={8}
-          style={({ pressed }) => [
+style={({ pressed }) => [
             styles.entryItem,
-            { 
-              // Fix: Use solid color shift instead of opacity to prevent delete button bleed-through
+{ 
               backgroundColor: isDark 
                 ? (pressed ? '#334155' : '#1E293B') 
                 : (pressed ? '#F1F5F9' : '#FFFFFF'),
-              zIndex: 10,
-              elevation: 5,
+              borderColor,
             },
           ]}
         >
@@ -190,9 +174,8 @@ const SwipeableEntry = memo(({
               </Text>
             </View>
           )}
-        </Pressable>
+</Pressable>
       </Swipeable>
-    </View>
   );
 });
 
@@ -245,8 +228,15 @@ const [selectedMood, setSelectedMood] = useState('all');
     });
     return marks;
   }, [entries, isDark]);
-  const [refreshing, setRefreshing] = useState(false);
+const [refreshing, setRefreshing] = useState(false);
   const [deletedEntries, setDeletedEntries] = useState<Record<string, boolean>>({});
+
+  // Enable LayoutAnimation for Android
+  useEffect(() => {
+    if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
+      UIManager.setLayoutAnimationEnabledExperimental(true);
+    }
+  }, []);
 
   // Export Handler
   const handleLongPressEntry = (entry: JournalEntry) => {
@@ -278,10 +268,13 @@ const [selectedMood, setSelectedMood] = useState('all');
       "Are you sure you want to delete this entry? This action cannot be undone.",
       [
         { text: "Cancel", style: "cancel" },
-        { 
+{ 
           text: "Delete", 
           style: "destructive",
           onPress: () => {
+            // Animate the deletion
+            LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+            
             setDeletedEntries(prev => ({ ...prev, [date]: true }));
             useEntriesStore.getState().deleteEntry(date);
           }
@@ -770,40 +763,30 @@ entryReflection: {
     marginBottom: 8,
     fontStyle: 'italic',
   },
-  entryWrapper: {
-    borderRadius: 12,
-    overflow: 'hidden',
-    borderWidth: 1,
-    marginBottom: 8,
-  },
-  entryItem: {
+  // entryWrapper removed
+entryItem: {
     padding: 12,
     minHeight: 100,
+    borderRadius: 16,
+    borderWidth: 1,
+    // Border color is handled dynamically in the component
   },
-  deleteButtonWrapper: {
-    width: 65,
-    height: '100%',
-    justifyContent: 'center',
-    borderTopLeftRadius: 0,
-    borderBottomLeftRadius: 0,
-    overflow: 'hidden',   
-  },
-  deleteButton: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
+rightAction: {
     backgroundColor: '#EF4444',
-    borderTopLeftRadius: 0,
-    borderBottomLeftRadius: 0,
-    borderTopRightRadius: 12,
-    borderBottomRightRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'flex-end',
+    paddingRight: 24,
+    width: 100,
+    borderRadius: 16,
+    marginLeft: -20, // Pull behind the card
+    marginBottom: 0,
+    marginTop: 0,
   },
-  swipeActionText: {
+  actionText: {
     color: 'white',
-    fontWeight: '600',
-    fontSize: 13,
-    textAlign: 'center',
-    textAlignVertical: 'center',
+    fontSize: 12,
+    fontWeight: '700',
+    marginTop: 4,
   },
   entryCountContainer: {
     marginTop: 8,

@@ -276,7 +276,7 @@ return (
                 <Text style={[styles.label, { color: textSub }]}>Mood & Atmosphere</Text>
                 
                 <View style={styles.moodRow}>
-                  {/* Mood Pill */}
+{/* Mood Pill */}
                   <View
                     style={[
                       styles.moodTag,
@@ -284,6 +284,9 @@ return (
                         backgroundColor: isDark
                           ? 'rgba(99,102,241,0.15)'
                           : 'rgba(99,102,241,0.08)',
+                        borderColor: isDark
+                          ? 'rgba(99,102,241,0.3)'
+                          : 'rgba(99,102,241,0.2)',
                       },
                     ]}
                   >
@@ -292,14 +295,14 @@ return (
                     </Text>
                   </View>
 
-                  {/* Music Button - Indigo Theme */}
+{/* Music Button - Indigo Theme */}
                   <PremiumPressable
                     onPress={handlePlayMusic}
                     style={[
                       styles.musicBtn,
                       { 
                         backgroundColor: isDark ? 'rgba(99, 102, 241, 0.1)' : 'rgba(99, 102, 241, 0.05)',
-                        borderColor: palette.accent,
+                        borderColor: isDark ? 'rgba(99,102,241,0.3)' : 'rgba(99,102,241,0.2)',
                         borderWidth: 1,
                       }
                     ]}
@@ -503,17 +506,20 @@ moodSection: {
     alignItems: 'center',
     gap: 12,
   },
-  moodTag: {
+moodTag: {
     paddingHorizontal: 14,
     paddingVertical: 8,
     borderRadius: 20,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: 'transparent',
   },
   musicBtn: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
     gap: 8,
     paddingHorizontal: 14,
     paddingVertical: 8,

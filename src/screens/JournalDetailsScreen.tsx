@@ -3,13 +3,13 @@ import { View, Text, StyleSheet, FlatList, Alert, Share } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { Users, Copy, LogOut, ChevronLeft, Download } from 'lucide-react-native';
+import { Users, Copy, LogOut, ChevronLeft, Download, Shield, Trash2, MoreVertical } from 'lucide-react-native';
 import { exportSharedJournalPDF } from '../utils/exportHelper';
 
 import { RootStackParamList } from '../navigation/RootStack';
 import { useJournalStore } from '../stores/journalStore';
 import { useSharedPalette } from '../hooks/useSharedPalette';
-import { leaveSharedJournal } from '../services/syncedJournalService';
+import { leaveSharedJournal, kickMember, updateMemberRole, deleteSharedJournal } from '../services/syncedJournalService';
 import PremiumPressable from '../components/PremiumPressable';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'JournalDetails'>;
@@ -29,7 +29,58 @@ export default function JournalDetailsScreen({ navigation, route }: Props) {
       Alert.alert("No Data", "There are no entries to export yet.");
       return;
     }
-    await exportSharedJournalPDF(journal.name, entries);
+await exportSharedJournalPDF(journal.name, entries);
+  };
+
+  // Logic: Member Management
+  const isOwner = journal.owner === currentUser?.uid;
+  
+  const handleMemberPress = (memberId: string) => {
+    if (!isOwner || memberId === currentUser?.uid) return;
+
+    Alert.alert(
+      "Manage Member",
+      "Choose an action",
+      [
+        { text: "Cancel", style: "cancel" },
+        { 
+          text: "Kick User", 
+          style: "destructive",
+          onPress: async () => {
+             await kickMember(journalId, memberId);
+             Alert.alert("Success", "User removed.");
+          }
+        },
+        { 
+          text: "Make Admin", 
+          onPress: async () => {
+             await updateMemberRole(journalId, memberId, 'admin');
+             Alert.alert("Success", "User promoted to Admin.");
+          }
+        }
+      ]
+    );
+  };
+
+  const handleDeleteGroup = () => {
+    Alert.alert(
+      "Delete Group",
+      "Are you sure? This will remove the journal for EVERYONE. This action cannot be undone.",
+      [
+        { text: "Cancel", style: "cancel" },
+        { 
+          text: "Delete Forever", 
+          style: "destructive", 
+          onPress: async () => {
+             await deleteSharedJournal(journalId);
+             navigation.reset({
+               index: 0,
+               routes: [{ name: 'MainTabs' }],
+             });
+          }
+        }
+      ]
+    );
   };
 
   // Logic: Share Deep Link
@@ -109,35 +160,46 @@ export default function JournalDetailsScreen({ navigation, route }: Props) {
                 </Text>
             </View>
 
-            {/* MEMBERS LIST */}
+{/* MEMBERS LIST */}
             <Text style={[styles.sectionTitle, { color: palette.subtleText }]}>
                 MEMBERS ({journal.members.length})
             </Text>
             
-<FlatList
+            <FlatList
                 data={journal.members}
                 keyExtractor={(item) => item}
+                scrollEnabled={false}
                 renderItem={({ item }) => {
-                   // Calculate initials (max 2 characters)
-                   const initials = item
-                      .split(' ')
-                      .map(n => n[0])
-                      .slice(0, 2)
-                      .join('')
-                      .toUpperCase();
-
-                   return (
-                    <View style={[styles.memberRow, { backgroundColor: palette.card, borderColor: palette.border }]}>
-                        <View style={[styles.avatar, { backgroundColor: palette.accent + '20' }]}>
-                            <Text style={{ color: palette.accent, fontWeight: '700', fontSize: 14 }}>
-                                {initials}
-                            </Text>
+                  // @ts-ignore - Check roles from Firestore map
+                  const role = journal.membersMap?.[item];
+                  const isMe = item === currentUser?.uid;
+                  const displayRole = role === 'owner' ? 'Owner' : role === 'admin' ? 'Admin' : 'Member';
+    
+                  return (
+                    <PremiumPressable 
+                      onPress={() => handleMemberPress(item)}
+                      style={[styles.memberRow, { borderColor: palette.border, marginBottom: 8, justifyContent: 'space-between' }]}
+                    >
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                        <View style={[styles.avatar, { backgroundColor: role === 'owner' ? '#F59E0B' : palette.accent }]}>
+                          {role === 'owner' ? <Shield size={16} color="white" /> : <Users size={16} color="white" />}
                         </View>
-                        <Text style={[styles.memberName, { color: palette.text }]}>{item}</Text>
-                    </View>
-                   );
+                        <View>
+                          <Text style={[styles.memberName, { color: palette.text }]}>
+                            {isMe ? 'You' : `User...${item.slice(-4)}`}
+                          </Text>
+                          <Text style={{ fontSize: 12, color: palette.subtleText }}>
+                            {displayRole}
+                          </Text>
+                        </View>
+                      </View>
+                      
+                      {isOwner && !isMe && (
+                         <MoreVertical size={20} color={palette.subtleText} />
+                      )}
+                    </PremiumPressable>
+                  );
                 }}
-                contentContainerStyle={{ gap: 8 }}
             />
 
             {/* ACTIONS */}
@@ -153,14 +215,34 @@ export default function JournalDetailsScreen({ navigation, route }: Props) {
                 <Text style={[styles.actionText, { color: palette.text }]}>Export PDF</Text>
             </PremiumPressable>
 
-            {/* DANGER ZONE */}
-            <PremiumPressable 
-                onPress={handleLeave}
-                style={[styles.leaveBtn, { borderColor: '#EF4444' + '40', backgroundColor: '#EF4444' + '10' }]}
-            >
-                <LogOut size={18} color="#EF4444" />
-                <Text style={styles.leaveText}>Leave Journal</Text>
-            </PremiumPressable>
+{/* DANGER ZONE */}
+            {isOwner ? (
+                <PremiumPressable 
+                    onPress={handleDeleteGroup}
+                    style={[styles.leaveBtn, { borderColor: '#EF4444' + '40', backgroundColor: '#EF4444' + '10' }]}
+                >
+                    <Trash2 size={18} color="#EF4444" />
+                    <Text style={styles.leaveText}>Delete Group</Text>
+                </PremiumPressable>
+            ) : (
+                <PremiumPressable 
+                    onPress={() => {
+                        Alert.alert("Leave Journal", "Are you sure?", [
+                            { text: "Cancel", style: "cancel" },
+                            { text: "Leave", style: "destructive", onPress: async () => {
+                                if (currentUser?.uid) {
+                                    await leaveSharedJournal(journalId, currentUser.uid);
+                                    navigation.goBack();
+                                }
+                            }}
+                        ]);
+                    }}
+                    style={[styles.leaveBtn, { borderColor: '#EF4444' + '40', backgroundColor: '#EF4444' + '10' }]}
+                >
+                    <LogOut size={18} color="#EF4444" />
+                    <Text style={styles.leaveText}>Leave Journal</Text>
+                </PremiumPressable>
+            )}
         </View>
 
       </SafeAreaView>

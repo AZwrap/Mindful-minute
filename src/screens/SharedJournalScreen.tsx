@@ -1,9 +1,10 @@
 import React, { useEffect } from 'react';
-import { View, Text, StyleSheet, FlatList, Pressable, Alert, TextInput } from 'react-native';
+import { View, Text, StyleSheet, FlatList, Pressable, Alert, TextInput, Share, Animated, LayoutAnimation, Platform, UIManager } from 'react-native';
+import { Swipeable } from 'react-native-gesture-handler';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { PenTool, Share2, LogOut, Search, X } from 'lucide-react-native';
+import { PenTool, Share2, LogOut, Search, X, Trash2 } from 'lucide-react-native';
 
 import { RootStackParamList } from '../navigation/RootStack';
 import { useJournalStore } from '../stores/journalStore';
@@ -11,6 +12,7 @@ import { useSharedPalette } from '../hooks/useSharedPalette';
 import { createInviteLink, leaveSharedJournal } from '../services/syncedJournalService';
 import PremiumPressable from '../components/PremiumPressable';
 import * as Clipboard from 'expo-clipboard';
+import { auth } from '../firebaseConfig';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'SharedJournal'>;
 
@@ -19,13 +21,14 @@ export default function SharedJournalScreen({ navigation, route }: Props) {
   const palette = useSharedPalette();
   
 const { 
-    joinJournal,
-    subscribeToJournal, // <--- Add this
+    subscribeToJournal, 
     sharedEntries, 
     journalInfo, 
-    currentUser,
-    markAsRead 
+    markAsRead,
+    deleteSharedEntry 
   } = useJournalStore();
+  
+  const currentUserId = auth.currentUser?.uid;
 
   // Helper to handle both Firestore Timestamps and number/string dates
   const safeDate = (val: any) => {
@@ -40,7 +43,14 @@ const entries = sharedEntries[journalId] || [];
   // Search State
   const [searchText, setSearchText] = React.useState('');
   const [isSearching, setIsSearching] = React.useState(false);
+// Enable LayoutAnimation for Android
+  useEffect(() => {
+    if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
+      UIManager.setLayoutAnimationEnabledExperimental(true);
+    }
+  }, []);
 
+  // Filter Logic
   // Filter Logic
   const filteredEntries = React.useMemo(() => {
     if (!searchText.trim()) return entries;
@@ -60,13 +70,15 @@ const entries = sharedEntries[journalId] || [];
     return () => markAsRead(journalId);
   }, [journalId]);
 
-  const handleInvite = async () => {
-    if (!currentUser) {
+const handleInvite = async () => {
+    const user = auth.currentUser;
+    if (!user) {
         Alert.alert("Error", "You must be signed in to invite others.");
         return;
     }
     try {
-      const link = await createInviteLink(journalId, currentUser);
+      // Pass the direct auth user object
+      const link = await createInviteLink(journalId, user as any);
       await Clipboard.setStringAsync(link);
       Alert.alert('Copied!', 'Invite link copied to clipboard.');
     } catch (e) {
@@ -80,12 +92,14 @@ const entries = sharedEntries[journalId] || [];
       "Are you sure? You won't see these entries anymore.",
       [
         { text: "Cancel", style: "cancel" },
-        { 
+{ 
           text: "Leave", 
           style: "destructive", 
-onPress: async () => {
-            if (currentUser) {
-                await leaveSharedJournal(journalId, currentUser);
+          onPress: async () => {
+            const user = auth.currentUser;
+            if (user) {
+                // Pass user.uid because leaveSharedJournal expects a string ID
+                await leaveSharedJournal(journalId, user.uid);
                 // Force navigation back to list to prevent showing a deleted journal
                 navigation.reset({
                   index: 1,
@@ -98,10 +112,10 @@ onPress: async () => {
     );
   };
 
-  return (
+return (
     <LinearGradient colors={[palette.bg, palette.bg]} style={styles.container}>
       <SafeAreaView style={{ flex: 1 }}>
-<View style={styles.header}>
+        <View style={styles.header}>
           <PremiumPressable onPress={() => navigation.navigate('JournalDetails', { journalId })}>
              <View>
                 <Text style={[styles.title, { color: palette.text }]}>
@@ -116,7 +130,7 @@ onPress: async () => {
             <PremiumPressable onPress={handleInvite} style={[styles.iconBtn, { backgroundColor: palette.card }]}>
                 <Share2 size={20} color={palette.accent} />
             </PremiumPressable>
-<PremiumPressable onPress={handleLeave} style={[styles.iconBtn, { backgroundColor: palette.card }]}>
+            <PremiumPressable onPress={handleLeave} style={[styles.iconBtn, { backgroundColor: palette.card }]}>
                 <LogOut size={20} color="#EF4444" />
             </PremiumPressable>
             <PremiumPressable 
@@ -148,22 +162,23 @@ onPress: async () => {
           data={filteredEntries}
           keyExtractor={(item) => item.entryId}
           contentContainerStyle={styles.list}
-          renderItem={({ item }) => (
-            <PremiumPressable 
-              onPress={() => navigation.navigate('SharedEntryDetail', { entry: item })}
-              style={[styles.entryCard, { backgroundColor: palette.card, borderColor: palette.border }]}
-            >
-              <Text style={[styles.entryDate, { color: palette.subtleText }]}>
-                {safeDate(item.createdAt)}
-              </Text>
-              <Text style={[styles.entryText, { color: palette.text }]} numberOfLines={3}>
-                {item.text}
-              </Text>
-              <Text style={[styles.entryAuthor, { color: palette.accent }]}>
-                — {item.authorName || 'Anonymous'}
-              </Text>
-            </PremiumPressable>
-          )}
+          renderItem={({ item }) => {
+            // @ts-ignore - Check if current user is admin in the membersMap
+            const isAdmin = journal?.membersMap?.[currentUserId] === 'admin';
+
+            return (
+              <SharedEntryItem 
+                item={item}
+                isOwner={journal?.owner === currentUserId}
+                isAdmin={isAdmin}
+                currentUserId={currentUserId}
+                onDelete={(id: string) => deleteSharedEntry(journalId, id)}
+                navigation={navigation}
+                palette={palette}
+                safeDate={safeDate}
+              />
+            );
+          }}
           ListEmptyComponent={
              <View style={styles.empty}>
                  <Text style={[styles.emptyText, { color: palette.subtleText }]}>No entries yet.</Text>
@@ -182,6 +197,88 @@ onPress: async () => {
   );
 }
 
+// Sub-component to handle deletion animation smoothly
+const SharedEntryItem = ({ item, isOwner, isAdmin, currentUserId, onDelete, navigation, palette, safeDate }: any) => {
+  const isAuthor = item.userId === currentUserId;
+  // Allow delete if: Owner, Admin, or Author
+  const canDelete = isOwner || isAdmin || isAuthor;
+  
+  // Local state to hide item BEFORE data deletion to prevent jumping
+  const [isDeleted, setIsDeleted] = React.useState(false);
+
+  const handleDelete = () => {
+    // 1. Configure Layout Animation (Collapse effect)
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    
+    // 2. Visually remove item immediately (Collapse)
+    setIsDeleted(true);
+
+    // 3. Actually delete data after animation completes
+    setTimeout(() => {
+       onDelete(item.entryId);
+    }, 400);
+  };
+
+  const handleShare = async () => {
+    try {
+      await Share.share({
+        message: `"${item.text}"\n\n— ${item.authorName || 'Anonymous'} (Mindful Minute)`
+      });
+    } catch (e) {
+      console.log(e);
+    }
+  };
+
+  // If marked as deleted, render nothing (LayoutAnimation will smooth the gap closing)
+  if (isDeleted) return null;
+
+  return (
+    <Swipeable
+      renderLeftActions={(progress, dragX) => {
+        const scale = dragX.interpolate({ inputRange: [0, 100], outputRange: [0, 1], extrapolate: 'clamp' });
+        return (
+          <Pressable onPress={handleShare} style={styles.leftAction}>
+            <Animated.View style={{ transform: [{ scale }], alignItems: 'center' }}>
+              <Share2 size={24} color="white" />
+              <Text style={styles.actionText}>Share</Text>
+            </Animated.View>
+          </Pressable>
+        );
+      }}
+      renderRightActions={canDelete ? (progress, dragX) => {
+        const scale = dragX.interpolate({ inputRange: [-100, 0], outputRange: [1, 0], extrapolate: 'clamp' });
+        return (
+          <Pressable onPress={handleDelete} style={styles.rightAction}>
+            <Animated.View style={{ transform: [{ scale }], alignItems: 'center' }}>
+              <Trash2 size={24} color="white" />
+              <Text style={styles.actionText}>Delete</Text>
+            </Animated.View>
+          </Pressable>
+        );
+      } : undefined}
+      overshootLeft={false}
+      overshootRight={false}
+    >
+      <PremiumPressable 
+        onPress={() => navigation.navigate('SharedEntryDetail', { entry: item })}
+        style={[styles.entryCard, { backgroundColor: palette.card, borderColor: palette.border }]}
+      >
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+          <Text style={[styles.entryDate, { color: palette.subtleText }]}>
+            {safeDate(item.createdAt)}
+          </Text>
+        </View>
+        <Text style={[styles.entryText, { color: palette.text }]} numberOfLines={3}>
+          {item.text}
+        </Text>
+        <Text style={[styles.entryAuthor, { color: palette.accent }]}>
+          — {item.authorName || 'Anonymous'}
+        </Text>
+      </PremiumPressable>
+    </Swipeable>
+  );
+};
+
 const styles = StyleSheet.create({
   container: { flex: 1 },
   header: { padding: 20, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
@@ -193,8 +290,36 @@ const styles = StyleSheet.create({
   entryText: { fontSize: 16, lineHeight: 24, marginBottom: 12 },
   entryAuthor: { fontSize: 12, fontWeight: '700', fontStyle: 'italic' },
   fab: { position: 'absolute', bottom: 30, right: 24, width: 56, height: 56, borderRadius: 28, alignItems: 'center', justifyContent: 'center', shadowOpacity: 0.3, shadowRadius: 8, shadowOffset: { width: 0, height: 4 } },
-empty: { padding: 40, alignItems: 'center' },
+  empty: { padding: 40, alignItems: 'center' },
   emptyText: { fontSize: 16 },
   iconBtn: { padding: 10, borderRadius: 12 },
   searchInput: { borderWidth: 1, borderRadius: 12, paddingHorizontal: 12, paddingVertical: 10, fontSize: 14 },
+  
+  // Swipe Actions
+  leftAction: {
+    backgroundColor: '#10B981',
+    justifyContent: 'center',
+    alignItems: 'flex-start',
+    paddingLeft: 24,
+    width: 100,
+    borderRadius: 16,
+    marginBottom: 0,
+    marginRight: -16, // Pull behind the card
+  },
+  rightAction: {
+    backgroundColor: '#EF4444',
+    justifyContent: 'center',
+    alignItems: 'flex-end',
+    paddingRight: 24,
+    width: 100,
+    borderRadius: 16,
+    marginBottom: 0,
+    marginLeft: -16, // Pull behind the card
+  },
+  actionText: {
+    color: 'white',
+    fontSize: 12,
+    fontWeight: '700',
+    marginTop: 4,
+  },
 });
