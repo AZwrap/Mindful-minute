@@ -143,6 +143,7 @@ export async function saveCustomPrompt(date: string, text: string): Promise<void
   };
   await AsyncStorage.setItem(key, JSON.stringify(data));
 }
+
 export function getRandomPrompt(excludeText?: string): PromptData {
   // Filter out the current prompt so we don't get the same one
   const available = STATIC_PROMPTS.filter(p => p !== excludeText);
@@ -154,4 +155,9 @@ export function getRandomPrompt(excludeText?: string): PromptData {
     text,
     isCustom: false
   };
+}
+
+export async function resetToDailyPrompt(date: string): Promise<void> {
+  const key = `prompt_${date}`;
+  await AsyncStorage.removeItem(key);
 }

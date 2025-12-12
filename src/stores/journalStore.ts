@@ -10,13 +10,12 @@ import { sendImmediateNotification } from "../lib/notifications";
 // TYPES
 // --------------------------------------------------
 
-// Metadata for the journal itself
 export interface JournalMeta {
   id: string;
   name: string;
   members: string[]; 
-  memberIds?: string[]; // New: Stores UIDs for restoring
-  photoUrl?: string;    // <--- Added this field
+  memberIds?: string[]; 
+  photoUrl?: string;
   createdAt?: any;
   owner?: string;
   updatedAt?: number;
@@ -27,17 +26,16 @@ export interface JournalMeta {
   };
 }
 
-// State & Actions
 interface JournalState {
   currentJournalId: string | null;
   sharedEntries: Record<string, any[]>;
   journalInfo: JournalMeta | null;
   isLoading: boolean;
-  _unsubscribes: Record<string, Unsubscribe>;
+  _unsubscribes: Record<string, Unsubscribe>; // <--- UPDATED: Track multiple listeners
   journals: Record<string, JournalMeta>;
   currentUser: string | null;
-  lastRead: Record<string, number>; // { [journalId]: timestamp }
-  deletedDocDates: string[]; // <--- New: Track deleted dates to kill ghosts
+  lastRead: Record<string, number>;
+  deletedDocDates: string[];
 }
 
 interface JournalActions {
@@ -45,27 +43,20 @@ interface JournalActions {
   joinJournal: (journalId: string, memberName?: string) => Promise<boolean>;
   restoreJournals: () => Promise<number>;
   subscribeToJournal: (journalId: string) => void;
+  subscribeToAllJournals: () => void; // <--- ADDED: Missing function
   addSharedEntry: (entry: any) => Promise<void>;
   deleteSharedEntry: (journalId: string, entryId: string) => Promise<void>;
-  loadMoreSharedEntries: (journalId: string) => Promise<void>;
-updateSharedEntry: (journalId: string, entryId: string, newText: string, imageUri?: string | null) => Promise<void>;
-
-  // Helpers for SyncedService
   setSharedEntries: (journalId: string, entries: any[]) => void;
   updateJournalMeta: (journalId: string, data: any) => void;
-  addSharedEntryList: (journalId: string, entries: any[]) => void;
   addJournal: (journal: JournalMeta) => void;
   removeJournal: (journalId: string) => void;
   setCurrentUser: (userId: string) => void;
   markAsRead: (journalId: string) => void;
-  
   leaveJournal: () => void;
   reset: () => void;
 }
 
 type JournalStore = JournalState & JournalActions;
-
-// Utils removed (moved to service)
 
 // --------------------------------------------------
 // STORE
@@ -74,24 +65,24 @@ export const useJournalStore = create<JournalStore>()(
   persist(
     (set, get) => ({
       // STATE
-currentJournalId: null,
-      journals: {},                    // { [id]: JournalMeta } - Stores details of all joined journals
-      sharedEntries: {},               // { [journalId]: Entry[] }
-      journalInfo: null,               // Legacy fallback
+      currentJournalId: null,
+      journals: {},
+      sharedEntries: {},
+      journalInfo: null,
       isLoading: false,
-      _unsubscribe: null,
+      _unsubscribes: {}, // <--- Initial State
       currentUser: null,
       lastRead: {},
+      deletedDocDates: [],
 
-// ACTIONS
+      // ACTIONS
       setCurrentUser: (userId) => set({ currentUser: userId }),
       
       markAsRead: (journalId: string) => 
         set((state) => ({
-          lastRead: { ...state.lastRead, [journalId]: Date.now() }
+          lastRead: { ...(state.lastRead || {}), [journalId]: Date.now() }
         })),
 
-// Create a new shared journal
       createJournal: async (journalName: string, ownerName: string) => {
         const newJournal = await JournalService.createJournal(journalName, ownerName);
         const journalId = newJournal.id;
@@ -99,28 +90,26 @@ currentJournalId: null,
         set((state) => ({
           currentJournalId: journalId,
           journalInfo: newJournal,
-          journals: { ...state.journals, [journalId]: newJournal }
+          journals: { ...(state.journals || {}), [journalId]: newJournal }
         }));
 
         get().subscribeToJournal(journalId);
         return journalId;
       },
 
-// Join an existing journal
       joinJournal: async (journalId, memberName = "User") => {
         const info = await JournalService.joinJournal(journalId, memberName);
 
         set((state) => ({
           currentJournalId: journalId,
           journalInfo: info,
-          journals: { ...state.journals, [journalId]: info }
+          journals: { ...(state.journals || {}), [journalId]: info }
         }));
 
         get().subscribeToJournal(journalId);
         return true;
       },
 
-// Restore groups from Cloud
       restoreJournals: async () => {
         const uid = auth.currentUser?.uid;
         if (!uid) throw new Error("Must be logged in to restore journals.");
@@ -130,11 +119,12 @@ currentJournalId: null,
           const restored = await JournalService.getUserJournals(uid);
           
           set((state) => ({
-            journals: { ...state.journals, ...restored },
+            // SAFEGUARD: Ensure we don't crash on undefined
+            journals: { ...(state.journals || {}), ...(restored || {}) },
             isLoading: false
           }));
           
-          return Object.keys(restored).length;
+          return Object.keys(restored || {}).length;
         } catch (error) {
           console.error("Restore failed:", error);
           set({ isLoading: false });
@@ -142,20 +132,19 @@ currentJournalId: null,
         }
       },
 
-// Subscribe to ONE specific journal (idempotent: won't duplicate if already listening)
+      // NEW: Listen to one journal (Idempotent)
       subscribeToJournal: (journalId) => {
-        // If we already have a listener for this journal, do nothing
-        if (get()._unsubscribes[journalId]) return;
+        // Prevent duplicate listeners for the same journal
+        if (get()._unsubscribes?.[journalId]) return;
 
         set({ isLoading: true });
-
         let isFirstRun = true;
 
-const unsub = JournalService.subscribeToEntries(
+        const unsub = JournalService.subscribeToEntries(
           journalId,
           20,
           (recents, changes, isLocal) => {
-            // Check for NEW arrivals (Notification Trigger)
+            // Notification Logic
             if (!isLocal && !isFirstRun) {
               changes.forEach((change) => {
                 if (change.type === "added") {
@@ -165,7 +154,7 @@ const unsub = JournalService.subscribeToEntries(
 
                   if (isRecent && isOthers) {
                     const author = data.authorName || "Someone";
-                    const journalName = get().journals[journalId]?.name || "Journal";
+                    const journalName = get().journals?.[journalId]?.name || "Journal";
                     sendImmediateNotification(
                       `New Entry in ${journalName}`, 
                       `${author} just posted.`,
@@ -177,10 +166,10 @@ const unsub = JournalService.subscribeToEntries(
             }
 
             set((state) => {
-              const currentList = state.sharedEntries[journalId] || [];
-              const deletedDates = state.deletedDocDates || [];
+              const currentList = state.sharedEntries?.[journalId] || [];
               const rawRecentMap = new Map(recents.map(e => [e.entryId, e]));
 
+              // Deduplicate
               const validHistory = currentList.filter(e => {
                  if (rawRecentMap.has(e.entryId)) return false;
                  if (e.originalDate) {
@@ -192,9 +181,10 @@ const unsub = JournalService.subscribeToEntries(
               
               const merged = [...recents, ...validHistory];
               
-              // Update Last Entry Preview
-              let updatedJournals = state.journals;
-              const currentJournal = state.journals[journalId];
+              // Update Preview in Journal List
+              let updatedJournals = state.journals || {};
+              const currentJournal = updatedJournals[journalId];
+
               if (currentJournal) {
                   const latest = merged.length > 0 ? merged[0] : null;
                   const newMeta = { ...currentJournal };
@@ -206,11 +196,11 @@ const unsub = JournalService.subscribeToEntries(
                       };
                       newMeta.updatedAt = latest.createdAt;
                   }
-                  updatedJournals = { ...state.journals, [journalId]: newMeta };
+                  updatedJournals = { ...updatedJournals, [journalId]: newMeta };
               }
 
               return {
-                sharedEntries: { ...state.sharedEntries, [journalId]: merged },
+                sharedEntries: { ...(state.sharedEntries || {}), [journalId]: merged },
                 journals: updatedJournals,
                 isLoading: false,
               };
@@ -224,17 +214,20 @@ const unsub = JournalService.subscribeToEntries(
           }
         );
 
-        // Store the unsubscribe function in the map
+        // Save listener
         set((state) => ({
-            _unsubscribes: { ...state._unsubscribes, [journalId]: unsub }
+            _unsubscribes: { ...(state._unsubscribes || {}), [journalId]: unsub }
         }));
       },
 
-      // NEW: Helper to listen to ALL joined journals at once
+      // NEW: Listen to ALL journals (called on App Start)
       subscribeToAllJournals: () => {
           const state = get();
-          const allIds = Object.keys(state.journals);
-          allIds.forEach(id => {
+          const journals = state.journals || {};
+          // Safe check for undefined
+          if (!journals) return;
+
+          Object.keys(journals).forEach(id => {
               get().subscribeToJournal(id);
           });
       },
@@ -243,7 +236,7 @@ const unsub = JournalService.subscribeToEntries(
         const targetId = entry.journalId || get().currentJournalId;
         if (!targetId) return;
 
-        // FIX: Whitelist this date immediately so the "Zombie Killer" doesn't attack our new entry
+        // Whitelist date to prevent "Zombie Killer"
         if (entry.originalDate) {
             set((state) => ({
                 deletedDocDates: (state.deletedDocDates || []).filter(d => d !== entry.originalDate)
@@ -253,70 +246,51 @@ const unsub = JournalService.subscribeToEntries(
         await JournalService.addEntry(targetId, entry);
       },
 
-  deleteSharedEntry: async (journalId: string, entryId: string) => {
-        // 1. Snapshot previous state (for rollback AND lookup)
+      deleteSharedEntry: async (journalId, entryId) => {
         const prevState = get();
+        const entryToDelete = prevState.sharedEntries?.[journalId]?.find(e => e.entryId === entryId);
 
-        // 2. Lookup the entry BEFORE we delete it to get metadata (like originalDate)
-        const entryToDelete = prevState.sharedEntries[journalId]?.find(e => e.entryId === entryId);
-
-        // 3. Optimistic Update: Remove from UI IMMEDIATELY
         set((state) => {
-            const currentEntries = state.sharedEntries[journalId] || [];
+            const currentEntries = state.sharedEntries?.[journalId] || [];
             const newEntries = currentEntries.filter(e => e.entryId !== entryId);
             
-            // Recalculate "Last Entry" for the cover card locally
+            // Recalculate Preview
             const sorted = [...newEntries].sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
             const latest = sorted.length > 0 ? sorted[0] : null;
 
-            const currentJournal = state.journals[journalId];
-            if (!currentJournal) return { sharedEntries: { ...state.sharedEntries, [journalId]: newEntries } };
-
-            const updatedJournal = { ...currentJournal };
-
-            if (latest) {
-                updatedJournal.lastEntry = {
-                    text: latest.text || "",
-                    author: latest.authorName || latest.author || "Anonymous",
-                    createdAt: latest.createdAt
-                };
-            } else {
-                delete updatedJournal.lastEntry;
-                updatedJournal.lastEntry = undefined;
+            const updatedJournals = { ...(state.journals || {}) };
+            if (updatedJournals[journalId]) {
+                const updatedMeta = { ...updatedJournals[journalId] };
+                if (latest) {
+                    updatedMeta.lastEntry = {
+                        text: latest.text || "",
+                        author: latest.authorName || "Anonymous",
+                        createdAt: latest.createdAt
+                    };
+                } else {
+                    delete updatedMeta.lastEntry;
+                }
+                updatedJournals[journalId] = updatedMeta;
             }
 
             return {
-              sharedEntries: {
-                ...state.sharedEntries,
-                [journalId]: newEntries
-              },
-              journals: {
-                ...state.journals,
-                [journalId]: updatedJournal
-              }
+              sharedEntries: { ...(state.sharedEntries || {}), [journalId]: newEntries },
+              journals: updatedJournals
             };
         });
 
-        // 4. Handle Temporary Entry Deletion (Stop here if temp)
+        // Handle Temp/Local Deletion
         if (typeof entryId === 'string' && entryId.startsWith('temp_')) {
-            console.log("Deleted local temporary entry:", entryId);
-            
-            // FIX: Use the 'entryToDelete' we grabbed from prevState
             if (entryToDelete?.originalDate) {
-                console.log("Adding tombstone for date:", entryToDelete.originalDate);
                 set(s => ({ deletedDocDates: [...(s.deletedDocDates || []), entryToDelete.originalDate] }));
-            } else {
-                console.warn("Could not find originalDate for temp entry, it might resurrect.");
             }
             return;
         }
 
         try {
-          // 5. Perform DB Delete in Background
           await JournalService.deleteEntry(journalId, entryId);
         } catch (error) {
           console.error("Failed to delete entry, rolling back:", error);
-          // 6. Revert UI on error
           set({ 
             sharedEntries: prevState.sharedEntries, 
             journals: prevState.journals 
@@ -325,87 +299,67 @@ const unsub = JournalService.subscribeToEntries(
         }
       },
 
-  updateSharedEntry: async (journalId: string, entryId: string, newText: string, imageUri?: string | null) => {
-        try {
-          await JournalService.updateEntry(journalId, entryId, newText, imageUri);
-        } catch (error) {
-          console.error("Failed to update entry:", error);
-          throw error;
-        }
-      },
-
-      // ------------------------------------------
-      // Service Helpers
-      // ------------------------------------------
+      // Helpers
       setSharedEntries: (journalId, entries) =>
         set((state) => ({
-          sharedEntries: {
-            ...state.sharedEntries,
-            [journalId]: entries,
-          },
+          sharedEntries: { ...(state.sharedEntries || {}), [journalId]: entries },
         })),
 
-  updateJournalMeta: (journalId, data) =>
+      updateJournalMeta: (journalId, data) =>
         set((state) => ({
-          journalInfo: {
-            ...(state.journalInfo || { id: journalId, name: 'Unknown', members: [] }),
-            ...data,
-          },
-          // Fix: Also update the specific journal in the list, which the UI reads
+          journalInfo: { ...(state.journalInfo || { id: journalId, name: 'Unknown', members: [] }), ...data },
           journals: {
-            ...state.journals,
-            [journalId]: {
-              ...(state.journals[journalId] || {}),
-              ...data
-            }
+            ...(state.journals || {}),
+            [journalId]: { ...(state.journals?.[journalId] || {}), ...data }
           }
         })),
 
       addSharedEntryList: (journalId, entries) =>
         set((state) => ({
-          sharedEntries: {
-            ...state.sharedEntries,
-            [journalId]: entries,
-          },
+          sharedEntries: { ...(state.sharedEntries || {}), [journalId]: entries },
         })),
         
       addJournal: (journal) => 
         set((state) => ({
-          journals: { ...state.journals, [journal.id]: journal }
+          journals: { ...(state.journals || {}), [journal.id]: journal }
         })),
 
       removeJournal: (journalId) =>
         set((state) => {
-          const newJournals = { ...state.journals };
+          const newJournals = { ...(state.journals || {}) };
           delete newJournals[journalId];
-          return { journals: newJournals };
+          
+          // Also cleanup listener
+          const unsub = state._unsubscribes?.[journalId];
+          if (unsub) unsub();
+          
+          const newUnsubscribes = { ...(state._unsubscribes || {}) };
+          delete newUnsubscribes[journalId];
+
+          return { journals: newJournals, _unsubscribes: newUnsubscribes };
         }),
 
-      // ------------------------------------------
       // Cleanup
-      // ------------------------------------------
       leaveJournal: () => {
-        const unsub = get()._unsubscribe;
-        if (unsub) {
-          unsub();
-        }
+        // Stop all listeners
+        const unsubs = get()._unsubscribes || {};
+        Object.values(unsubs).forEach(u => u());
 
         set({
-      currentJournalId: null,
-      journals: {},                    // { [id]: JournalMeta } - Stores details of all joined journals
-      sharedEntries: {},               // { [journalId]: Entry[] }
-      journalInfo: null,               // Legacy fallback
-      isLoading: false,
-      _unsubscribe: null,
-      currentUser: null,
-      lastRead: {},
-      deletedDocDates: [], // <--- Initial state
+          currentJournalId: null,
+          journals: {},
+          sharedEntries: {},
+          journalInfo: null,
+          isLoading: false,
+          _unsubscribes: {}, 
+          currentUser: null,
+          lastRead: {},
+          deletedDocDates: [], 
         });
       },
 
       reset: () => {
         get().leaveJournal();
-        set({ sharedEntries: {}, journals: {} });
       },
     }),
     {
@@ -418,7 +372,7 @@ const unsub = JournalService.subscribeToEntries(
         sharedEntries: state.sharedEntries, 
         currentUser: state.currentUser,
         lastRead: state.lastRead, 
-        deletedDocDates: state.deletedDocDates, // Persist tombstones
+        deletedDocDates: state.deletedDocDates,
       }),
     }
   )

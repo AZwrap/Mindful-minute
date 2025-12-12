@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { View, Text, FlatList, Pressable, StyleSheet, Alert, TextInput, Keyboard, RefreshControl, Image } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -15,10 +15,20 @@ type Props = NativeStackScreenProps<RootStackParamList, 'JournalList'>;
 
 export default function JournalListScreen({ navigation }: Props) {
   const palette = useSharedPalette();
-  const { journals, createJournal, joinJournal, restoreJournals, currentUser, lastRead } = useJournalStore();
-  const journalList = Object.values(journals);
+  
+  // 1. SAFETIES: Default to {} if store returns undefined to prevent crashes
+  const journals = useJournalStore((s) => s.journals) || {};
+  const lastRead = useJournalStore((s) => s.lastRead) || {};
+  const { joinJournal, restoreJournals, currentUser } = useJournalStore();
 
-// Join State
+  // 2. Sort journals by activity (Newest updated first)
+  const journalList = useMemo(() => {
+    return Object.values(journals).sort((a, b) => 
+      (b.updatedAt || 0) - (a.updatedAt || 0)
+    );
+  }, [journals]);
+
+  // Join State
   const [isJoining, setIsJoining] = useState(false);
   const [joinCode, setJoinCode] = useState('');
   const [refreshing, setRefreshing] = useState(false);
@@ -34,9 +44,8 @@ export default function JournalListScreen({ navigation }: Props) {
     }
   };
 
-// Helper to guard cloud features
+  // Helper to guard cloud features
   const requireAuth = (action: () => void) => {
-    // Check auth.currentUser directly to prevent "stale state" bugs
     if (auth.currentUser || currentUser) {
       action();
     } else {
@@ -62,26 +71,27 @@ export default function JournalListScreen({ navigation }: Props) {
     }
     
     if (!currentUser) {
-      requireAuth(() => {}); // Trigger auth prompt
+      requireAuth(() => {}); 
       return;
     }
 
     try {
       // 1. Join
-      await joinJournal(joinCode.trim(), "Member"); // Replace "Member" with real name
+      await joinJournal(joinCode.trim(), auth.currentUser?.displayName || "Member");
       
       // 2. Reset & Navigate
+      const targetId = joinCode.trim();
       setJoinCode('');
       setIsJoining(false);
       Keyboard.dismiss();
-      navigation.navigate('SharedJournal', { journalId: joinCode.trim() });
+      navigation.navigate('SharedJournal', { journalId: targetId });
       
     } catch (error) {
       Alert.alert("Join Failed", "Could not find a journal with that ID.");
     }
   };
 
-const handleRestore = () => {
+  const handleRestore = () => {
     requireAuth(async () => {
       try {
         const count = await restoreJournals();
@@ -95,8 +105,8 @@ const handleRestore = () => {
   return (
     <LinearGradient colors={[palette.bg, palette.bg]} style={styles.container}>
       <SafeAreaView style={{ flex: 1 }}>
-<View style={styles.headerColumn}>
-<View style={styles.headerRow}>
+        <View style={styles.headerColumn}>
+          <View style={styles.headerRow}>
             <Text style={[styles.title, { color: palette.text }]}>My Groups</Text>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16 }}>
               {/* Restore (Icon Only) */}
@@ -139,7 +149,7 @@ const handleRestore = () => {
           )}
         </View>
 
-<FlatList
+        <FlatList
           data={journalList}
           keyExtractor={(item) => item.id}
           contentContainerStyle={styles.list}
@@ -153,7 +163,7 @@ const handleRestore = () => {
               </Text>
             </View>
           }
-renderItem={({ item }) => {
+          renderItem={({ item }) => {
             // Format relative time helper
             const getTimeAgo = (ts?: number) => {
               if (!ts) return '';
@@ -166,11 +176,12 @@ renderItem={({ item }) => {
               return Math.floor(hours / 24) + 'd';
             };
 
-const lastMsg = item.lastEntry;
+            const lastMsg = item.lastEntry;
             const lastReadTime = lastRead[item.id] || 0;
+            // Check if updated AFTER last read time
             const isUnread = (item.updatedAt || 0) > lastReadTime;
 
-return (
+            return (
               <PremiumPressable
                 onPress={() => navigation.navigate('SharedJournal', { journalId: item.id })}
                 style={[styles.card, { backgroundColor: palette.card, borderColor: palette.border }]}
@@ -185,7 +196,7 @@ return (
                   )}
                   
                   <View style={{ flex: 1 }}>
-<View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
                       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
                         <Text style={[styles.cardTitle, { color: palette.text }]}>{item.name}</Text>
                         {isUnread && <View style={styles.unreadDot} />}
@@ -197,7 +208,7 @@ return (
                       )}
                     </View>
                     
-<Text style={[styles.cardSub, { color: palette.subtleText }]} numberOfLines={1}>
+                    <Text style={[styles.cardSub, { color: palette.subtleText }]} numberOfLines={1}>
                       {lastMsg 
                         ? `${lastMsg.author}: ${lastMsg.text}` 
                         : `${item.memberIds?.length || item.members.length} member${(item.memberIds?.length || item.members.length) !== 1 ? 's' : ''}`
@@ -228,7 +239,7 @@ const styles = StyleSheet.create({
   joinInput: { flex: 1, height: 44, borderRadius: 12, paddingHorizontal: 16, borderWidth: 1, fontSize: 16 },
   joinConfirmBtn: { width: 44, height: 44, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
 
-list: { padding: 16, paddingTop: 10 },
+  list: { padding: 16, paddingTop: 10 },
   card: { borderRadius: 16, borderWidth: 1, marginBottom: 12, padding: 16 },
   cardContent: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   iconBox: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },

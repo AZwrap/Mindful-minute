@@ -556,10 +556,11 @@ const styles = StyleSheet.create({
 moodSection: {
     marginBottom: 16,
   },
-  moodRow: {
+moodRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
+    flexWrap: 'wrap', // <--- Added: Allows pills to drop to next line if needed
   },
 moodTag: {
     paddingHorizontal: 14,

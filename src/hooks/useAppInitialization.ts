@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import { useColorScheme } from 'react-native';
-import { auth } from '../firebaseConfig'; // <--- Add this
-import { useJournalStore } from '../stores/journalStore'; // <--- Add this
+import { auth } from '../firebaseConfig'; 
+import { useJournalStore } from '../stores/journalStore'; 
 import * as SplashScreen from 'expo-splash-screen';
 import * as Linking from 'expo-linking';
 import * as Notifications from 'expo-notifications';
@@ -18,7 +18,7 @@ export function useAppInitialization() {
   const system = useColorScheme();
   const { getCurrentTheme } = useTheme();
   const theme = getCurrentTheme(system);
-const settingsLoaded = useSettings((s) => s.loaded);
+  const settingsLoaded = useSettings((s) => s.loaded);
   const smartRemindersEnabled = useSettings((s) => s.smartRemindersEnabled);
   const reminderTime = useSettings((s) => s.reminderTime);
 
@@ -43,9 +43,8 @@ const settingsLoaded = useSettings((s) => s.loaded);
 
   // 3. Notifications (Schedule & Tap Handler)
   useEffect(() => {
-// A. Handle "Tap to Open"
+    // A. Handle "Tap to Open"
     const subscription = Notifications.addNotificationResponseReceivedListener((response) => {
-      // "Write" is now type-checked!
       if (navigationRef.isReady()) {
         navigationRef.navigate("Write", {
           date: new Date().toISOString().split('T')[0],
@@ -58,8 +57,7 @@ const settingsLoaded = useSettings((s) => s.loaded);
     const manageSchedule = async () => {
       if (smartRemindersEnabled) {
         const token = await registerForPushNotificationsAsync();
-if (token !== undefined) {
-          // Use stored time or default to 20:00
+        if (token !== undefined) {
           const { hour, minute } = reminderTime || { hour: 20, minute: 0 };
           await scheduleDailyReminder(hour, minute);
         }
@@ -72,31 +70,7 @@ if (token !== undefined) {
       manageSchedule();
     }
 
-// 5. Shared Journals: Restore & Listen for Notifications
-  useEffect(() => {
-    const initShared = async () => {
-      // Small delay to ensure Firebase Auth is ready
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      const user = auth.currentUser;
-      if (user) {
-        try {
-          // 1. Restore the user's groups from the cloud
-          await useJournalStore.getState().restoreJournals();
-          
-          // 2. Start listening to ALL groups for notifications (New)
-          // This keeps the socket open so "onSnapshot" can trigger alerts
-          useJournalStore.getState().subscribeToAllJournals();
-        } catch (e) {
-          console.warn("Failed to init shared journals:", e);
-        }
-      }
-    };
-
-    initShared();
-  }, []);
-
-return () => subscription.remove();
+    return () => subscription.remove();
   }, [smartRemindersEnabled, reminderTime, settingsLoaded]);
 
   // 4. Auto-Sync Personal Entries on Start
@@ -110,6 +84,29 @@ return () => subscription.remove();
       }
     };
     initSync();
+  }, []);
+
+  // 5. Shared Journals: Restore & Listen for Notifications (MOVED TO TOP LEVEL)
+  useEffect(() => {
+    const initShared = async () => {
+      // Small delay to ensure Firebase Auth is ready
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      
+      const user = auth.currentUser;
+      if (user) {
+        try {
+          // 1. Restore the user's groups from the cloud
+          await useJournalStore.getState().restoreJournals();
+          
+          // 2. Start listening to ALL groups for notifications
+          useJournalStore.getState().subscribeToAllJournals();
+        } catch (e) {
+          console.warn("Failed to init shared journals:", e);
+        }
+      }
+    };
+
+    initShared();
   }, []);
 
   return {

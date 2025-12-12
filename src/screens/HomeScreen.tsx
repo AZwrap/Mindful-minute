@@ -219,22 +219,27 @@ export default function HomeScreen() {
     } 
   });
 
-  if (hasInProgress) {
+if (hasInProgress) {
     primaryLabel = 'Continue Writing';
     primaryVariant = 'continue';
     const seedText = draftText?.trim().length ? draftText : (entryToday?.text || '');
     primaryPress = () => navigation.navigate('Write', { 
       date, 
-      prompt: { 
-        text: todayPrompt.text,
-        isSmart: todayPrompt.isSmart
-      }, 
+      prompt: { text: todayPrompt.text, isSmart: todayPrompt.isSmart }, 
       text: seedText 
     });  
   } else if (hasFinal) {
     primaryLabel = "View Today's Entry";
     primaryVariant = 'view';
     primaryPress = () => navigation.navigate('EntryDetail', { date });
+  } else {
+    // Default: Start Journaling
+    primaryLabel = 'Start Journaling';
+    primaryVariant = 'default';
+    primaryPress = () => navigation.navigate('Write', { 
+      date, 
+      prompt: { text: todayPrompt.text, isSmart: todayPrompt.isSmart }
+    });
   }
 
   // 7. Visuals
@@ -338,87 +343,121 @@ export default function HomeScreen() {
           </View>
         </View>
 
-        {/* Prompt Card */}
-        <View 
-          style={[styles.promptCard, { backgroundColor: isDark ? 'rgba(0,0,0,0.2)' : 'rgba(255,255,255,0.6)' }]}
-          accessible={true}
-          accessibilityRole="header"
-          accessibilityLabel={`Today's journal prompt: ${todayPrompt.text}`}
-        >
-          <Text style={[styles.promptLabel, { color: brand }]}>TODAY'S REFLECTION</Text>
-          <Text 
-            style={[styles.prompt, { color: textMain }]}
-            accessibilityRole="text"
-            accessibilityLabel={todayPrompt.text}
-          >
-            {todayPrompt.text}
-          </Text>
-          {todayPrompt.explanation ? (
-            <Text style={[styles.promptExplanation, { color: textSub, fontSize: 12, fontStyle: 'italic', textAlign: 'center', marginTop: 8 }]}>
-              {todayPrompt.explanation}
-            </Text>
-          ) : null}
-        </View>
-        
-        {/* Custom Prompt Button */}
-        <PremiumPressable
-          onPress={() => {
-            navigation.navigate('CustomPrompt', { 
-              date, 
-              currentPrompt: today.text,
-              isCustom: today.isCustom 
-            });
-          }}
-          haptic="light"
-          style={styles.customPromptBtn}
-          accessible={true}
-          accessibilityRole="button"
-          accessibilityLabel={today.isCustom ? 'Edit custom prompt' : 'Use custom prompt instead of today\'s prompt'}
-        >
-          <Text style={[styles.customPromptText, { color: brand }]}>
-            {today.isCustom ? 'Edit Custom Prompt' : 'Use Custom Prompt'}
-          </Text>
-        </PremiumPressable>
-
-        {/* New Smart Prompt Button */}
-        {entries.length >= 3 && !today.isCustom && (
-          <PremiumPressable
-            onPress={async () => {
-              setIsGeneratingPrompt(true);
-              try {
-                const userData = analyzeForSmartPrompts(entries);
-                const newPrompt = generateSmartPrompt(userData);
-                const explanation = getPromptExplanation(newPrompt, userData);
-                
-                setTodayPrompt({
-                  text: newPrompt,
-                  explanation: explanation,
-                  isSmart: true
-                });
-
-                if (hapticsEnabled) {
-                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                }
-              } catch (error) {
-                console.error('Error generating smart prompt:', error);
-              } finally {
-                setIsGeneratingPrompt(false);
-              }
-            }}
-            haptic="light"
-            disabled={isGeneratingPrompt}
+{/* PROMPT SECTION: Card + Actions grouped to tighten spacing */}
+        <View style={{ gap: 15 }}> 
+          {/* Prompt Card */}
+          <View 
             style={[
-              styles.customPromptBtn,
-              { opacity: isGeneratingPrompt ? 0.6 : 1 }
+                styles.promptCard, 
+                { 
+                    backgroundColor: isDark ? 'rgba(0,0,0,0.2)' : 'rgba(255,255,255,0.6)',
+                    marginBottom: 0 // <--- OVERRIDE: Remove default margin to let the wrapper control spacing
+                }
             ]}
             accessible={true}
-            accessibilityRole="button"
+            accessibilityRole="header"
+            accessibilityLabel={`Today's journal prompt: ${todayPrompt.text}`}
           >
-            <Text style={[styles.customPromptText, { color: brand }]}>
-              {isGeneratingPrompt ? 'Generating...' : 'Generate New Smart Prompt'}
+            <Text style={[styles.promptLabel, { color: brand }]}>TODAY'S REFLECTION</Text>
+            <Text 
+              style={[styles.prompt, { color: textMain }]}
+              accessibilityRole="text"
+              accessibilityLabel={todayPrompt.text}
+            >
+              {todayPrompt.text}
             </Text>
-          </PremiumPressable>
-        )}
+            {todayPrompt.explanation ? (
+              <Text style={[styles.promptExplanation, { color: textSub, fontSize: 12, fontStyle: 'italic', textAlign: 'center', marginTop: 8 }]}>
+                {todayPrompt.explanation}
+              </Text>
+            ) : null}
+          </View>
+          
+          {/* Prompt Actions Group */}
+          <View style={{ gap: 6, alignItems: 'center' }}>
+            
+            {/* Custom Prompt Button */}
+            <PremiumPressable
+              onPress={() => {
+                navigation.navigate('CustomPrompt', { 
+                  date, 
+                  currentPrompt: today.text,
+                  isCustom: today.isCustom 
+                });
+              }}
+              haptic="light"
+              style={styles.customPromptBtn}
+              accessible={true}
+              accessibilityRole="button"
+              accessibilityLabel={today.isCustom ? 'Edit custom prompt' : 'Use custom prompt instead of today\'s prompt'}
+            >
+              <Text style={[styles.customPromptText, { color: brand }]}>
+                {today.isCustom ? 'Edit Custom Prompt' : 'Use Custom Prompt'}
+              </Text>
+            </PremiumPressable>
+
+            {/* New Smart Prompt Button */}
+            {entries.length >= 3 && !today.isCustom && !hasFinal && (
+              <PremiumPressable
+                onPress={async () => {
+                  setIsGeneratingPrompt(true);
+                  try {
+                    const userData = analyzeForSmartPrompts(entries);
+                    
+                    // FORCE NEW: Try up to 5 times to ensure we get a DIFFERENT prompt
+                    let newPrompt = '';
+                    let attempts = 0;
+                    do {
+                        newPrompt = generateSmartPrompt(userData);
+                        attempts++;
+                    } while (newPrompt === todayPrompt.text && attempts < 5);
+
+                    const explanation = getPromptExplanation(newPrompt, userData);
+                    
+                    // 1. Update UI with new prompt
+                    setTodayPrompt({
+                      text: newPrompt,
+                      explanation: explanation,
+                      isSmart: true
+                    });
+
+                    // 2. RESET DAY: Clear everything to give a fresh start
+                    // A. Clear the temporary draft
+                    useEntriesStore.getState().setDraft(date, ''); 
+                    
+                    // B. Clear the saved entry (Text, Mood, Image)
+                    useEntriesStore.getState().upsert({
+                        date,
+                        text: '',
+                        moodTag: null as any, 
+                        imageUri: null as any
+                    });
+
+                    if (hapticsEnabled) {
+                      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                    }
+                  } catch (error) {
+                    console.error('Error generating smart prompt:', error);
+                  } finally {
+                    setIsGeneratingPrompt(false);
+                  }
+                }}
+                haptic="light"
+                disabled={isGeneratingPrompt}
+                style={[
+                  styles.customPromptBtn,
+                  { opacity: isGeneratingPrompt ? 0.6 : 1 }
+                ]}
+                accessible={true}
+                accessibilityRole="button"
+              >
+                <Text style={[styles.customPromptText, { color: brand }]}>
+                  {isGeneratingPrompt ? 'Generating...' : 'Generate New Smart Prompt'}
+                </Text>
+              </PremiumPressable>
+            )}
+          </View>
+        </View>
 
         {/* Row: Start Journaling + History */}
         <View style={styles.row}>

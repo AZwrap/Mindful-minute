@@ -636,8 +636,12 @@ onBlur={() => handleInputFocusAnim(0)}
               </View>
             </Animated.View>
 
-            {/* MOOD SUGGESTIONS */}
-            <View style={styles.bottomRowContainer}>
+{/* MOOD SUGGESTIONS */}
+            {/* Conditionally tighten spacing if no suggestions exist */}
+            <View style={[
+                styles.bottomRowContainer, 
+                suggestedMoods.length === 0 && { marginTop: 4, marginBottom: 2, minHeight: 20 }
+            ]}>
                 {suggestedMoods.length > 0 && (
                   <View style={styles.suggestionsContainer}>
                     <Text style={[styles.suggestionsLabel, { color: palette.subtleText }]}>Suggested moods:</Text>
@@ -668,11 +672,18 @@ onBlur={() => handleInputFocusAnim(0)}
                 </View>
               </View>
 
-          {/* FOCUS MODE */}
+{/* FOCUS MODE */}
           <PremiumPressable
             onPress={() => navigation.navigate('FocusWrite', { date, prompt: currentPrompt, text })}
             haptic="light"
-            style={[styles.focusButton, { backgroundColor: palette.accent + '10', borderColor: palette.accent + '30', marginTop: 12 }]}
+            style={[
+              styles.focusButton, 
+              { 
+                backgroundColor: palette.accent + '10', 
+                borderColor: palette.accent + '30', 
+                marginTop: suggestedMoods.length > 0 ? 12 : 6 // <--- Reduce gap if no suggestions
+              }
+            ]}
           >
             <Text style={[styles.focusButtonText, { color: palette.accent }]}>Enter Focus Mode</Text>
           </PremiumPressable>

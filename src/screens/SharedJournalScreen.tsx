@@ -1,5 +1,6 @@
 import React, { useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, FlatList, Pressable, Alert, TextInput, Share, Animated, LayoutAnimation, Platform, UIManager, Image } from 'react-native';
+import { View, Text, StyleSheet, FlatList, Pressable, Alert, TextInput, Share, Animated, LayoutAnimation, Platform, UIManager, Image, ActivityIndicator, RefreshControl } from 'react-native';
+import { JournalService } from '../services/journalService'; // <--- Added
 import { Swipeable } from 'react-native-gesture-handler';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -35,8 +36,30 @@ const {
     sharedEntries, 
     journalInfo, 
     markAsRead,
-    deleteSharedEntry 
+    deleteSharedEntry,
+    isLoading,
+    updateJournalMeta, // <--- Added
+    restoreJournals    // <--- Added
   } = useJournalStore();
+
+  const [refreshing, setRefreshing] = React.useState(false);
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    try {
+      // 1. Refresh Metadata (Name, Members, Photo)
+      const updated = await JournalService.getJournal(journalId);
+      if (updated) {
+        updateJournalMeta(journalId, updated);
+      }
+      // 2. Sync all journals to ensure roles/permissions are up to date
+      await restoreJournals();
+    } catch (e) {
+      console.log("Refresh error:", e);
+    } finally {
+      setRefreshing(false);
+    }
+  };
   
   const currentUserId = auth.currentUser?.uid;
 
@@ -179,6 +202,14 @@ return (
           data={filteredEntries}
           keyExtractor={(item) => item.entryId}
           contentContainerStyle={styles.list}
+          refreshControl={
+            <RefreshControl 
+              refreshing={refreshing} 
+              onRefresh={onRefresh} 
+              tintColor={palette.accent} 
+              colors={[palette.accent]} // Android
+            />
+          }
 renderItem={({ item }) => {
             const myRole = journal?.roles?.[currentUserId || ''];
             const isAdmin = myRole === 'admin' || myRole === 'owner';
@@ -197,10 +228,17 @@ return (
               />
             );
           }}
-          ListEmptyComponent={
-             <View style={styles.empty}>
-                 <Text style={[styles.emptyText, { color: palette.subtleText }]}>No entries yet.</Text>
-             </View>
+ListEmptyComponent={
+             isLoading ? (
+               <View style={styles.empty}>
+                 <ActivityIndicator size="small" color={palette.accent} />
+                 <Text style={[styles.emptyText, { color: palette.subtleText, marginTop: 12 }]}>Syncing entries...</Text>
+               </View>
+             ) : (
+               <View style={styles.empty}>
+                   <Text style={[styles.emptyText, { color: palette.subtleText }]}>No entries yet.</Text>
+               </View>
+             )
           }
         />
 

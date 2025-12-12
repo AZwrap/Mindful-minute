@@ -25,11 +25,11 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { 
-  Trash2, Save, FileText, Database, RotateCcw, Share, 
+Trash2, Save, FileText, Database, RotateCcw, Share, LogOut,
 ChevronDown, ChevronUp, Palette, Cloud, CloudDownload, Bell, Lock, Zap, Volume2, Sun, Moon, User
 } from 'lucide-react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { updateProfile } from 'firebase/auth';
+import { updateProfile, signOut } from 'firebase/auth';
 import { auth } from '../firebaseConfig';
 
 // Stores & Config
@@ -273,6 +273,32 @@ const handleBulkExport = () => {
             Alert.alert("Success", "Data restored!");
         }
      } catch (e) { Alert.alert("Error", "Failed to restore data."); }
+  };
+
+  const handleLogout = () => {
+    Alert.alert(
+      "Log Out",
+      "Are you sure you want to sign out?",
+      [
+        { text: "Cancel", style: "cancel" },
+        { 
+          text: "Log Out", 
+          style: "destructive", 
+          onPress: async () => {
+            try {
+              await signOut(auth);
+              // Reset to Auth Screen
+              navigation.reset({
+                index: 0,
+                routes: [{ name: 'Auth' }],
+              });
+            } catch (e) {
+              Alert.alert("Error", "Failed to log out.");
+            }
+          }
+        }
+      ]
+    );
   };
 
   const handleFactoryReset = () => {
@@ -845,6 +871,31 @@ const SettingRow = ({ label, description, value, onValueChange, icon }: any) => 
 
                 </View>
               </View>
+
+              {/* LOGOUT BUTTON */}
+              {auth.currentUser && (
+                <View style={{ marginTop: 24 }}>
+                  <PremiumPressable 
+                    onPress={handleLogout} 
+                    style={{ 
+                      backgroundColor: palette.card, 
+                      borderColor: palette.border, 
+                      borderWidth: 1, 
+                      borderRadius: 16, 
+                      padding: 16, 
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: 12
+                    }}
+                  >
+                    <LogOut size={20} color={palette.text} />
+                    <Text style={{ color: palette.text, fontWeight: '700' }}>
+                      Log Out
+                    </Text>
+                  </PremiumPressable>
+                </View>
+              )}
 
               {/* 6. DANGER ZONE */}
               <View style={{ marginTop: 12, marginBottom: -80 }}>
