@@ -144,12 +144,20 @@ export const useJournalStore = create<JournalStore>()(
           journalId,
           20,
           (recents, changes, isLocal) => {
-            // Notification Logic
+// Check for NEW arrivals (Notification Trigger)
             if (!isLocal && !isFirstRun) {
               changes.forEach((change) => {
                 if (change.type === "added") {
                   const data = change.doc.data();
-                  const isRecent = Date.now() - (data.createdAt || 0) < 60000;
+                  
+                  // Handle both Number and Firestore Timestamp
+                  const createdAt = typeof data.createdAt === 'number' 
+                    ? data.createdAt 
+                    : (data.createdAt?.toMillis ? data.createdAt.toMillis() : Date.now());
+
+                  // 10 Minute Window: Catches updates even if app was backgrounded for a while
+                  const isRecent = Date.now() - createdAt < 600000; 
+                  
                   const isOthers = data.owner !== get().currentUser && data.userId !== get().currentUser;
 
                   if (isRecent && isOthers) {

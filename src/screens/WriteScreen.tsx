@@ -258,7 +258,6 @@ const [isPlaying, setIsPlaying] = useState(false);
   // ===== STATE =====
   const [text, setText] = useState(initialText || '');
   const [gratitudeEntries, setGratitudeEntries] = useState<string[]>([]);
-  const [toastMessage, setToastMessage] = useState('');
   const gratitudeModeEnabled = useSettings((s) => s.gratitudeModeEnabled);
   const [isGratitudeExpanded, setIsGratitudeExpanded] = useState(false);
 
@@ -354,7 +353,6 @@ setRunning, handleTick, skipBreak, handleReset, fade
     if (!text.trim() && !audioUri && !imageUri) return;
     
     isSaved.current = true;
-    showToast("Saving...");
 
 try {
       // Base64 Bypass
@@ -375,7 +373,7 @@ upsert({
       if (!preserveTimerProgress) setDraftTimer(date, writeDuration);
       navigation.reset({ index: 0, routes: [{ name: 'MainTabs' }] });
     } catch (e) {
-      showToast("Error saving image. Try again.");
+Alert.alert("Error", "Could not save entry.");
       isSaved.current = false; // Allow retry
     }
   };
@@ -387,7 +385,6 @@ const continueToMood = async () => {
     }
     
     isSaved.current = true;
-    showToast(imageUri ? "Uploading image..." : "Saving...");
 
 try {
       // Base64 Bypass: No upload needed, imageUri contains the data
@@ -412,7 +409,6 @@ try {
         imageUri: finalImageUri
       });
 
-      if (xpBonus > 0) showToast('+10 XP Gratitude Bonus!');
       
       setTimeout(() => {
         navigation.navigate('MoodTag', { 
@@ -425,7 +421,7 @@ try {
       }, 50);
 
     } catch (e) {
-      showToast("Error uploading image");
+Alert.alert("Error", "Could not save entry.");
       isSaved.current = false;
     }
   };
@@ -442,19 +438,16 @@ try {
     }
   };
 
-  const showToast = (message: string) => {
-    setToastMessage(message);
-    setTimeout(() => setToastMessage(''), 2000);
-  };
-
  // Immersive Gradient Logic
   const activeMoodColor = selectedSuggestedMood ? MOOD_COLORS[selectedSuggestedMood] : null;
   
-  const currentGradientColors = useMemo(() => {
+const currentGradientColors = useMemo(() => {
     if (activeMoodColor) {
       // Tint the top of the screen with the mood color (fading down to theme bg)
       return isDark 
-        ? [activeMoodColor + '50', '#1E293B', '#0F172A'] // Dark theme tint
+        // FIX: Reduced opacity from '50' (31%) to '15' (8%) for Dark Mode
+        // This prevents "Happy Yellow" from turning muddy brown against the dark blue
+        ? [activeMoodColor + '15', '#1E293B', '#0F172A'] 
         : [activeMoodColor + '30', '#F1F5F9', '#F8FAFC']; // Light theme tint
     }
     // Default Theme Gradients
@@ -517,19 +510,11 @@ try {
               )}
             </Animated.View>
 
-            {!timerCompleted && (
+{!timerCompleted && (
               <PremiumPressable onPress={() => setShowTimer(!showTimer)} style={styles.toggle}>
                 <Text style={{ color: palette.accent, fontWeight: '500' }}>{showTimer ? 'Hide Timer' : 'Show Timer'}</Text>
               </PremiumPressable>
             )}
-
-            {showCoach && (
-              <Animated.View style={[styles.coachContainer, { opacity: coachFade }]}>
-                <View style={[styles.coachBubble, { backgroundColor: palette.card }]}>
-                  <Text style={[styles.coachText, { color: palette.accent }]}>{coachMessage}</Text>
-                </View>
-              </Animated.View>
-)}
 
             {/* FIX: Removed negative margin hack. Layout now naturally reflows because TimerContainer collapses above. */}
             <Animated.View style={[animatedInputStyle, { marginTop: 16, borderRadius: 14 }]}
@@ -708,12 +693,8 @@ onBlur={() => handleInputFocusAnim(0)}
           </View>
         </View>
 
-        {toastMessage ? (
-          <View style={[styles.toast, { backgroundColor: palette.accent }]}>
-            <Text style={[styles.toastText, { color: 'white' }]}>{toastMessage}</Text>
-          </View>
-        ) : null}
-      </ScrollView>
+</ScrollView>
+
       </SafeAreaView>
     </LinearGradient>
   );
@@ -760,8 +741,6 @@ timerContainer: { justifyContent: 'center', minHeight: 10, paddingBottom: 8 }, /
   bottomRowContainer: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginTop: 8, marginBottom: 8, minHeight: 40 },
   focusButton: { borderWidth: 1, paddingVertical: 12, paddingHorizontal: 16, borderRadius: 12, alignItems: 'center', marginBottom: 12 },
   focusButtonText: { fontSize: 14, fontWeight: '600' },
-  toast: { position: 'absolute', bottom: 100, alignSelf: 'center', paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20, zIndex: 1000 },
-  toastText: { fontSize: 14, fontWeight: '600', textAlign: 'center' },
   coachContainer: { alignItems: 'center', marginBottom: 12, zIndex: 10 },
   coachBubble: { flexDirection: 'row', alignItems: 'center', paddingVertical: 8, paddingHorizontal: 16, borderRadius: 20, gap: 8 },
   coachText: { fontSize: 13, fontWeight: '600', fontStyle: 'italic' },

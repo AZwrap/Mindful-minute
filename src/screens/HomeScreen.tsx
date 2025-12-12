@@ -373,28 +373,30 @@ if (hasInProgress) {
             ) : null}
           </View>
           
-          {/* Prompt Actions Group */}
-          <View style={{ gap: 6, alignItems: 'center' }}>
+{/* Prompt Actions Group */}
+          <View style={{ gap: 2, alignItems: 'center' }}>
             
-            {/* Custom Prompt Button */}
-            <PremiumPressable
-              onPress={() => {
-                navigation.navigate('CustomPrompt', { 
-                  date, 
-                  currentPrompt: today.text,
-                  isCustom: today.isCustom 
-                });
-              }}
-              haptic="light"
-              style={styles.customPromptBtn}
-              accessible={true}
-              accessibilityRole="button"
-              accessibilityLabel={today.isCustom ? 'Edit custom prompt' : 'Use custom prompt instead of today\'s prompt'}
-            >
-              <Text style={[styles.customPromptText, { color: brand }]}>
-                {today.isCustom ? 'Edit Custom Prompt' : 'Use Custom Prompt'}
-              </Text>
-            </PremiumPressable>
+            {/* Custom Prompt Button - Only visible if entry is NOT finalized */}
+            {!hasFinal && (
+              <PremiumPressable
+                onPress={() => {
+                  navigation.navigate('CustomPrompt', { 
+                    date, 
+                    currentPrompt: today.text,
+                    isCustom: today.isCustom 
+                  });
+                }}
+                haptic="light"
+                style={styles.customPromptBtn}
+                accessible={true}
+                accessibilityRole="button"
+                accessibilityLabel={today.isCustom ? 'Edit custom prompt' : 'Use custom prompt instead of today\'s prompt'}
+              >
+                <Text style={[styles.customPromptText, { color: brand }]}>
+                  {today.isCustom ? 'Edit Custom Prompt' : 'Use Custom Prompt'}
+                </Text>
+              </PremiumPressable>
+            )}
 
             {/* New Smart Prompt Button */}
             {entries.length >= 3 && !today.isCustom && !hasFinal && (

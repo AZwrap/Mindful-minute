@@ -92,9 +92,12 @@ export function useAppInitialization() {
       // Small delay to ensure Firebase Auth is ready
       await new Promise(resolve => setTimeout(resolve, 2000));
       
-      const user = auth.currentUser;
+const user = auth.currentUser;
       if (user) {
         try {
+          // 0. Ensure Store knows current user (Critical for notifications)
+          useJournalStore.getState().setCurrentUser(user.uid);
+
           // 1. Restore the user's groups from the cloud
           await useJournalStore.getState().restoreJournals();
           
