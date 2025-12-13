@@ -228,8 +228,52 @@ async updateEntry(journalId: string, entryId: string, newText: string, imageUri?
     });
   },
 
-  async deleteJournal(journalId: string) {
+async deleteJournal(journalId: string) {
     const ref = doc(db, "journals", journalId);
     await deleteDoc(ref);
+  },
+
+  // --- SOCIAL FEATURES ---
+
+  async toggleReaction(journalId: string, entryId: string, userId: string, type: string) {
+    const ref = doc(db, "journals", journalId, "entries", entryId);
+    const snap = await getDoc(ref);
+    if (!snap.exists()) return;
+
+    const data = snap.data();
+    const reactions = data.reactions || {};
+    const userList = reactions[type] || [];
+
+    if (userList.includes(userId)) {
+      // Remove reaction
+      await updateDoc(ref, {
+        [`reactions.${type}`]: arrayRemove(userId)
+      });
+    } else {
+      // Add reaction
+      await updateDoc(ref, {
+        [`reactions.${type}`]: arrayUnion(userId)
+      });
+    }
+  },
+
+  async addComment(journalId: string, entryId: string, comment: { text: string; userId: string; authorName: string }) {
+    const ref = doc(db, "journals", journalId, "entries", entryId);
+    const newComment = {
+      id: Math.random().toString(36).substr(2, 9),
+      createdAt: Date.now(),
+      ...comment
+    };
+
+await updateDoc(ref, {
+      comments: arrayUnion(newComment)
+    });
+  },
+
+  async deleteComment(journalId: string, entryId: string, commentObject: any) {
+    const ref = doc(db, "journals", journalId, "entries", entryId);
+    await updateDoc(ref, {
+      comments: arrayRemove(commentObject) // Removes the exact matching object
+    });
   }
 };

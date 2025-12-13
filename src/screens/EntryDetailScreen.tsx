@@ -21,6 +21,7 @@ import { useJournalStore } from '../stores/journalStore';
 import { auth } from '../firebaseConfig';
 // @ts-ignore
 import { addSharedEntry } from '../services/syncedJournalService';
+import { sendImmediateNotification } from '../lib/notifications';
 
 // Components
 import PremiumPressable from '../components/PremiumPressable';
@@ -240,11 +241,18 @@ const confirmShare = async () => {
        }
     });
 
-    // 3. Close Modal & Reset immediately
+// 3. Close Modal & Reset immediately
     setShowShareModal(false);
     setSelectedIds([]); 
     const count = validIds.length;
-    alert(`Shared to ${count} group${count === 1 ? '' : 's'}!`);
+    
+// Notification instead of Alert
+    // We attach the first journalId so tapping the notification takes you to that group
+    sendImmediateNotification(
+      "Shared Successfully", 
+      `Entry shared to ${count} group${count === 1 ? '' : 's'}.`,
+      validIds.length > 0 ? { journalId: validIds[0] } : undefined
+    );
 
     // 4. Send to Cloud in Background (Fire & Forget)
     try {
@@ -254,7 +262,7 @@ const confirmShare = async () => {
       await Promise.all(promises);
     } catch (e) {
       console.error("Background share failed:", e);
-      // Optional: Show a subtle toast here if it fails, but for now we assume success to keep it fast.
+      sendImmediateNotification("Share Failed", "Could not share entry. Please try again.");
     }
   };
 

@@ -10,6 +10,7 @@ import { RootStackParamList } from '../navigation/RootStack';
 import { useJournalStore } from '../stores/journalStore';
 import { auth } from '../firebaseConfig';
 import { useSharedPalette } from '../hooks/useSharedPalette';
+import { sendImmediateNotification } from '../lib/notifications';
 import PremiumPressable from '../components/PremiumPressable';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'SharedWrite'>;
@@ -93,7 +94,7 @@ const pickImage = () => {
         const user = auth.currentUser;
         const authorName = user?.displayName || user?.email?.split('@')[0] || 'Anonymous';
 
-        await addSharedEntry({
+await addSharedEntry({
           text: text.trim(),
           imageUri, // Add Image
           authorName,
@@ -101,9 +102,13 @@ const pickImage = () => {
           journalId,
         });
       }
+      
+// Success Notification
+      sendImmediateNotification("Shared Journal", "Your entry has been posted.", { journalId });
+      
     } catch (e) {
       console.error("Post failed in background:", e);
-      // Optional: You could show a generic error toast here if you had a global toast system
+      sendImmediateNotification("Post Failed", "Your entry could not be saved. Please try again.");
     }
   };
 

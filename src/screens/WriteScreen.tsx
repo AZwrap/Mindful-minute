@@ -470,10 +470,11 @@ const currentGradientColors = useMemo(() => {
         >
           <View style={styles.contentCard}>
 {/* PROMPT */}
-            <Text style={[styles.prompt, { color: promptColor }]}>
+<Text style={[styles.prompt, { color: promptColor }]}>
               {currentPrompt?.text}
               {currentPrompt?.explanation && (
-                <Text style={{ fontSize: 12, color: palette.subtleText, fontStyle: 'italic' }}>
+                // FIX: Increased contrast (palette.text) and weight to be readable against yellow gradients
+                <Text style={{ fontSize: 13, color: palette.text, fontStyle: 'italic', fontWeight: '600', opacity: 0.9 }}>
                   {'\n'}💡 {currentPrompt.explanation}
                 </Text>
               )}

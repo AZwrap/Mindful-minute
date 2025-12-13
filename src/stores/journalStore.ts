@@ -155,8 +155,9 @@ export const useJournalStore = create<JournalStore>()(
                     ? data.createdAt 
                     : (data.createdAt?.toMillis ? data.createdAt.toMillis() : Date.now());
 
-                  // 10 Minute Window: Catches updates even if app was backgrounded for a while
-                  const isRecent = Date.now() - createdAt < 600000; 
+                  // 1 Hour Window: More robust against clock skew between devices
+                  const diff = Date.now() - createdAt;
+                  const isRecent = diff < 3600000 && diff > -300000; // allow 1h old, or 5m into 'future' (clock drift)
                   
                   const isOthers = data.owner !== get().currentUser && data.userId !== get().currentUser;
 

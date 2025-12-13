@@ -56,10 +56,17 @@ export const EntriesService = {
       const cloudUpdatedAt = cloudEntry.updatedAt || 0;
       const localUpdatedAt = localEntry.updatedAt || 0;
 
-      // Case 2: Cloud has updates
+// Case 2: Cloud has updates
       if (cloudUpdatedAt > localSyncedAt) {
         // Conflict: Local also changed
         if (localUpdatedAt > localSyncedAt) {
+          
+          // FIX: If text is identical, trust Cloud timestamp and SKIP conflict mode
+          if ((cloudEntry.text || '').trim() === (localEntry.text || '').trim()) {
+             mergedEntries[cloudEntry.date] = { ...cloudEntry, syncedAt: cloudUpdatedAt };
+             return;
+          }
+
           console.log(`Conflict detected for ${cloudEntry.date}`);
           const resolvedText = `${cloudEntry.text || ''}\n\n==========\n⚠️ [CONFLICT: LOCAL CHANGES PRESERVED BELOW]\n${localEntry.text || ''}`;
           

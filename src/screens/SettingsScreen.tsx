@@ -310,13 +310,16 @@ const handleBulkExport = () => {
         {
           text: "Reset Everything",
           style: "destructive",
-          onPress: async () => {
+onPress: async () => {
              try {
-await AsyncStorage.clear();
+               // 1. Sign out explicitly so cloud data doesn't auto-restore on reload
+               try { await signOut(auth); } catch (e) { console.log('Already signed out'); }
+
+               await AsyncStorage.clear();
                
                // Reset Stores - Explicitly clear timers and pomodoro state to prevent ghosting
                useEntriesStore.setState({ 
-                 entries: {}, 
+                 entries: {},
                  drafts: {}, 
                  draftTimers: {}, 
                  pomodoroState: {} 
