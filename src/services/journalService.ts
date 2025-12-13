@@ -270,10 +270,45 @@ await updateDoc(ref, {
     });
   },
 
-  async deleteComment(journalId: string, entryId: string, commentObject: any) {
+async deleteComment(journalId: string, entryId: string, commentObject: any) {
     const ref = doc(db, "journals", journalId, "entries", entryId);
     await updateDoc(ref, {
       comments: arrayRemove(commentObject) // Removes the exact matching object
     });
+  },
+
+  async toggleCommentReaction(journalId: string, entryId: string, commentId: string, userId: string, type: string) {
+    const ref = doc(db, "journals", journalId, "entries", entryId);
+    const snap = await getDoc(ref);
+    if (!snap.exists()) return;
+
+    const data = snap.data();
+    const comments = data.comments || [];
+
+    // Map through comments to find the one to update
+    const updatedComments = comments.map((c: any) => {
+      if (c.id === commentId) {
+        const reactions = c.reactions || {};
+        const userList = reactions[type] || [];
+        
+        let newUserList;
+        if (userList.includes(userId)) {
+          // Remove reaction
+          newUserList = userList.filter((uid: string) => uid !== userId);
+        } else {
+          // Add reaction
+          newUserList = [...userList, userId];
+        }
+
+        const newReactions = { ...reactions, [type]: newUserList };
+        // Cleanup empty keys
+        if (newUserList.length === 0) delete newReactions[type];
+
+        return { ...c, reactions: newReactions };
+      }
+      return c;
+    });
+
+    await updateDoc(ref, { comments: updatedComments });
   }
 };

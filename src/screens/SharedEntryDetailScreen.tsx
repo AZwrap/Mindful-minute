@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, ScrollView, Alert, Image, TextInput, KeyboardAv
 import { Swipeable } from 'react-native-gesture-handler'; // <--- Added
 import { Trash2, Edit2, ChevronLeft, Send, Heart, Flame, ThumbsUp, MessageCircle, Smile } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 
 import { RootStackParamList } from '../navigation/RootStack';
@@ -43,10 +43,164 @@ const QUICK_REACTIONS = [
   "🏆", "🥇", "🥈", "🥉", "🏅", "🎖", "🎁", "🎈", "🎉", "🎊", "🕯", "💡", "💰", "💸", "💎", "🔮", "🧬", "💊"
 ];
 
+// Helper component to detect swipe start for immediate closure of other rows
+const SwipeMonitor = ({ dragX, onSwipeStart }: any) => {
+  React.useEffect(() => {
+    if (!dragX) return;
+    const id = dragX.addListener(({ value }: any) => {
+      // Detect left swipe start (value becomes negative)
+      // Trigger as soon as it moves 5 pixels
+      if (value < -5) { 
+        onSwipeStart();
+      }
+    });
+    return () => dragX.removeListener(id);
+  }, [dragX, onSwipeStart]);
+  return null;
+};
+
+// Sub-component for exclusive swipe management
+const CommentItem = ({ comment, currentUser, onDelete, onRowOpen, palette, onLongPress, onReactionTap }: any) => {
+  const swipeableRef = React.useRef<Swipeable>(null);
+  const isCommentAuthor = currentUser && comment.userId === currentUser.uid;
+
+  const renderRightActions = (progress: any, dragX: any) => {
+    const scale = dragX.interpolate({
+      inputRange: [-100, 0],
+      outputRange: [1, 0],
+      extrapolate: 'clamp',
+    });
+
+    return (
+      <Pressable
+        style={styles.deleteAction}
+        onPress={() => onDelete(comment)}
+      >
+        <SwipeMonitor dragX={dragX} onSwipeStart={() => onRowOpen(swipeableRef.current)} />
+        <Animated.View style={{ transform: [{ scale }], alignItems: 'center' }}>
+          <Trash2 size={24} color="white" />
+          <Text style={styles.actionText}>Delete</Text>
+        </Animated.View>
+      </Pressable>
+    );
+  };
+
+  const content = (
+    <Pressable
+      delayLongPress={300}
+      onLongPress={() => onLongPress(comment)}
+      style={({ pressed }) => [
+        styles.commentItem, 
+        { 
+          backgroundColor: pressed ? palette.card + 'D0' : palette.card, 
+          borderColor: palette.border,
+          transform: [{ scale: pressed ? 0.98 : 1 }]
+        }
+      ]}
+      onTouchStart={() => onRowOpen(swipeableRef.current)}
+    >
+      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+        <View>
+          <Text style={{ fontSize: 12, fontWeight: '700', color: palette.accent }}>{comment.authorName}</Text>
+          <Text style={{ fontSize: 10, color: palette.sub }}>
+            {new Date(comment.createdAt).toLocaleDateString()}
+          </Text>
+        </View>
+      </View>
+      <Text style={{ color: palette.text, marginTop: 4, fontSize: 14 }}>{comment.text}</Text>
+      
+      {/* Comment Reactions */}
+      {comment.reactions && Object.keys(comment.reactions).length > 0 && (
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 8 }}>
+          {Object.entries(comment.reactions).map(([emoji, userList]: any) => {
+             const count = userList?.length || 0;
+             if (count === 0) return null;
+             const hasReacted = currentUser && userList.includes(currentUser.uid);
+             return (
+               <Pressable 
+                 key={emoji}
+                 onPress={() => onReactionTap(comment, emoji)}
+                 style={{
+                   flexDirection: 'row', alignItems: 'center', gap: 4,
+                   backgroundColor: hasReacted ? palette.accent + '15' : 'rgba(0,0,0,0.03)',
+                   paddingVertical: 2, paddingHorizontal: 8, borderRadius: 12,
+                   borderWidth: 1, borderColor: hasReacted ? palette.accent + '40' : 'transparent'
+                 }}
+               >
+                 <Text style={{ fontSize: 12 }}>{emoji}</Text>
+                 <Text style={{ fontSize: 10, fontWeight: '600', color: palette.sub }}>{count}</Text>
+               </Pressable>
+             )
+          })}
+        </View>
+      )}
+    </Pressable>
+  );
+
+  if (!isCommentAuthor) {
+    return <View style={{ marginBottom: 8 }}>{content}</View>;
+  }
+
+  return (
+    <Swipeable
+      ref={swipeableRef}
+      friction={2}
+      onSwipeableWillOpen={() => onRowOpen(swipeableRef.current)}
+      renderRightActions={renderRightActions}
+      containerStyle={{ marginBottom: 8 }}
+    >
+      {content}
+    </Swipeable>
+  );
+};
+
 export default function SharedEntryDetailScreen({ navigation, route }: Props) {
-  const { entry: initialEntry } = route.params;
+  // --- MANUAL KEYBOARD HANDLING (Android Fix) ---
+  const bottomPadding = React.useRef(new Animated.Value(0)).current;
+
+  // Track which comment we are reacting to (null = reacting to the main entry)
+  const [activeComment, setActiveComment] = React.useState<any>(null);
+  
+  React.useEffect(() => {
+    if (Platform.OS === 'ios') return; // iOS works fine with KeyboardAvoidingView
+
+const showSub = Keyboard.addListener('keyboardDidShow', (e) => {
+      // Animate to keyboard height explicitly (add buffer to prevent overlap)
+      Animated.timing(bottomPadding, {
+        toValue: e.endCoordinates.height + 15, 
+        duration: 150,
+        useNativeDriver: false,
+      }).start();
+    });
+
+    const hideSub = Keyboard.addListener('keyboardDidHide', () => {
+      // Force reset to 0 when keyboard hides
+      Animated.timing(bottomPadding, {
+        toValue: 0,
+        duration: 100,
+        useNativeDriver: false,
+      }).start();
+    });
+
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, []);
+  // ----------------------------------------------
+
+const { entry: initialEntry } = route.params;
   const palette = useSharedPalette();
-  const deleteSharedEntry = useJournalStore(s => s.deleteSharedEntry);
+  const { deleteSharedEntry, toggleCommentReaction } = useJournalStore();
+
+  // Exclusive Swipe Logic
+  const openSwipeableRef = React.useRef<Swipeable | null>(null);
+  const onRowOpen = (ref: any) => {
+    if (openSwipeableRef.current && openSwipeableRef.current !== ref) {
+      openSwipeableRef.current.close();
+    }
+    openSwipeableRef.current = ref;
+  };
   
   // 1. Get LIVE entry from store (fallback to params if not found yet)
   const entry = useJournalStore(s => 
@@ -54,6 +208,7 @@ export default function SharedEntryDetailScreen({ navigation, route }: Props) {
   ) || initialEntry;
 
   const [commentText, setCommentText] = React.useState('');
+  const insets = useSafeAreaInsets();
   const [isSubmitting, setIsSubmitting] = React.useState(false);
 
 // Check ownership
@@ -69,61 +224,35 @@ export default function SharedEntryDetailScreen({ navigation, route }: Props) {
     await JournalService.toggleReaction(entry.journalId, entry.entryId, currentUser.uid, type);
   };
 
-  const handleDeleteComment = (comment: any) => {
-    Alert.alert(
-      "Delete Comment",
-      "Are you sure you want to remove this comment?",
-      [
-        { text: "Cancel", style: "cancel" },
-        { 
-          text: "Delete", 
-          style: "destructive",
-          onPress: async () => {
-             if (!entry.journalId || !entry.entryId) return;
-             try {
-               await JournalService.deleteComment(entry.journalId, entry.entryId, comment);
-             } catch (e) {
-               console.error("Failed to delete comment:", e);
-               Alert.alert("Error", "Could not delete comment.");
-             }
-          }
-        }
-      ]
-    );
+const handleDeleteComment = async (comment: any) => {
+    if (!entry.journalId || !entry.entryId) return;
+    try {
+      await JournalService.deleteComment(entry.journalId, entry.entryId, comment);
+    } catch (e) {
+      console.error("Failed to delete comment:", e);
+      Alert.alert("Error", "Could not delete comment.");
+    }
   };
 
-  const renderRightActions = (progress: any, dragX: any, comment: any) => {
-    const scale = dragX.interpolate({
-      inputRange: [-80, 0],
-      outputRange: [1, 0],
-      extrapolate: 'clamp',
-    });
 
-    return (
-      <Pressable
-        style={styles.deleteAction}
-        onPress={() => handleDeleteComment(comment)}
-      >
-        <Animated.View style={{ transform: [{ scale }] }}>
-          <Trash2 size={20} color="white" />
-        </Animated.View>
-      </Pressable>
-    );
-  };
-
-  const handlePostComment = async () => {
-    if (!commentText.trim() || !currentUser || !entry.journalId) return;
+const handlePostComment = async () => {
+    const textToSend = commentText.trim();
+    if (!textToSend || !currentUser || !entry.journalId) return;
     
+    // Optimistic clear: Remove text immediately
+    setCommentText('');
     setIsSubmitting(true);
+    
     try {
       await JournalService.addComment(entry.journalId, entry.entryId, {
-        text: commentText.trim(),
+        text: textToSend,
         userId: currentUser.uid,
         authorName: currentUser.displayName || 'Member'
       });
-      setCommentText('');
     } catch (e) {
       console.error(e);
+      setCommentText(textToSend); // Restore text if it fails
+      Alert.alert("Error", "Could not post comment. Please try again.");
     } finally {
       setIsSubmitting(false);
     }
@@ -172,16 +301,7 @@ export default function SharedEntryDetailScreen({ navigation, route }: Props) {
 
 return (
     <LinearGradient colors={[palette.bg, palette.bg]} style={styles.container}>
-{/* 1. KeyboardAvoidingView is now the OUTER wrapper */}
-      <KeyboardAvoidingView 
-        style={{ flex: 1 }} 
-        // FIX: Use 'padding' for iOS. Use undefined for Android to let the OS handle resizing natively.
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
-        // FIX: Increased offset for iOS header/notch
-        keyboardVerticalOffset={Platform.OS === "ios" ? 100 : 0}
-      >
-        {/* 2. SafeAreaView is now INSIDE */}
-        <SafeAreaView style={{ flex: 1, justifyContent: 'space-between' }}>
+      <SafeAreaView style={{ flex: 1 }} edges={['top', 'left', 'right']}>
         
         {/* HEADER */}
         <View style={styles.header}>
@@ -190,7 +310,6 @@ return (
              <Text style={{ color: palette.text, fontWeight: '600', fontSize: 16 }}>Back</Text>
            </PremiumPressable>
 
-           {/* ACTIONS (Author Only) */}
            {isAuthor && (
              <View style={{ flexDirection: 'row', gap: 12 }}>
                <PremiumPressable 
@@ -207,155 +326,97 @@ return (
            )}
         </View>
         
-<ScrollView 
+        <ScrollView 
           style={{ flex: 1 }} 
           contentContainerStyle={styles.content}
           keyboardDismissMode="on-drag"
           keyboardShouldPersistTaps="handled"
         >
-           <Text style={[styles.date, { color: palette.subtleText }]}>
-             {dateStr}
-           </Text>
-           <Text style={[styles.author, { color: palette.accent }]}>
-             Written by {entry.authorName || 'Anonymous'}
-           </Text>
+           <Text style={[styles.date, { color: palette.subtleText }]}>{dateStr}</Text>
+           <Text style={[styles.author, { color: palette.accent }]}>Written by {entry.authorName || 'Anonymous'}</Text>
 
            {entry.imageUri && (
-             <Image 
-               source={{ uri: entry.imageUri }} 
-               style={styles.image} 
-               resizeMode="cover" 
-             />
+             <Image source={{ uri: entry.imageUri }} style={styles.image} resizeMode="cover" />
            )}
 
-<Text style={[styles.text, { color: palette.text }]}>
-             {entry.text}
-           </Text>
+           <Text style={[styles.text, { color: palette.text }]}>{entry.text}</Text>
            
-{/* --- REACTIONS --- */}
+           {/* REACTIONS */}
            <View style={[styles.reactionRow, { borderColor: palette.border }]}>
-             
-             {/* 1. Dynamic List of Existing Reactions */}
              {Object.entries(entry.reactions || {}).map(([emoji, userList]: any) => {
                 const count = userList?.length || 0;
                 if (count === 0) return null;
                 const hasReacted = currentUser && userList.includes(currentUser.uid);
-                
                 return (
                  <Pressable 
                    key={emoji} 
                    onPress={() => handleReaction(emoji)}
-                   style={[
-                     styles.reactionPill, 
-                     { 
-                       backgroundColor: hasReacted ? palette.accent + '20' : 'transparent',
-                       borderColor: hasReacted ? palette.accent : palette.border
-                     }
-                   ]}
+                   style={[styles.reactionPill, { backgroundColor: hasReacted ? palette.accent + '20' : 'transparent', borderColor: hasReacted ? palette.accent : palette.border }]}
                  >
                    <Text style={{ fontSize: 16 }}>{emoji}</Text>
                    <Text style={[styles.reactionCount, { color: palette.sub }]}>{count}</Text>
                  </Pressable>
                 );
              })}
-
-{/* 2. Add Emoji Button */}
-             <Pressable 
-               onPress={() => setShowEmojiPicker(true)}
-               style={[
-                 styles.reactionPill, 
-                 { borderColor: palette.border, borderStyle: 'dashed', paddingHorizontal: 10 }
-               ]}
-             >
+             <Pressable onPress={() => setShowEmojiPicker(true)} style={[styles.reactionPill, { borderColor: palette.border, borderStyle: 'dashed', paddingHorizontal: 10 }]}>
                <Smile size={18} color={palette.sub} />
                <Text style={{ fontSize: 14, color: palette.sub, fontWeight: '600' }}>+</Text>
              </Pressable>
            </View>
 
-           {/* --- CUSTOM EMOJI PICKER MODAL --- */}
-           <Modal
-             visible={showEmojiPicker}
-             transparent={true}
-             animationType="fade"
-             onRequestClose={() => setShowEmojiPicker(false)}
-           >
-             <Pressable 
-               style={styles.modalOverlay} 
-               onPress={() => setShowEmojiPicker(false)}
-             >
-              <View style={[styles.emojiPickerCard, { backgroundColor: palette.card, borderColor: palette.border, maxHeight: '70%' }]}>
-                 <Text style={[styles.pickerTitle, { color: palette.sub }]}>Quick Reactions</Text>
-                 <ScrollView 
-                   showsVerticalScrollIndicator={false}
-                   contentContainerStyle={styles.emojiGrid}
-                 >
-                {QUICK_REACTIONS.map(emoji => (
-                     <Pressable
-                       key={emoji}
-                       onPress={() => {
-                         // Only add if not already present (don't toggle off from picker)
-                         const hasReacted = currentUser && entry.reactions?.[emoji]?.includes(currentUser.uid);
-                         if (!hasReacted) {
-                            handleReaction(emoji);
-                         }
-                         setShowEmojiPicker(false);
-                       }}
-                       style={styles.emojiCell}
-                     >
-                       <Text style={{ fontSize: 28 }}>{emoji}</Text>
-                     </Pressable>
-                   ))}
-                 </ScrollView>
-               </View>
-             </Pressable>
-           </Modal>
-
-           {/* --- COMMENTS SECTION --- */}
+           {/* COMMENTS */}
            <View style={styles.commentsSection}>
              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 12 }}>
                 <MessageCircle size={16} color={palette.sub} />
-                <Text style={{ fontSize: 14, fontWeight: '700', color: palette.sub, textTransform: 'uppercase' }}>
-                  Comments ({entry.comments?.length || 0})
-                </Text>
+                <Text style={{ fontSize: 14, fontWeight: '700', color: palette.sub, textTransform: 'uppercase' }}>Comments ({entry.comments?.length || 0})</Text>
              </View>
-
-{/* List */}
-             {entry.comments?.map((c: any) => {
-               const isCommentAuthor = currentUser && c.userId === currentUser.uid;
-               
-               return (
-                 <Swipeable
-                   key={c.id}
-                   renderRightActions={(p, d) => isCommentAuthor ? renderRightActions(p, d, c) : null}
-                   containerStyle={{ marginBottom: 8 }} // Move margin here so swipe handles it correctly
-                 >
-                    <View style={[styles.commentItem, { backgroundColor: palette.card, borderColor: palette.border }]}>
-                      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                        <View>
-                          <Text style={{ fontSize: 12, fontWeight: '700', color: palette.accent }}>{c.authorName}</Text>
-                          <Text style={{ fontSize: 10, color: palette.sub }}>
-                            {new Date(c.createdAt).toLocaleDateString()}
-                          </Text>
-                        </View>
-                      </View>
-                      <Text style={{ color: palette.text, marginTop: 4, fontSize: 14 }}>{c.text}</Text>
-                    </View>
-                 </Swipeable>
-               );
-             })}
-             
+{entry.comments?.map((c: any) => (
+                 <CommentItem 
+                   key={c.id} 
+                   comment={c} 
+                   currentUser={currentUser} 
+                   onDelete={handleDeleteComment} 
+                   onRowOpen={onRowOpen} 
+                   palette={palette}
+                   onLongPress={(comment: any) => {
+                     setActiveComment(comment);
+                     setShowEmojiPicker(true);
+                   }}
+onReactionTap={(comment: any, emoji: string) => {
+                      toggleCommentReaction(
+                        entry.journalId, 
+                        entry.entryId, 
+                        comment.id, 
+                        currentUser?.uid || '', 
+                        emoji
+                      );
+                   }}
+                 />
+               ))}
              {(!entry.comments || entry.comments.length === 0) && (
-               <Text style={{ color: palette.sub, fontStyle: 'italic', fontSize: 13, marginBottom: 10 }}>
-                 No comments yet. Be the first!
-               </Text>
+               <Text style={{ color: palette.sub, fontStyle: 'italic', fontSize: 13, marginBottom: 10 }}>No comments yet. Be the first!</Text>
              )}
            </View>
-
-           <View style={{ height: 100 }} /> 
         </ScrollView>
 
-{/* INPUT BAR */}
-          <View style={[styles.inputContainer, { backgroundColor: palette.card, borderTopColor: palette.border }]}>
+        {/* INPUT BAR */}
+        {/* iOS: Uses standard behavior. Android: Uses manual Animated padding. */}
+        <KeyboardAvoidingView
+          behavior={Platform.OS === "ios" ? "padding" : undefined}
+          keyboardVerticalOffset={Platform.OS === "ios" ? 100 : 0}
+          style={{ flexGrow: 0 }} // Ensure it doesn't fight for space
+        >
+          <Animated.View style={[
+              styles.inputContainer, 
+              { 
+                backgroundColor: palette.card, 
+                borderTopColor: palette.border,
+                // iOS: Standard padding. Android: Animated Keyboard Height + Safe Area
+                paddingBottom: Platform.OS === 'ios' 
+                  ? 12 
+                  : Animated.add(bottomPadding, Math.max(insets.bottom, 12))
+              }
+            ]}>
             <TextInput
               value={commentText}
               onChangeText={setCommentText}
@@ -371,10 +432,69 @@ return (
             >
               <Send size={18} color="white" />
             </Pressable>
-          </View>
+          </Animated.View>
+        </KeyboardAvoidingView>
 
-</SafeAreaView>
-      </KeyboardAvoidingView>
+      </SafeAreaView>
+
+{/* --- CUSTOM EMOJI PICKER MODAL --- */}
+             <Modal
+               visible={showEmojiPicker}
+               transparent={true}
+               animationType="fade"
+               onRequestClose={() => {
+                 setShowEmojiPicker(false);
+                 setActiveComment(null); // Reset
+               }}
+             >
+               <Pressable 
+                 style={styles.modalOverlay} 
+                 onPress={() => {
+                    setShowEmojiPicker(false);
+                    setActiveComment(null);
+                 }}
+               >
+          <View style={[styles.emojiPickerCard, { backgroundColor: palette.card, borderColor: palette.border, maxHeight: '70%' }]}>
+             <Text style={[styles.pickerTitle, { color: palette.sub }]}>Quick Reactions</Text>
+             <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.emojiGrid}>
+{QUICK_REACTIONS.map(emoji => (
+                       <Pressable
+                         key={emoji}
+                         onPress={() => {
+                           // 1. Capture target comment before clearing state
+                           const targetComment = activeComment;
+                           
+                           // 2. Close UI Immediately (Optimistic)
+                           setShowEmojiPicker(false);
+                           setActiveComment(null);
+
+                           // 3. Perform Network Request in Background
+if (targetComment) {
+                             // --- COMMENT REACTION (Optimistic) ---
+                             toggleCommentReaction(
+                               entry.journalId, 
+                               entry.entryId, 
+                               targetComment.id, 
+                               currentUser?.uid || '', 
+                               emoji
+                             );
+                           } else {
+                             // --- ENTRY REACTION ---
+                             const hasReacted = currentUser && entry.reactions?.[emoji]?.includes(currentUser.uid);
+                             if (!hasReacted) {
+                                handleReaction(emoji).catch(err => console.log("Entry reaction failed:", err));
+                             }
+                           }
+                         }}
+                         style={styles.emojiCell}
+                       >
+                         <Text style={{ fontSize: 28 }}>{emoji}</Text>
+                       </Pressable>
+                     ))}
+             </ScrollView>
+           </View>
+         </Pressable>
+       </Modal>
     </LinearGradient>
   );
 }
@@ -439,14 +559,21 @@ commentItem: {
     borderWidth: 1,
     // marginBottom: 8, // <--- REMOVED (Moved to Swipeable containerStyle)
   },
-  deleteAction: {
+deleteAction: {
     backgroundColor: '#EF4444',
     justifyContent: 'center',
-    alignItems: 'center',
-    width: 80,
+    alignItems: 'flex-end',
+    paddingRight: 24,
+    width: 100,
     height: '100%',
-    borderRadius: 12, // Match commentItem radius
-    marginLeft: 8,    // Gap between content and delete button
+    borderRadius: 12, 
+    marginLeft: -16, // Pull behind the card
+  },
+  actionText: {
+    color: 'white',
+    fontSize: 12,
+    fontWeight: '700',
+    marginTop: 4,
   },
   inputContainer: {
     padding: 12,

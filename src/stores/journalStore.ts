@@ -44,9 +44,10 @@ interface JournalActions {
   restoreJournals: () => Promise<number>;
   subscribeToJournal: (journalId: string) => void;
   subscribeToAllJournals: () => void; // <--- ADDED: Missing function
-  addSharedEntry: (entry: any) => Promise<void>;
+addSharedEntry: (entry: any) => Promise<void>;
   deleteSharedEntry: (journalId: string, entryId: string) => Promise<void>;
-  setSharedEntries: (journalId: string, entries: any[]) => void;
+  toggleCommentReaction: (journalId: string, entryId: string, commentId: string, userId: string, emoji: string) => Promise<void>;
+  setSharedEntries: (journalId: string, entries: any[]) => void;  
   updateJournalMeta: (journalId: string, data: any) => void;
   addJournal: (journal: JournalMeta) => void;
   removeJournal: (journalId: string) => void;
@@ -305,6 +306,47 @@ export const useJournalStore = create<JournalStore>()(
             journals: prevState.journals 
           });
           throw error;
+        }
+      },
+
+toggleCommentReaction: async (journalId, entryId, commentId, userId, emoji) => {
+        // 1. Optimistic Update (Update UI Immediately)
+        set((state) => {
+            const entries = state.sharedEntries?.[journalId] || [];
+            const updatedEntries = entries.map(e => {
+                if (e.entryId !== entryId) return e;
+                
+                // Find and update the specific comment
+                const updatedComments = (e.comments || []).map((c: any) => {
+                    if (c.id !== commentId) return c;
+                    
+                    const reactions = c.reactions || {};
+                    const userList = reactions[emoji] || [];
+                    let newUserList;
+                    
+                    if (userList.includes(userId)) {
+                        newUserList = userList.filter((u: string) => u !== userId);
+                    } else {
+                        newUserList = [...userList, userId];
+                    }
+                    
+                    const newReactions = { ...reactions, [emoji]: newUserList };
+                    if (newUserList.length === 0) delete newReactions[emoji];
+                    
+                    return { ...c, reactions: newReactions };
+                });
+                
+                return { ...e, comments: updatedComments };
+            });
+            
+            return { sharedEntries: { ...(state.sharedEntries || {}), [journalId]: updatedEntries } };
+        });
+
+        // 2. Background Network Request
+        try {
+           await JournalService.toggleCommentReaction(journalId, entryId, commentId, userId, emoji);
+        } catch (e) {
+           console.error("Reaction failed:", e);
         }
       },
 
