@@ -3,7 +3,6 @@ import { getFirestore } from "firebase/firestore";
 import { getStorage } from "firebase/storage"; // Added
 import { initializeAuth, getAuth, getReactNativePersistence } from "firebase/auth";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager } from "firebase/firestore";
 import { getApp, getApps } from "firebase/app";
 
 // Replace with your actual config keys
@@ -21,23 +20,9 @@ const firebaseConfig = {
 export const app = getApps().length > 0 ? getApp() : initializeApp(firebaseConfig);
 
 // Safe Firestore Initialization
-let dbInstance;
-try {
-  // Try to initialize with persistence
-  dbInstance = initializeFirestore(app, {
-    localCache: persistentLocalCache({
-      tabManager: persistentMultipleTabManager()
-    })
-  });
-} catch (e: any) {
-  // If already initialized (hot reload), fallback to the existing instance
-  if (e.code === 'failed-precondition' || e.message.includes('already been called')) {
-    dbInstance = getFirestore(app);
-  } else {
-    throw e;
-  }
-}
-export const db = dbInstance;
+// FIXED: Use standard getFirestore for React Native. 
+// (Removes "IndexedDB is only available on platforms that support LocalStorage" error)
+export const db = getFirestore(app);
 
 // Safe Auth Initialization
 let authInstance;

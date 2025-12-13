@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { Animated } from 'react-native';
 import * as Haptics from 'expo-haptics';
+import { useAudioPlayer } from 'expo-audio';
 import { useEntriesStore } from '../stores/entriesStore';
 import { useWritingSettings } from '../stores/writingSettingsStore';
 import { useSettings } from '../stores/settingsStore';
@@ -8,6 +9,15 @@ import { useSettings } from '../stores/settingsStore';
 export const useJournalTimer = (date: string, isScreenActive: React.MutableRefObject<boolean>) => {
   const { writeDuration, breakDuration, totalCycles } = useWritingSettings();
   const { hapticsEnabled, preserveTimerProgress } = useSettings();
+
+  // Audio: Load the chime sound
+  const player = useAudioPlayer(require('../../assets/chime.mp3'));
+
+  const playChime = () => {
+    // Rewind and play (expo-audio doesn't auto-rewind)
+    player.seekTo(0);
+    player.play();
+  };
   
   // Store Actions
   const getDraftTimer = useEntriesStore((s) => s.getDraftTimer);
@@ -107,6 +117,7 @@ if (t <= 0) {
               setTimerCompleted(true);
               if (hapticsEnabled) Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
               Animated.timing(fade, { toValue: 0, duration: 600, useNativeDriver: true }).start();
+              playChime();
             } else {
               const nextPhase = 'writing';
               setPhase(nextPhase);
@@ -115,6 +126,7 @@ if (t <= 0) {
               setRemaining(writeDuration);
               setSkipBreakAvailable(false);
               if (hapticsEnabled) Haptics.notificationAsync(Haptics.NotificationFeedbackType.Light);
+              playChime();
             }
           }
         }

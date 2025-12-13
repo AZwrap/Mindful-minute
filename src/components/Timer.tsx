@@ -22,24 +22,32 @@ export default function Timer({
     setLeft(seconds);
   }, [seconds]);
 
-  // 2. Handle Countdown
+// 2. Handle Countdown (Drift-corrected)
   useEffect(() => {
     if (!running || left <= 0) {
       if (intervalRef.current) clearInterval(intervalRef.current);
       return;
     }
 
+    // Calculate target end time based on current seconds left
+    const endTime = Date.now() + left * 1000;
+
     intervalRef.current = setInterval(() => {
-      setLeft((prev) => {
-        const next = Math.max(0, prev - 1);
-        return next;
-      });
+      const now = Date.now();
+      const secondsRemaining = Math.max(0, Math.ceil((endTime - now) / 1000));
+      
+      setLeft(secondsRemaining);
+      
+      if (secondsRemaining <= 0 && intervalRef.current) {
+        clearInterval(intervalRef.current);
+      }
     }, 1000);
 
     return () => {
       if (intervalRef.current) clearInterval(intervalRef.current);
     };
-  }, [running, left]);
+    // Removed 'left' from dependencies to prevent interval churn
+  }, [running]);
 
   // 3. Handle Side Effects (Tick & Done)
   useEffect(() => {
