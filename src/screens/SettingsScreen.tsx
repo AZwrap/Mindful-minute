@@ -900,25 +900,6 @@ const SettingRow = ({ label, description, value, onValueChange, icon }: any) => 
                 </View>
               )}
 
-              {/* 6. DANGER ZONE */}
-              <View style={{ marginTop: 12, marginBottom: -80 }}>
-                <PremiumPressable 
-                  onPress={handleFactoryReset} 
-                  style={{ 
-                    backgroundColor: isDark ? 'rgba(239, 68, 68, 0.1)' : '#FEF2F2', 
-                    borderColor: isDark ? 'rgba(239, 68, 68, 0.3)' : '#FCA5A5', 
-                    borderWidth: 1, 
-                    borderRadius: 16, 
-                    padding: 16, 
-                    alignItems: 'center' 
-                  }}
-                >
-                  <Text style={{ color: isDark ? '#F87171' : '#DC2626', fontWeight: '700' }}>
-                    Reset App & Clear All Data
-                  </Text>
-                </PremiumPressable>
-              </View>
-
             </ScrollView>
 
             {/* Toast Overlay */}
@@ -955,7 +936,7 @@ function hslToHex(h: number, s: number, l: number) {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  scrollContent: { padding: 16, gap: 14, paddingBottom: 100 },
+  scrollContent: { padding: 16, gap: 14, paddingBottom: 30 },
   card: { borderWidth: 1, borderRadius: 16, padding: 16, marginBottom: 4 },
   title: { fontSize: 16, fontWeight: '700', marginBottom: 12 },
   row: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 12 },
