@@ -14,6 +14,7 @@ import { useCustomization } from '../stores/customizationStore';
 import { useTheme } from '../stores/themeStore';
 import PremiumPressable from '../components/PremiumPressable';
 import AchievementPopup from '../components/AchievementPopup';
+import { Music, ExternalLink } from 'lucide-react-native';
 import { shallow } from 'zustand/shallow'; // Ensure shallow is imported if available, or handled below
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { getMusicForMood } from '../utils/musicRecommender';
@@ -24,8 +25,8 @@ const moodOptions = ['Calm','Grateful','Anxious','Focused','Happy','Reflective',
 
 export default function MoodTagScreen({ navigation, route }) {
   const systemScheme = useColorScheme();
-  const { getCurrentTheme } = useTheme();
-const currentTheme = getCurrentTheme(systemScheme);
+const { getCurrentTheme, accentColor } = useTheme();
+  const currentTheme = getCurrentTheme(systemScheme);
   const isDark = currentTheme === 'dark';
   const { date, prompt, text, suggestedMood, initialMood } = route.params || {};
 
@@ -287,10 +288,9 @@ async function handleSave() {
               </Text>
             )}
 
-           <View style={{ flexDirection:'row', flexWrap:'wrap', gap:8, marginTop:12 }}>
+<View style={{ flexDirection:'row', flexWrap:'wrap', gap:8, marginTop:12 }}>
               {moodOptions.map((m) => {
                 const active = selectedMood === m;
-                // Compare loosely or strictly depending on source format
                 const isSuggested = m.toLowerCase() === (suggestedMood || '').toLowerCase();
                 
                 return (
@@ -300,17 +300,28 @@ async function handleSave() {
                     style={[
                       styles.chip,
                       {
-                        borderColor: active ? '#6366F1' : (isSuggested ? '#6366F1' : palette.border),
-                        borderWidth: active ? 2 : (isSuggested ? 2 : 1),
-                        backgroundColor: active 
-                          ? '#6366F1'  
-                          : (isSuggested ? 'rgba(99, 102, 241, 0.1)' : 'transparent'),
+                        borderColor: active || isSuggested ? accentColor : palette.border,
+                        borderWidth: active || isSuggested ? 2 : 1,
+                        // We remove backgroundColor here and use layers below for dynamic opacity
+                        backgroundColor: 'transparent', 
+                        overflow: 'hidden' // Keeps the background layers inside the border
                       },
                     ]}
                   >
-                   <Text style={{ 
-                      color: active ? '#FFFFFF' : (isSuggested ? '#6366F1' : palette.sub),
+                    {/* Layer 1: Active Background (Solid) */}
+                    {active && (
+                      <View style={[StyleSheet.absoluteFill, { backgroundColor: accentColor }]} />
+                    )}
+
+                    {/* Layer 2: Suggested Background (Transparent Tint) */}
+                    {!active && isSuggested && (
+                      <View style={[StyleSheet.absoluteFill, { backgroundColor: accentColor, opacity: 0.1 }]} />
+                    )}
+
+                    <Text style={{ 
+                      color: active ? '#FFFFFF' : (isSuggested ? accentColor : palette.sub),
                       fontWeight: '600',
+                      zIndex: 1 // Ensure text sits on top of background layers
                     }}>
                       {m} 
                     </Text>
@@ -325,18 +336,46 @@ async function handleSave() {
                   onPress={handleMusicPress}
                   style={({pressed}) => [
                     styles.musicBtn, 
-                    { backgroundColor: isDark ? '#1E1E1E' : '#F0FDF4', borderColor: '#22C55E', opacity: pressed ? 0.9 : 1 }
+                    { 
+                      backgroundColor: palette.card,
+                      borderColor: accentColor, // Dynamic Border
+                      borderWidth: 1,
+                      opacity: pressed ? 0.9 : 1,
+                      
+                      // DYNAMIC GLOW EFFECT
+                      shadowColor: accentColor, // Dynamic Shadow
+                      shadowOffset: { width: 0, height: 0 },
+                      shadowOpacity: 0.5,
+                      shadowRadius: 10,
+                      elevation: 8 
+                    }
                   ]}
                 >
-                  <Text style={{ fontSize: 18, marginRight: 8 }}>🎵</Text>
-                  <View style={{ flex: 1 }}>
-                    <Text style={[styles.musicTitle, { color: isDark ? '#FFF' : '#15803D' }]}>
-                      Play "{recommendedPlaylist.label}"
+                  {/* Icon Box with Dynamic Tint */}
+                  <View style={styles.musicIconBox}>
+                    {/* Background Layer (Opacity Trick) */}
+                    <View style={{
+                      ...StyleSheet.absoluteFillObject,
+                      backgroundColor: accentColor,
+                      opacity: isDark ? 0.2 : 0.1,
+                      borderRadius: 10
+                    }} />
+                    {/* Icon */}
+                    <Music size={20} color={accentColor} />
+                  </View>
+
+                  {/* Text Content */}
+                  <View style={{ flex: 1, gap: 2 }}>
+                    <Text style={[styles.musicTitle, { color: palette.text }]}>
+                      {recommendedPlaylist.label}
                     </Text>
-                    <Text style={[styles.musicSub, { color: isDark ? '#86EFAC' : '#166534' }]} numberOfLines={1}>
+                    <Text style={[styles.musicSub, { color: palette.sub }]} numberOfLines={1}>
                       Recommended for {currentEntryMood}
                     </Text>
                   </View>
+
+                  {/* Action Icon */}
+                  <ExternalLink size={16} color={accentColor} style={{ opacity: 0.8 }} />
                 </Pressable>
               </Animated.View>
             )}
@@ -351,7 +390,7 @@ async function handleSave() {
             />
           </View>
 
-          {/* Save button */}
+{/* Save button */}
           <Animated.View style={{ opacity: fadeAnim, marginTop: 8 }}>
             <PremiumPressable
               onPress={handleSave}
@@ -359,7 +398,12 @@ async function handleSave() {
               haptic="light"
               style={[
                 styles.saveBtn,
-                (!selectedMood && !customMood.trim()) && styles.saveBtnDisabled,
+                // Dynamically apply accent color if enabled, otherwise grey
+                { 
+                  backgroundColor: (!selectedMood && !customMood.trim()) 
+                    ? (isDark ? '#374151' : '#CBD5E1') 
+                    : accentColor 
+                }
               ]}
             >
               <Text style={styles.saveText}>
@@ -402,21 +446,29 @@ const styles = StyleSheet.create({
   label:{ fontSize:14, marginBottom:6 },
   chip:{ borderWidth:1, borderRadius:999, paddingVertical:6, paddingHorizontal:12 },
   input:{ borderWidth:1, borderRadius:12, paddingVertical:10, paddingHorizontal:12, marginTop:8 },
-  saveBtn:{ backgroundColor:'#6366F1', paddingVertical:14, paddingHorizontal:18, borderRadius:14, alignSelf:'flex-start' },
+saveBtn:{ backgroundColor:'#6366F1', paddingVertical:14, paddingHorizontal:18, borderRadius:14, alignSelf:'flex-start' },
   musicBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     padding: 12,
-    borderRadius: 12,
+    borderRadius: 16,
     borderWidth: 1,
     marginTop: 8,
+    gap: 12, // Space between icon and text
+  },
+  musicIconBox: {
+    width: 40,
+    height: 40,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   musicTitle: {
     fontWeight: '700',
-    fontSize: 14,
+    fontSize: 15,
   },
   musicSub: {
-    fontSize: 12,
+    fontSize: 13,
     fontWeight: '500',
   },
   saveBtnDisabled:{ backgroundColor:'#CBD5E1' },
