@@ -16,6 +16,10 @@ export default function Timer({
 }: TimerProps) {
   const [left, setLeft] = useState(seconds);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
+  
+  // Keep the latest callback in a ref to avoid stale closures
+  const onTickRef = useRef(onTick);
+  useEffect(() => { onTickRef.current = onTick; }, [onTick]);
 
   // 1. Sync state if prop changes
   useEffect(() => {
@@ -49,10 +53,10 @@ export default function Timer({
     // Removed 'left' from dependencies to prevent interval churn
   }, [running]);
 
-  // 3. Handle Side Effects (Tick & Done)
+// 3. Handle Side Effects (Tick & Done)
   useEffect(() => {
     if (running && left < seconds) {
-        if (onTick) onTick(left);
+        if (onTickRef.current) onTickRef.current(left);
     }
 
     if (left === 0 && running) {
