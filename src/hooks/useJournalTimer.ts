@@ -123,10 +123,10 @@ if (t <= 0) {
               setPhase(nextPhase);
               phaseRef.current = nextPhase; // Update ref immediately
               
-              setRemaining(writeDuration);
+setRemaining(writeDuration);
               setSkipBreakAvailable(false);
               if (hapticsEnabled) Haptics.notificationAsync(Haptics.NotificationFeedbackType.Light);
-              playChime();
+              // playChime(); // Removed so it only plays on final completion
             }
           }
         }

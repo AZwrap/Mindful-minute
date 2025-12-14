@@ -327,9 +327,17 @@ const [suggestedMoods, setSuggestedMoods] = useState<Suggestion[]>([]);
 // Cleanup: Reset timer if user backs out without saving
   useEffect(() => {
     return () => {
+        isScreenActive.current = false;
+        
         // If we didn't explicitly save, reset timer to the start (writeDuration)
         if (!isSaved.current) {
-            setDraftTimer(date, writeDuration); 
+            // Explicitly reset metadata (Cycle 1, Writing Phase) so it doesn't resume old state
+            setDraftTimer(date, writeDuration, {
+                mode: 'writing',
+                cyclesCompleted: 1,
+                timeLeft: writeDuration,
+                isActive: false
+            });
         }
     };
   }, [writeDuration]); // Dependency ensures we have the correct duration
@@ -456,7 +464,11 @@ const currentGradientColors = useMemo(() => {
       : ['#F8FAFC', '#F1F5F9', '#E2E8F0'];
   }, [activeMoodColor, isDark]);
 
-  const promptColor = palette.text; 
+// If a mood is selected, use high-contrast text (Dark Slate for light mode tint, White for dark mode tint)
+  // Otherwise, use standard theme text.
+  const promptColor = activeMoodColor 
+    ? (isDark ? '#F8FAFC' : '#0F172A') 
+    : palette.text;
 
   const content = (
     <LinearGradient colors={currentGradientColors} style={styles.container} start={{ x: 0, y: 0 }} end={{ x: 0, y: 1 }}>
@@ -468,17 +480,27 @@ const currentGradientColors = useMemo(() => {
           keyboardShouldPersistTaps="handled"
           keyboardDismissMode="on-drag" // <--- Added this
         >
-          <View style={styles.contentCard}>
-{/* PROMPT */}
-<Text style={[styles.prompt, { color: promptColor }]}>
-              {currentPrompt?.text}
-              {currentPrompt?.explanation && (
-                // FIX: Increased contrast (palette.text) and weight to be readable against yellow gradients
-                <Text style={{ fontSize: 13, color: palette.text, fontStyle: 'italic', fontWeight: '600', opacity: 0.9 }}>
-                  {'\n'}💡 {currentPrompt.explanation}
-                </Text>
-              )}
-            </Text>
+          
+<View style={styles.contentCard}>
+            {/* PROMPT - Boxed for better contrast against mood gradients */}
+            <View style={{ 
+              backgroundColor: palette.card, 
+              paddingVertical: 16, 
+              paddingHorizontal: 20, 
+              borderRadius: 16, 
+              marginBottom: 16,
+              borderWidth: 1, 
+              borderColor: palette.border 
+            }}>
+              <Text style={[styles.prompt, { color: promptColor, marginBottom: 0 }]}>
+                {currentPrompt?.text}
+                {currentPrompt?.explanation && (
+                  <Text style={{ fontSize: 13, color: palette.text, fontStyle: 'italic', fontWeight: '600', opacity: 0.8 }}>
+                    {'\n\n'}💡 {currentPrompt.explanation}
+                  </Text>
+                )}
+              </Text>
+            </View>
 
 {/* Collapsible Timer Container - Collapses when hidden OR completed */}
             <Animated.View style={[{ opacity: fade }, styles.timerContainer, (!showTimer || timerCompleted) && { height: 0, overflow: 'hidden' }]}>

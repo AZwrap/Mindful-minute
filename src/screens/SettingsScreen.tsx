@@ -700,7 +700,10 @@ const SettingRow = ({ label, description, value, onValueChange, icon }: any) => 
                 </View>
                 
 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 16 }}>
-                  <TextInput keyboardType="numeric" placeholder="Custom (5-600s)" placeholderTextColor={palette.sub} value={customWriteText} onChangeText={setCustomWriteText} style={[styles.input, { color: palette.text, borderColor: palette.border, backgroundColor: palette.bg }]} />
+                  <View style={[styles.inputWrapper, { borderColor: palette.border, backgroundColor: palette.bg }]}>
+                    <TextInput keyboardType="numeric" placeholder="Custom" placeholderTextColor={palette.sub} value={customWriteText} onChangeText={setCustomWriteText} style={[styles.inputField, { color: palette.text }]} />
+                    <Text style={{ color: palette.sub, fontWeight: '600' }}>s</Text>
+                  </View>
                   <PremiumPressable onPress={() => { if (!writeInvalid) { setWriteDuration(writeParsed); showToast('Duration updated'); }}} disabled={writeInvalid} style={[styles.applyBtn, { backgroundColor: writeInvalid ? '#CBD5E1' : palette.accent }]}>
                     <Text style={{ color: 'white', fontWeight: '600', fontSize: 12 }}>Set</Text>
                   </PremiumPressable>
@@ -735,8 +738,11 @@ const SettingRow = ({ label, description, value, onValueChange, icon }: any) => 
                   })}
                 </View>
                 
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 16 }}>
-                  <TextInput keyboardType="numeric" placeholder="Custom (5-600s)" placeholderTextColor={palette.sub} value={customBreakText} onChangeText={setCustomBreakText} style={[styles.input, { color: palette.text, borderColor: palette.border, backgroundColor: palette.bg }]} />
+<View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 16 }}>
+                  <View style={[styles.inputWrapper, { borderColor: palette.border, backgroundColor: palette.bg }]}>
+                    <TextInput keyboardType="numeric" placeholder="Custom" placeholderTextColor={palette.sub} value={customBreakText} onChangeText={setCustomBreakText} style={[styles.inputField, { color: palette.text }]} />
+                    <Text style={{ color: palette.sub, fontWeight: '600' }}>s</Text>
+                  </View>
                   <PremiumPressable onPress={() => { if (!breakInvalid) { setBreakDuration(breakParsed); showToast('Break updated'); }}} disabled={breakInvalid} style={[styles.applyBtn, { backgroundColor: breakInvalid ? '#CBD5E1' : palette.accent }]}>
                     <Text style={{ color: 'white', fontWeight: '600', fontSize: 12 }}>Set</Text>
                   </PremiumPressable>
@@ -943,8 +949,10 @@ const styles = StyleSheet.create({
   settingTexts: { flex: 1, marginRight: 8 },
   label: { fontSize: 15, fontWeight: '600', marginBottom: 2 },
   description: { fontSize: 13, lineHeight: 16 },
-  chip: { borderWidth: 1, borderRadius: 8, paddingVertical: 6, paddingHorizontal: 12, minWidth: 48, alignItems: 'center' },
+chip: { borderWidth: 1, borderRadius: 8, paddingVertical: 6, paddingHorizontal: 12, minWidth: 48, alignItems: 'center' },
   input: { flexGrow: 0, minWidth: 110, borderWidth: 1, borderRadius: 10, paddingVertical: 8, paddingHorizontal: 10, fontSize: 14 },
+  inputWrapper: { flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderRadius: 10, paddingHorizontal: 10, paddingVertical: 8, minWidth: 110 },
+  inputField: { flex: 1, fontSize: 14, padding: 0 },
   applyBtn: { paddingVertical: 10, paddingHorizontal: 14, borderRadius: 10 },
   toast: { position: 'absolute', bottom: 40, left: 20, right: 20, borderRadius: 12, paddingVertical: 14, paddingHorizontal: 16, borderWidth: 1, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 4, elevation: 3, zIndex: 9999, alignItems: 'center' },
   toastText: { fontWeight: '600', fontSize: 14 },
