@@ -23,7 +23,7 @@ export const useWritingSettings = create<WritingSettingsState & WritingSettingsA
     (set) => ({
       writeDuration: 60,
       breakDuration: 30,
-      totalCycles: 3,
+      totalCycles: 4,
       showTimer: true,
       autoStartBreak: false,
 
