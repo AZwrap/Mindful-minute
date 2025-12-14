@@ -49,14 +49,14 @@
           "faceIDPermission": "Allow Mindful Minute to use FaceID to secure your journal."
         }
       ],
-      [
+[
         "expo-image-picker",
         {
           "photosPermission": "Allow Mindful Minute to access your photos to attach them to entries.",
           "cameraPermission": "Allow Mindful Minute to access your camera to take photos for entries."
         }
       ],
-[
+      [
         "expo-camera",
         {
           "cameraPermission": "Allow Mindful Minute to access your camera."
