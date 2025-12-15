@@ -15,6 +15,7 @@ import { useAppInitialization } from "./src/hooks/useAppInitialization";
 import ThemeFadeWrapper from "./src/components/ThemeFadeWrapper";
 import SecurityGate from './src/components/SecurityGate';
 import { ErrorBoundary } from "./src/components/ErrorBoundary";
+import GlobalAlert from "./src/components/GlobalAlert";
 import './src/utils/ignoreWarnings';
 
 export default function App() {
@@ -49,9 +50,10 @@ if (data?.journalId && navigationRef.current) {
       <GestureHandlerRootView style={{ flex: 1 }}>
         <NavigationContainer ref={navigationRef} linking={linking}>
           <ThemeFadeWrapper>
-            <ErrorBoundary>
+<ErrorBoundary>
               <SecurityGate> 
                  <RootStack />
+                 <GlobalAlert />
                  <StatusBar style={theme === "dark" ? "light" : "dark"} />
               </SecurityGate>
             </ErrorBoundary>

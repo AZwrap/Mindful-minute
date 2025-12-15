@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { 
-  View, Text, TextInput, StyleSheet, Alert, 
+  View, Text, TextInput, StyleSheet, 
   KeyboardAvoidingView, Platform, ScrollView, ActivityIndicator 
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -18,12 +18,14 @@ import { GoogleSignin } from '@react-native-google-signin/google-signin';
 import { auth } from '../firebaseConfig';
 import { useSettings } from '../stores/settingsStore';
 import PremiumPressable from '../components/PremiumPressable';
+import { useUIStore } from '../stores/uiStore';
 import { RootStackParamList } from '../navigation/RootStack';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Auth'>;
 
 export default function AuthScreen({ navigation }: Props) {
   const setHasOnboarded = useSettings((s) => s.setHasOnboarded);
+  const { showAlert } = useUIStore();
   // 1. Configure Google Sign-In (Get webClientId from Firebase Console -> Auth -> Sign-in method -> Google -> Web SDK config)
   React.useEffect(() => {
     GoogleSignin.configure({
@@ -54,7 +56,7 @@ export default function AuthScreen({ navigation }: Props) {
       if (error.code === 'SIGN_IN_CANCELLED') {
         // user cancelled the login flow
       } else {
-        Alert.alert('Google Sign-In Error', error.message);
+        showAlert('Google Sign-In Error', error.message);
       }
     } finally {
       setLoading(false);
@@ -64,22 +66,29 @@ export default function AuthScreen({ navigation }: Props) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 const handleForgotPassword = async () => {
     if (!email) {
-      Alert.alert('Email Required', 'Please enter your email address to reset your password.');
+showAlert('Email Required', 'Please enter your email address to reset your password.');
       return;
     }
     try {
       await sendPasswordResetEmail(auth, email);
-      Alert.alert('Email Sent', 'Check your inbox for password reset instructions.');
+showAlert('Email Sent', 'Check your inbox for password reset instructions.');
     } catch (error: any) {
-      Alert.alert('Error', error.message);
+showAlert('Error', error.message);
     }
   };
-  const handleAuth = async () => {
-    if (!email || !password) {
-      Alert.alert('Missing Fields', 'Please enter both email and password.');
+const handleAuth = async () => {
+    if (!email || !password || (!isLogin && !confirmPassword)) {
+showAlert('Missing Fields', 'Please fill in all fields.');
+      return;
+    }
+
+    if (!isLogin && password !== confirmPassword) {
+showAlert('Password Mismatch', 'Passwords do not match.');
       return;
     }
 
@@ -97,17 +106,19 @@ try {
     } catch (error: any) {
       setLoading(false); // Only stop loading on error (component remains mounted)
       
-      let msg = error.message;
+let msg = error.message;
       if (msg.includes('auth/invalid-email')) msg = 'Invalid email address.';
+      // Handle "invalid-credential" which covers both wrong password and user not found in newer Firebase versions
+      if (msg.includes('auth/invalid-credential')) msg = 'Incorrect email or password.';
       if (msg.includes('auth/user-not-found')) msg = 'No account found with this email.';
       if (msg.includes('auth/wrong-password')) msg = 'Incorrect password.';
       if (msg.includes('auth/email-already-in-use')) msg = 'Email is already registered.';
-      Alert.alert('Authentication Error', msg);
+showAlert('Authentication Error', msg);
     }
   };
 
 const handleGuest = () => {
-    Alert.alert(
+    showAlert(
       "Continue as Guest?",
       "Your data will only be stored on this device. You can sync later in Settings.",
       [
@@ -115,11 +126,8 @@ const handleGuest = () => {
         { 
           text: "Continue", 
           onPress: () => {
-            // Wrap navigation in setTimeout to allow Alert to fully close (Fixes Android crash/warning)
-            setTimeout(() => {
               setHasOnboarded(true);
               navigation.replace('MainTabs');
-            }, 500);
           }
         }
       ]
@@ -172,9 +180,28 @@ const handleGuest = () => {
                   />
                   <PremiumPressable onPress={() => setShowPassword(!showPassword)} style={{ padding: 4 }}>
                     <Feather name={showPassword ? "eye" : "eye-off"} size={20} color="#94A3B8" />
-                  </PremiumPressable>
+                 </PremiumPressable>
                 </View>
               </View>
+
+              {!isLogin && (
+<View style={styles.inputGroup}>
+                  <Text style={styles.label}>Confirm Password</Text>
+                  <View style={[styles.input, { flexDirection: 'row', alignItems: 'center', padding: 0, paddingHorizontal: 16 }]}>
+                    <TextInput 
+                      style={{ flex: 1, paddingVertical: 16, fontSize: 16, color: '#1E293B' }} 
+                      placeholder="••••••••" 
+                      secureTextEntry={!showConfirmPassword}
+                      value={confirmPassword}
+                      onChangeText={setConfirmPassword}
+                    />
+                    <PremiumPressable onPress={() => setShowConfirmPassword(!showConfirmPassword)} style={{ padding: 4 }}>
+                      <Feather name={showConfirmPassword ? "eye" : "eye-off"} size={20} color="#94A3B8" />
+                    </PremiumPressable>
+                  </View>
+                </View>
+              )}
+
               {isLogin && (
                 <PremiumPressable onPress={handleForgotPassword} style={{ alignSelf: 'flex-end', marginTop: -8 }}>
                   <Text style={{ color: '#6366F1', fontWeight: '600', fontSize: 13 }}>Forgot Password?</Text>

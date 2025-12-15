@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { View, TextInput, StyleSheet, Text, KeyboardAvoidingView, Platform, Alert, Image, Pressable, ScrollView, ActivityIndicator } from 'react-native';
+import { View, TextInput, StyleSheet, Text, KeyboardAvoidingView, Platform, Image, Pressable, ScrollView, ActivityIndicator } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useUIStore } from '../stores/uiStore';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { Camera, XCircle } from 'lucide-react-native'; // Icons
@@ -17,6 +18,7 @@ type Props = NativeStackScreenProps<RootStackParamList, 'SharedWrite'>;
 
 export default function SharedWriteScreen({ navigation, route }: Props) {
   const { journalId, entry } = route.params;
+  const { showAlert } = useUIStore();
   const isEditing = !!entry;
   
   // State
@@ -29,7 +31,7 @@ export default function SharedWriteScreen({ navigation, route }: Props) {
   
   // --- IMAGE LOGIC (Base64 for Alpha) ---
 const pickImage = () => {
-    Alert.alert(
+    showAlert(
       "Add Photo",
       "Capture a moment or choose from your gallery.",
       [
@@ -39,7 +41,7 @@ const pickImage = () => {
             try {
               const perm = await ImagePicker.requestCameraPermissionsAsync();
               if (!perm.granted) {
-                Alert.alert("Permission Required", "Camera access is needed.");
+                showAlert("Permission Required", "Camera access is needed.");
                 return;
               }
               const result = await ImagePicker.launchCameraAsync({
@@ -51,7 +53,7 @@ const pickImage = () => {
               if (!result.canceled && result.assets[0].base64) {
                 setImageUri(`data:image/jpeg;base64,${result.assets[0].base64}`);
               }
-            } catch (e) { Alert.alert("Error", "Could not open camera."); }
+            } catch (e) { showAlert("Error", "Could not open camera."); }
           }
         },
         {
@@ -67,7 +69,7 @@ const pickImage = () => {
               if (!result.canceled && result.assets[0].base64) {
                 setImageUri(`data:image/jpeg;base64,${result.assets[0].base64}`);
               }
-            } catch (e) { Alert.alert("Error", "Could not pick image."); }
+            } catch (e) { showAlert("Error", "Could not pick image."); }
           }
         },
         { text: "Cancel", style: "cancel" }

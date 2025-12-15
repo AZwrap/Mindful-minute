@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, FlatList, Alert, Share, Image, TouchableOpacity, Modal, Pressable, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, FlatList, Share, Image, TouchableOpacity, Modal, Pressable, ScrollView } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -11,6 +11,7 @@ import { useJournalStore } from '../stores/journalStore';
 import { useSharedPalette } from '../hooks/useSharedPalette';
 import { JournalService } from '../services/journalService';
 import { MediaService } from '../services/mediaService';
+import { useUIStore } from '../stores/uiStore';
 import { leaveSharedJournal, kickMember, updateMemberRole } from '../services/syncedJournalService';
 import { exportSharedJournalPDF } from '../utils/exportHelper';
 import { auth } from '../firebaseConfig';
@@ -20,6 +21,7 @@ type Props = NativeStackScreenProps<RootStackParamList, 'JournalDetails'>;
 
 export default function JournalDetailsScreen({ navigation, route }: Props) {
   const { journalId } = route.params;
+  const { showAlert } = useUIStore();
   const palette = useSharedPalette();
   const [showFullScreen, setShowFullScreen] = useState(false);
   
@@ -41,7 +43,7 @@ export default function JournalDetailsScreen({ navigation, route }: Props) {
   const handleExport = async () => {
     const entries = sharedEntries[journalId] || [];
     if (entries.length === 0) {
-      Alert.alert("No Data", "There are no entries to export yet.");
+      showAlert("No Data", "There are no entries to export yet.");
       return;
     }
     await exportSharedJournalPDF(journal?.name || "Journal", entries);
@@ -50,7 +52,7 @@ export default function JournalDetailsScreen({ navigation, route }: Props) {
 const handleMemberPress = (memberId: string, memberName: string) => {
     if (!isAdmin || memberId === currentUserId) return;
 
-Alert.alert(
+showAlert(
       "Manage Member",
       `Manage ${memberName}`,
       [
@@ -62,7 +64,7 @@ Alert.alert(
              try {
                await kickMember(journalId, memberId);
              } catch (e) {
-               Alert.alert("Error", "Failed to remove user.");
+               showAlert("Error", "Failed to remove user.");
              }
           }
         },
@@ -72,7 +74,7 @@ Alert.alert(
              try {
                await updateMemberRole(journalId, memberId, 'admin');
              } catch (e) {
-               Alert.alert("Error", "Failed to promote user.");
+               showAlert("Error", "Failed to promote user.");
              }
           }
         },
@@ -82,7 +84,7 @@ Alert.alert(
                try {
                  await updateMemberRole(journalId, memberId, 'member');
                } catch (e) {
-                 Alert.alert("Error", "Failed to demote user.");
+                 showAlert("Error", "Failed to demote user.");
                }
             }
           }
@@ -91,7 +93,7 @@ Alert.alert(
   };
 
   const handleDeleteGroup = () => {
-    Alert.alert(
+    showAlert(
       "Delete Group",
       "Are you sure? This will remove the journal for EVERYONE. This action cannot be undone.",
       [
@@ -108,7 +110,7 @@ Alert.alert(
                  routes: [{ name: 'MainTabs' }],
                });
              } catch (e) {
-               Alert.alert("Error", "Failed to delete group.");
+               showAlert("Error", "Failed to delete group.");
              }
           }
         }
@@ -124,12 +126,12 @@ Alert.alert(
         message: `Join my shared journal on Mindful Minute! Tap here:\n${link}`,
       });
     } catch (error) {
-      Alert.alert("Error", "Could not share link.");
+      showAlert("Error", "Could not share link.");
     }
   };
 
   const handleLeave = () => {
-    Alert.alert(
+    showAlert(
       "Leave Group?",
       "You will no longer see these entries.",
       [
@@ -182,7 +184,7 @@ Alert.alert(
       }
     } catch (e) {
       console.error("Photo Update Error:", e);
-      Alert.alert("Error", "Failed to update photo.");
+      showAlert("Error", "Failed to update photo.");
     }
   };
 

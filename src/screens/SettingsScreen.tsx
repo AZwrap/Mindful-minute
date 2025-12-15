@@ -9,13 +9,13 @@ import {
   TextInput,
   Animated,
   ScrollView,
-  Alert,
   NativeModules,
   Platform,
   LayoutAnimation,
   UIManager,
   Keyboard
 } from 'react-native';
+import { useUIStore } from '../stores/uiStore';
 import * as Haptics from 'expo-haptics';
 import * as Sharing from 'expo-sharing';
 import * as FileSystem from 'expo-file-system';
@@ -68,6 +68,7 @@ type Props = NativeStackScreenProps<RootStackParamList, 'Settings'>;
 
 export default function SettingsScreen({ navigation }: Props) {
   const systemScheme = useColorScheme();
+  const { showAlert } = useUIStore();
   const { getCurrentTheme } = useTheme();
   const currentTheme = getCurrentTheme(systemScheme);
   const isDark = currentTheme === 'dark';
@@ -124,7 +125,7 @@ const {
 
   const handleUpdateProfile = async () => {
     if (!auth.currentUser) {
-      Alert.alert("Not Signed In", "You must be signed in to set a profile name.");
+      showAlert("Not Signed In", "You must be signed in to set a profile name.");
       return;
     }
     if (!displayName.trim()) return;
@@ -135,7 +136,7 @@ const {
       showToast('Profile Name Updated');
       Keyboard.dismiss();
     } catch (e) {
-      Alert.alert("Error", "Failed to update profile.");
+      showAlert("Error", "Failed to update profile.");
       const handleConfirmTime = async (date: Date) => {
     const h = date.getHours();
     const m = date.getMinutes();
@@ -236,7 +237,7 @@ const {
   };
 
 const handleBulkExport = () => {
-    Alert.alert(
+    showAlert(
       "Export All Data",
       "Choose a format for your journal export:",
       [
@@ -270,13 +271,13 @@ const handleBulkExport = () => {
         if (res.assets && res.assets[0]) {
             const content = await FileSystem.readAsStringAsync(res.assets[0].uri);
             useEntriesStore.getState().replaceEntries(JSON.parse(content));
-            Alert.alert("Success", "Data restored!");
+            showAlert("Success", "Data restored!");
         }
-     } catch (e) { Alert.alert("Error", "Failed to restore data."); }
+     } catch (e) { showAlert("Error", "Failed to restore data."); }
   };
 
   const handleLogout = () => {
-    Alert.alert(
+    showAlert(
       "Log Out",
       "Are you sure you want to sign out?",
       [
@@ -293,7 +294,7 @@ const handleBulkExport = () => {
                 routes: [{ name: 'Auth' }],
               });
             } catch (e) {
-              Alert.alert("Error", "Failed to log out.");
+              showAlert("Error", "Failed to log out.");
             }
           }
         }
@@ -302,7 +303,7 @@ const handleBulkExport = () => {
   };
 
   const handleFactoryReset = () => {
-    Alert.alert(
+    showAlert(
       "Factory Reset",
       "This will permanently delete ALL entries. Are you sure?",
       [
@@ -337,7 +338,7 @@ onPress: async () => {
                  }
                }
              } catch (e) {
-               Alert.alert("Error", "Failed to reset data.");
+               showAlert("Error", "Failed to reset data.");
              }
           }
         }
@@ -349,14 +350,14 @@ onPress: async () => {
     showToast("Backing up to cloud...");
     const result = await saveBackupToCloud();
     if (result.success) {
-        Alert.alert("Success", "App data safely backed up to the cloud.");
+        showAlert("Success", "App data safely backed up to the cloud.");
     } else {
-        Alert.alert("Error", "Backup failed. Check your internet connection.");
+        showAlert("Error", "Backup failed. Check your internet connection.");
     }
   };
 
   const handleCloudRestore = () => {
-    Alert.alert(
+    showAlert(
       "Restore from Cloud",
       "This will OVERWRITE current data with your cloud backup. Continue?",
       [
@@ -367,10 +368,10 @@ onPress: async () => {
             showToast("Restoring...");
             const result = await restoreBackupFromCloud();
             if (result.success) {
-                Alert.alert("Restored", "Your data is back!");
+                showAlert("Restored", "Your data is back!");
                 Updates.reloadAsync();
             } else {
-                Alert.alert("Error", "Could not find backup or download failed.");
+                showAlert("Error", "Could not find backup or download failed.");
             }
           } 
         }
@@ -378,7 +379,7 @@ onPress: async () => {
     );
   };
 
-  const generateTherapistReport = () => Alert.alert("Report", "Feature coming soon.");
+  const generateTherapistReport = () => showAlert("Report", "Feature coming soon.");
 
   // --- UI COMPONENTS ---
 

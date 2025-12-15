@@ -1,6 +1,7 @@
 import React, { useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, FlatList, Pressable, Alert, TextInput, Share, Animated, LayoutAnimation, Platform, UIManager, Image, ActivityIndicator, RefreshControl } from 'react-native';
+import { View, Text, StyleSheet, FlatList, Pressable, TextInput, Share, Animated, LayoutAnimation, Platform, UIManager, Image, ActivityIndicator, RefreshControl } from 'react-native';
 import { JournalService } from '../services/journalService'; // <--- Added
+import { useUIStore } from '../stores/uiStore';
 import { Swipeable } from 'react-native-gesture-handler';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -19,6 +20,7 @@ type Props = NativeStackScreenProps<RootStackParamList, 'SharedJournal'>;
 
 export default function SharedJournalScreen({ navigation, route }: Props) {
   const { journalId } = route.params;
+  const { showAlert } = useUIStore(); 
   const palette = useSharedPalette();
 
   // Ref to track the currently open swipeable row
@@ -109,21 +111,21 @@ const entries = sharedEntries[journalId] || [];
 const handleInvite = async () => {
     const user = auth.currentUser;
     if (!user) {
-        Alert.alert("Error", "You must be signed in to invite others.");
+        showAlert("Error", "You must be signed in to invite others.");
         return;
     }
     try {
       // Pass the direct auth user object
       const link = await createInviteLink(journalId, user as any);
       await Clipboard.setStringAsync(link);
-      Alert.alert('Copied!', 'Invite link copied to clipboard.');
+      showAlert('Copied!', 'Invite link copied to clipboard.');
     } catch (e) {
-      Alert.alert('Error', 'Failed to create invite link.');
+      showAlert('Error', 'Failed to create invite link.');
     }
   };
 
   const handleLeave = () => {
-    Alert.alert(
+    showAlert(
       "Leave Journal",
       "Are you sure? You won't see these entries anymore.",
       [

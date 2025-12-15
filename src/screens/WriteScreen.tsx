@@ -11,10 +11,10 @@ import {
   KeyboardAvoidingView,
 Platform,
   Keyboard,
-  Alert,
   Image,
   TouchableWithoutFeedback,
 } from 'react-native';
+import { useUIStore } from '../stores/uiStore';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
 import { Audio } from 'expo-av';
@@ -75,6 +75,7 @@ interface Suggestion {
 // --------------------------------------------------
 export default function WriteScreen({ navigation, route }: Props) {
   // 1. MOUNT REF
+  const { showAlert } = useUIStore();
   const mounted = useRef(false);
   const isScreenActive = useRef(true);
   const isSaved = useRef(false); // Track if user explicitly saved
@@ -118,7 +119,7 @@ const [isPlaying, setIsPlaying] = useState(false);
 // --- IMAGE LOGIC ---
 // --- IMAGE LOGIC ---
   const pickImage = () => {
-    Alert.alert(
+    showAlert(
       "Add Photo",
       "Capture a moment or choose from your gallery.",
       [
@@ -128,7 +129,7 @@ const [isPlaying, setIsPlaying] = useState(false);
             try {
               const perm = await ImagePicker.requestCameraPermissionsAsync();
               if (!perm.granted) {
-                Alert.alert("Permission Required", "Camera access is needed to take photos.");
+                showAlert("Permission Required", "Camera access is needed to take photos.");
                 return;
               }
 
@@ -146,7 +147,7 @@ const [isPlaying, setIsPlaying] = useState(false);
               }
             } catch (e) {
               console.log(e);
-              Alert.alert("Error", "Could not open camera.");
+              showAlert("Error", "Could not open camera.");
             }
           }
         },
@@ -167,7 +168,7 @@ const [isPlaying, setIsPlaying] = useState(false);
                 setImageUri(base64Uri);
               }
             } catch (e) {
-              Alert.alert("Error", "Could not pick image.");
+              showAlert("Error", "Could not pick image.");
             }
           }
         },
@@ -181,7 +182,7 @@ const [isPlaying, setIsPlaying] = useState(false);
     try {
       const perm = await Audio.requestPermissionsAsync();
       if (perm.status !== "granted") {
-        Alert.alert("Permission Denied", "Allow microphone access.");
+        showAlert("Permission Denied", "Allow microphone access.");
         return;
       }
       await Audio.setAudioModeAsync({ allowsRecordingIOS: true, playsInSilentModeIOS: true });
@@ -381,14 +382,14 @@ upsert({
       if (!preserveTimerProgress) setDraftTimer(date, writeDuration);
       navigation.reset({ index: 0, routes: [{ name: 'MainTabs' }] });
     } catch (e) {
-Alert.alert("Error", "Could not save entry.");
+showAlert("Error", "Could not save entry.");
       isSaved.current = false; // Allow retry
     }
   };
 
 const continueToMood = async () => {
     if (!text.trim() && !audioUri && !imageUri) {
-      Alert.alert("Empty", "Please write something, record audio, or add a photo.");
+      showAlert("Empty", "Please write something, record audio, or add a photo.");
       return;
     }
     
@@ -429,7 +430,7 @@ try {
       }, 50);
 
     } catch (e) {
-Alert.alert("Error", "Could not save entry.");
+showAlert("Error", "Could not save entry.");
       isSaved.current = false;
     }
   };

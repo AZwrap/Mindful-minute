@@ -8,6 +8,7 @@ import * as Clipboard from 'expo-clipboard';
 import { getRecommendedPlaylist } from '../constants/moodCategories';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useUIStore } from '../stores/uiStore';
 
 // Navigation
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -57,6 +58,7 @@ function formatTime(entry: JournalEntry): string {
 // --------------------------------------------------
 export default function EntryDetailScreen({ route, navigation }: Props) {
   const systemScheme = useColorScheme();
+  const { showAlert } = useUIStore();
   const { getCurrentTheme } = useTheme();
   const currentTheme = getCurrentTheme(systemScheme);
   const isDark = currentTheme === 'dark';
@@ -159,7 +161,7 @@ const copyToClipboard = async () => {
   const openShareModal = () => {
     const allIds = Object.keys(journals);
     if (allIds.length === 0) {
-      alert("No Shared Groups Found. Go to the 'Together' tab to create or join one first.");
+showAlert("No Groups", "No Shared Groups Found. Go to the 'Together' tab to create or join one first.");
       return;
     }
     
@@ -193,10 +195,10 @@ const handlePlayMusic = async () => {
         await Linking.openURL(playlist.url);
       } catch (err) {
         console.error("Failed to open link:", err);
-        alert("Could not open music app.");
+showAlert("Error", "Could not open music app.");
       }
     } else {
-      alert(`No playlist found for ${mood}`);
+showAlert("No Playlist", `No playlist found for ${mood}`);
     }
   };
 const handleSelectAll = () => {

@@ -1,8 +1,9 @@
 import React from 'react';
-import { View, Text, StyleSheet, ScrollView, Alert, Image, TextInput, KeyboardAvoidingView, Platform, Pressable, Keyboard, Modal, Animated } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Image, TextInput, KeyboardAvoidingView, Platform, Pressable, Keyboard, Modal, Animated } from 'react-native';
 import { Swipeable } from 'react-native-gesture-handler'; // <--- Added
 import { Trash2, Edit2, ChevronLeft, Send, Heart, Flame, ThumbsUp, MessageCircle, Smile } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useUIStore } from '../stores/uiStore';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 
@@ -156,6 +157,7 @@ const CommentItem = ({ comment, currentUser, onDelete, onRowOpen, palette, onLon
 
 export default function SharedEntryDetailScreen({ navigation, route }: Props) {
   // --- MANUAL KEYBOARD HANDLING (Android Fix) ---
+  const { showAlert } = useUIStore();
   const bottomPadding = React.useRef(new Animated.Value(0)).current;
 
   // Track which comment we are reacting to (null = reacting to the main entry)
@@ -230,7 +232,7 @@ const handleDeleteComment = async (comment: any) => {
       await JournalService.deleteComment(entry.journalId, entry.entryId, comment);
     } catch (e) {
       console.error("Failed to delete comment:", e);
-      Alert.alert("Error", "Could not delete comment.");
+      showAlert("Error", "Could not delete comment.");
     }
   };
 
@@ -252,14 +254,14 @@ const handlePostComment = async () => {
     } catch (e) {
       console.error(e);
       setCommentText(textToSend); // Restore text if it fails
-      Alert.alert("Error", "Could not post comment. Please try again.");
+      showAlert("Error", "Could not post comment. Please try again.");
     } finally {
       setIsSubmitting(false);
     }
   };
 
   const handleDelete = () => {
-    Alert.alert(
+    showAlert(
       "Delete Entry",
       "Are you sure? This cannot be undone.",
       [
@@ -277,10 +279,10 @@ const handlePostComment = async () => {
                 await deleteSharedEntry(journalId, entry.entryId);
                 navigation.goBack();
               } else {
-                Alert.alert("Error", "Could not identify journal.");
+                showAlert("Error", "Could not identify journal.");
               }
             } catch (e) {
-              Alert.alert("Error", "Could not delete entry.");
+              showAlert("Error", "Could not delete entry.");
             }
           }
         }
