@@ -11,5 +11,3 @@ web-build/
 .tmp.driveupload/
 *.apk
 *.aab
-package-lock.json
-yarn.lock
