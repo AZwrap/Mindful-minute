@@ -20,7 +20,7 @@ export default function HomeHeader({ scheme }: HomeHeaderProps) {
         styles.title,
         { color: isDark ? '#E5E7EB' : '#0F172A' }
       ]}>
-        Mindful Minute
+        Micro Muse
       </Text>
     </View>
   );

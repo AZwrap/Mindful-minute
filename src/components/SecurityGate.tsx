@@ -79,7 +79,7 @@ const [isLocked, setIsLocked] = useState(true);
       }
 
       const result = await LocalAuthentication.authenticateAsync({
-        promptMessage: 'Unlock Mindful Minute',
+        promptMessage: 'Unlock Micro Muse',
         fallbackLabel: 'Use Passcode',
         disableDeviceFallback: false,
       });

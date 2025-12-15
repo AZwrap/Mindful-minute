@@ -115,7 +115,7 @@ export async function createInviteLink(journalId: string, user?: any): Promise<s
   
   // 2. Create message
   const name = user?.displayName || "A friend";
-  return `${name} invited you to a Shared Journal on Mindful Minute!\n\nTap to join:\n${url}`;
+  return `${name} invited you to a Shared Journal on Micro Muse!\n\nTap to join:\n${url}`;
 }
 
 // 6. Leave Journal (With Ownership Transfer)

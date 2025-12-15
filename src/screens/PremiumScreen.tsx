@@ -5,9 +5,11 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import PremiumPressable from '../components/PremiumPressable';
+import { useSettings } from '../stores/settingsStore'; // Import store
 
 export default function PremiumScreen() {
   const navigation = useNavigation();
+  const setPremium = useSettings((s) => s.setPremium); // Get action
 
   const Benefit = ({ icon, text }: { icon: string, text: string }) => (
     <View style={styles.benefitRow}>
@@ -40,15 +42,26 @@ export default function PremiumScreen() {
             <Benefit icon="users" text="Create Shared Journals" />
           </View>
 
-          <View style={styles.footer}>
-             <PremiumPressable style={styles.button} haptic="medium" onPress={() => navigation.goBack()}>
+<View style={styles.footer}>
+<PremiumPressable 
+                style={styles.button} 
+                haptic="medium" 
+                onPress={() => {
+                  setPremium(true); 
+                  alert("Premium Unlocked! (No charge for testers)");
+                  navigation.goBack();
+                }}
+             >
                 <LinearGradient
-                  colors={['#6366F1', '#8B5CF6']}
+                  colors={['#10B981', '#059669']} // Green to signal "Safe/Free"
                   style={styles.gradient}
                   start={{ x: 0, y: 0 }}
                   end={{ x: 1, y: 1 }}
                 >
-                  <Text style={styles.btnText}>Upgrade for $4.99/mo</Text>
+                  <Text style={styles.btnText}>Unlock Premium (Beta: FREE)</Text>
+                  <Text style={{ color: 'rgba(255,255,255,0.8)', fontSize: 12, marginTop: 2 }}>
+                    Click to test all features. No payment required.
+                  </Text>
                 </LinearGradient>
              </PremiumPressable>
              

@@ -55,7 +55,7 @@ const handleStart = () => {
           <View style={styles.logoContainer}>
             <Feather name="book-open" size={40} color="#6366F1" />
           </View>
-          <Text style={styles.title}>Mindful Minute</Text>
+          <Text style={styles.title}>Micro Muse</Text>
           <Text style={styles.subtitle}>Your space for clarity and growth.</Text>
         </View>
 

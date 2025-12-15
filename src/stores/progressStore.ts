@@ -50,7 +50,7 @@ interface ProgressState {
   streak: number;
   totalEntries: number;
   lastEntryDate: string | null;
-  totalWords: number; // New metric for "Mindful Minutes"
+  totalWords: number; 
   unlockedIds: string[];
   uniqueMoods: string[];
 }

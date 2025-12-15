@@ -27,6 +27,9 @@ export default function GlobalAlert() {
 
   if (!alertConfig.visible) return null;
 
+  // Logic for Vertical Stacking (3+ buttons)
+  const isVertical = alertConfig.buttons.length > 2;
+
   return (
     <Modal transparent visible={alertConfig.visible} animationType="none">
       <View style={styles.overlay}>
@@ -40,7 +43,7 @@ export default function GlobalAlert() {
             }
           ]}
         >
-          {/* Icon (Optional decoration) */}
+          {/* Icon */}
           <View style={[styles.iconCircle, { backgroundColor: isDark ? '#334155' : '#F1F5F9' }]}>
             <Feather name="info" size={28} color="#6366F1" />
           </View>
@@ -53,26 +56,52 @@ export default function GlobalAlert() {
             {alertConfig.message}
           </Text>
 
-          <View style={styles.buttonContainer}>
+          <View style={[
+            styles.buttonContainer, 
+            { 
+              flexDirection: isVertical ? 'column-reverse' : 'row',
+              gap: 12 
+            }
+          ]}>
             {alertConfig.buttons.map((btn, index) => {
-              const isPrimary = btn.style !== 'cancel';
+              const isDestructive = btn.style === 'destructive';
+              const isCancel = btn.style === 'cancel';
+              const isPrimary = !isCancel && !isDestructive;
+              
+              // Dynamic Styles based on type
+              let buttonStyle = {};
+              let textStyle = {};
+
+              if (isDestructive) {
+                buttonStyle = styles.destructiveButton;
+                textStyle = { color: 'white' };
+              } else if (isPrimary) {
+                buttonStyle = styles.primaryButton;
+                textStyle = { color: 'white' };
+              } else {
+                // Ghost Style for Cancel
+                buttonStyle = {
+                  backgroundColor: 'transparent',
+                  borderWidth: 1,
+                  borderColor: isDark ? '#334155' : '#E2E8F0',
+                };
+                textStyle = { color: isDark ? '#94A3B8' : '#64748B' };
+              }
+
               return (
                 <Pressable
                   key={index}
                   style={[
                     styles.button,
-                    isPrimary ? styles.primaryButton : styles.secondaryButton,
-                    index > 0 && { marginLeft: 12 }
+                    isVertical ? { width: '100%' } : { flex: 1 },
+                    buttonStyle
                   ]}
                   onPress={() => {
                     hideAlert();
                     if (btn.onPress) btn.onPress();
                   }}
                 >
-                  <Text style={[
-                    styles.buttonText,
-                    isPrimary ? { color: 'white' } : { color: isDark ? '#94A3B8' : '#64748B' }
-                  ]}>
+                  <Text style={[styles.buttonText, textStyle]}>
                     {btn.text}
                   </Text>
                 </Pressable>
@@ -88,7 +117,7 @@ export default function GlobalAlert() {
 const styles = StyleSheet.create({
   overlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.4)', // Dim background
+    backgroundColor: 'rgba(0,0,0,0.4)',
     justifyContent: 'center',
     alignItems: 'center',
     padding: 24,
@@ -126,12 +155,9 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
   buttonContainer: {
-    flexDirection: 'row',
-    justifyContent: 'center',
     width: '100%',
   },
   button: {
-    flex: 1,
     paddingVertical: 14,
     borderRadius: 14,
     alignItems: 'center',
@@ -145,8 +171,13 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 4,
   },
-  secondaryButton: {
-    backgroundColor: 'transparent',
+  destructiveButton: {
+    backgroundColor: '#EF4444',
+    shadowColor: '#EF4444',
+    shadowOpacity: 0.3,
+    shadowOffset: { width: 0, height: 4 },
+    shadowRadius: 8,
+    elevation: 4,
   },
   buttonText: {
     fontSize: 16,

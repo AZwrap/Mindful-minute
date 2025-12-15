@@ -123,7 +123,7 @@ showAlert(
     const link = `mindfulminute://join/${journal?.id}`;
     try {
       await Share.share({
-        message: `Join my shared journal on Mindful Minute! Tap here:\n${link}`,
+        message: `Join my shared journal on Micro Muse! Tap here:\n${link}`,
       });
     } catch (error) {
       showAlert("Error", "Could not share link.");

@@ -36,6 +36,8 @@ import { useEntriesStore, JournalEntry } from "../stores/entriesStore";
 import { useProgress } from '../stores/progressStore';
 import { useTheme } from '../stores/themeStore';
 import { useSharedPalette } from '../hooks/useSharedPalette';
+import { useSettings } from '../stores/settingsStore';
+import { Lock } from 'lucide-react-native'; // Import Lock icon
 
 // Logic & Components
 import { analyzeWritingAnalytics } from '../constants/writingAnalytics';
@@ -378,6 +380,7 @@ writingAnalytics: analyzeWritingAnalytics(sortedEntries),
   const { moodStats, periodEntries } = displayData;
 
   const textMain = palette.text;
+  const isPremium = useSettings((s) => s.isPremium);
   const textSub = palette.subtleText;
 
   return (
@@ -649,19 +652,31 @@ style={{ marginTop: 20 }}
                   </View>
                 </View>
 
-{statsData.entries.length >= 30 ? (
+{statsData.entries.length >= 1 ? (
                   <PremiumPressable
-                    onPress={() => generateTherapistReport(statsData.entries)}
+                    onPress={() => {
+                      if (!isPremium) {
+                        navigation.navigate('Premium');
+                        return;
+                      }
+                      generateTherapistReport(statsData.entries);
+                    }}
                     style={{
-                      backgroundColor: '#6366F1',
+                      backgroundColor: isPremium ? '#6366F1' : palette.card,
+                      borderWidth: isPremium ? 0 : 1,
+                      borderColor: palette.border,
                       paddingVertical: 12,
                       borderRadius: 12,
-                      alignItems: 'center',
-                      marginTop: 4
+alignItems: 'center',
+                      marginTop: 4,
+                      flexDirection: 'row',
+                      justifyContent: 'center',
+                      gap: 8
                     }}
                   >
-                    <Text style={{ color: 'white', fontWeight: '700', fontSize: 14 }}>
-                      Generate PDF Report
+                    {!isPremium && <Lock size={14} color={palette.text} />}
+                    <Text style={{ color: isPremium ? 'white' : palette.text, fontWeight: '700', fontSize: 14 }}>
+                      {isPremium ? 'Generate PDF Report' : 'Unlock PDF Report'}
                     </Text>
                   </PremiumPressable>
                 ) : (

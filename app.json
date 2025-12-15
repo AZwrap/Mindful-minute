@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "Mindful Minute",
-    "slug": "mindful-minute",
+    "name": "Micro Muse",
+    "slug": "micro-muse",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -14,15 +14,15 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.mindfulminute.app",
+      "bundleIdentifier": "com.azwrap.micromuse",
       "infoPlist": {
-        "NSCameraUsageDescription": "Mindful Minute needs access to your camera to let you attach photos to your journal entries.",
-        "NSPhotoLibraryUsageDescription": "Mindful Minute needs access to your photo library to let you select images for your journal.",
-        "NSMicrophoneUsageDescription": "Mindful Minute needs access to the microphone to record your voice reflections.",
-        "NSFaceIDUsageDescription": "Mindful Minute uses FaceID to lock your private journal entries."
+        "NSCameraUsageDescription": "Micro Muse needs access to your camera to let you attach photos to your journal entries.",
+        "NSPhotoLibraryUsageDescription": "Micro Muse needs access to your photo library to let you select images for your journal.",
+        "NSMicrophoneUsageDescription": "Micro Muse needs access to the microphone to record your voice reflections.",
+        "NSFaceIDUsageDescription": "Micro Muse uses FaceID to lock your private journal entries."
       }
     },
-    "scheme": "mindfulminute",
+    "scheme": "micromuse",
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
@@ -38,7 +38,7 @@
         "android.permission.USE_BIOMETRIC",
         "android.permission.USE_FINGERPRINT"
       ],
-      "package": "com.mindfulminute.app",
+      "package": "com.azwrap.micromuse",
       "versionCode": 1,
       "googleServicesFile": "./google-services.json"
     },
@@ -46,28 +46,28 @@
       [
         "expo-local-authentication",
         {
-          "faceIDPermission": "Allow Mindful Minute to use FaceID to secure your journal."
+          "faceIDPermission": "Allow Micro Muse to use FaceID to secure your journal."
         }
       ],
 [
         "expo-image-picker",
         {
-          "photosPermission": "Allow Mindful Minute to access your photos to attach them to entries.",
-          "cameraPermission": "Allow Mindful Minute to access your camera to take photos for entries."
+          "photosPermission": "Allow Micro Muse to access your photos to attach them to entries.",
+          "cameraPermission": "Allow Micro Muse to access your camera to take photos for entries."
         }
       ],
       [
         "expo-camera",
         {
-          "cameraPermission": "Allow Mindful Minute to access your camera."
+          "cameraPermission": "Allow Micro Muse to access your camera."
         }
       ],
       "@react-native-google-signin/google-signin"
     ],
     "web": {
       "favicon": "./assets/favicon.png",
-      "name": "Mindful Minute",
-      "shortName": "Mindful",
+      "name": "Micro Muse",
+      "shortName": "Micro",
       "startUrl": "/",
       "display": "standalone",
       "backgroundColor": "#F8FAFC",

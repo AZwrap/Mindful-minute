@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -325,14 +325,23 @@ const [suggestedMoods, setSuggestedMoods] = useState<Suggestion[]>([]);
     overflow: 'hidden',
   };
 
-// Cleanup: Reset timer if user backs out without saving
+// 1. Pause Logic/Audio when screen blurs (e.g. navigating to Stats/Home)
+  useFocusEffect(
+    useCallback(() => {
+      isScreenActive.current = true;
+      return () => {
+        isScreenActive.current = false;
+      };
+    }, [])
+  );
+
+  // 2. Cleanup on Unmount (Reset timer if not saved)
   useEffect(() => {
     return () => {
-        isScreenActive.current = false;
+        isScreenActive.current = false; // Safety check
         
-        // If we didn't explicitly save, reset timer to the start (writeDuration)
+        // If we didn't explicitly save, reset timer to the start
         if (!isSaved.current) {
-            // Explicitly reset metadata (Cycle 1, Writing Phase) so it doesn't resume old state
             setDraftTimer(date, writeDuration, {
                 mode: 'writing',
                 cyclesCompleted: 1,
@@ -341,7 +350,7 @@ const [suggestedMoods, setSuggestedMoods] = useState<Suggestion[]>([]);
             });
         }
     };
-  }, [writeDuration]); // Dependency ensures we have the correct duration
+  }, [writeDuration]);
 
 // ===== POMODORO & TIMER HOOK =====
   const {
@@ -483,15 +492,17 @@ const currentGradientColors = useMemo(() => {
         >
           
 <View style={styles.contentCard}>
-            {/* PROMPT - Boxed for better contrast against mood gradients */}
+{/* PROMPT - Boxed for better contrast against mood gradients */}
             <View style={{ 
-              backgroundColor: palette.card, 
+              // Glass effect for BOTH: Dark Slate (50%) vs White (40%)
+              backgroundColor: isDark ? 'rgba(30, 41, 59, 0.5)' : 'rgba(255,255,255,0.4)', 
               paddingVertical: 16, 
               paddingHorizontal: 20, 
               borderRadius: 16, 
               marginBottom: 16,
-              borderWidth: 1, 
-              borderColor: palette.border 
+              // Subtle border for Dark Mode to define edges without being harsh
+              borderWidth: isDark ? 1 : 0, 
+              borderColor: isDark ? 'rgba(255,255,255,0.1)' : palette.border 
             }}>
               <Text style={[styles.prompt, { color: promptColor, marginBottom: 0 }]}>
                 {currentPrompt?.text}
@@ -512,8 +523,26 @@ const currentGradientColors = useMemo(() => {
                     <RotateCcw size={18} color={palette.accent} />
                   </PremiumPressable>
                   </View>
-                  {/* FIX: Use semantic palette color 'successSoft' instead of hardcoded rgba */}
-                  <View style={[styles.timerPill, { backgroundColor: phase === 'writing' ? palette.card : palette.successSoft, height: phase === 'break' && skipBreakAvailable ? 115 : 90 }]}>
+                 {/* FIX: Use semantic palette color 'successSoft' instead of hardcoded rgba */}
+                  <View style={[
+                    styles.timerPill, 
+                    { 
+                      // 1. Background Color Logic
+                      backgroundColor: phase === 'writing' 
+                        ? (isDark ? 'rgba(30, 41, 59, 0.6)' : 'rgba(255,255,255,0.4)') // Writing: Match Prompt Box
+                        : (isDark ? 'rgba(6, 78, 59, 0.8)' : palette.successSoft),     // Break: Deep Green Glass (Dark) vs Soft Green (Light)
+                      
+                      // 2. Border Logic (Only for Dark Mode to define edges)
+                      borderColor: phase === 'writing'
+                        ? (isDark ? 'rgba(255,255,255,0.1)' : 'transparent')
+                        : (isDark ? 'rgba(52, 211, 153, 0.3)' : 'transparent'),
+                        
+                      borderWidth: isDark ? 1 : 0,
+
+                      // 3. Layout Logic
+                      height: phase === 'break' && skipBreakAvailable ? 115 : 90 
+                    }
+                  ]}>
                     <View style={styles.phaseIndicator}>
                       <Text style={[styles.phaseText, { color: phase === 'writing' ? palette.accent : '#16A34A' }]}>{phase === 'writing' ? '🖊️ Writing' : '⏸️ Break'}</Text>
                       <Text style={[styles.cycleText, { color: palette.subtleText }]}>Cycle {currentCycle}/{totalCycles}</Text>

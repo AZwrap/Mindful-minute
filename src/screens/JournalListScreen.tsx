@@ -8,6 +8,7 @@ import { Plus, Users, ChevronRight, CloudDownload } from 'lucide-react-native';
 import { RootStackParamList } from '../navigation/RootStack';
 import { useJournalStore } from '../stores/journalStore';
 import { useSharedPalette } from '../hooks/useSharedPalette';
+import { useSettings } from '../stores/settingsStore';
 import PremiumPressable from '../components/PremiumPressable';
 import { auth } from '../firebaseConfig';
 
@@ -17,6 +18,7 @@ export default function JournalListScreen({ navigation }: Props) {
   const palette = useSharedPalette();
   
   // 1. SAFETIES: Default to {} if store returns undefined to prevent crashes
+  const isPremium = useSettings((s) => s.isPremium);
   const journals = useJournalStore((s) => s.journals) || {};
   const lastRead = useJournalStore((s) => s.lastRead) || {};
   const { joinJournal, restoreJournals, currentUser } = useJournalStore();
@@ -60,8 +62,14 @@ export default function JournalListScreen({ navigation }: Props) {
     }
   };
 
-  const handleCreate = () => {
-    requireAuth(() => navigation.navigate('Invite'));
+const handleCreate = () => {
+    requireAuth(() => {
+      if (!isPremium) {
+        navigation.navigate("Premium");
+        return;
+      }
+      navigation.navigate('Invite');
+    });
   };
 
   const handleJoinSubmit = async () => {

@@ -56,7 +56,7 @@ export async function scheduleDailyReminder(hour: number, minute: number) {
 
     const identifier = await Notifications.scheduleNotificationAsync({
     content: {
-      title: "Mindful Minute",
+      title: "Micro Muse",
       body: "It's time for your daily reflection.",
     },
     trigger: {

@@ -64,7 +64,7 @@ export default function HomeScreen() {
   const currentTheme = getCurrentTheme(systemScheme);
   const isDark = currentTheme === "dark";
   const palette = useSharedPalette();
-  const hapticsEnabled = useSettings((s) => s.hapticsEnabled);
+const { hapticsEnabled, isPremium } = useSettings(); // <--- Get isPremium
 
   const date = todayISO();
   const [today, setToday] = useState<PromptState>({ id: 0, text: '', isCustom: false });
@@ -314,7 +314,7 @@ if (hasInProgress) {
       end={{ x: 0, y: 1 }}
       accessible={true}
       accessibilityRole="header"
-      accessibilityLabel="Mindful Minute Home Screen"
+      accessibilityLabel="Micro Muse Home Screen"
     >
       <SafeAreaView style={{ flex: 1 }} edges={['top']}>
       <Animated.View style={{ opacity: contentFadeAnim, flex: 1 }}>
@@ -399,9 +399,15 @@ if (hasInProgress) {
             )}
 
             {/* New Smart Prompt Button */}
-            {entries.length >= 3 && !today.isCustom && !hasFinal && (
+{entries.length >= 3 && !today.isCustom && !hasFinal && (
               <PremiumPressable
                 onPress={async () => {
+                  // PREMIUM LOCK: Smart Prompt Regeneration
+                  if (!isPremium) {
+                    navigation.navigate('Premium');
+                    return;
+                  }
+
                   setIsGeneratingPrompt(true);
                   try {
                     const userData = analyzeForSmartPrompts(entries);
@@ -446,13 +452,14 @@ if (hasInProgress) {
                 }}
                 haptic="light"
                 disabled={isGeneratingPrompt}
-                style={[
+style={[
                   styles.customPromptBtn,
-                  { opacity: isGeneratingPrompt ? 0.6 : 1 }
+                  { opacity: isGeneratingPrompt ? 0.6 : 1, flexDirection: 'row', gap: 6, alignItems: 'center' }
                 ]}
                 accessible={true}
                 accessibilityRole="button"
               >
+                {!isPremium && <Lock size={12} color={brand} />}
                 <Text style={[styles.customPromptText, { color: brand }]}>
                   {isGeneratingPrompt ? 'Generating...' : 'Generate New Smart Prompt'}
                 </Text>

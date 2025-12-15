@@ -274,7 +274,7 @@ const SharedEntryItem = ({ item, isOwner, isAdmin, currentUserId, onDelete, navi
   const handleShare = async () => {
     try {
       await Share.share({
-        message: `"${item.text}"\n\n— ${item.authorName || 'Anonymous'} (Mindful Minute)`
+        message: `"${item.text}"\n\n— ${item.authorName || 'Anonymous'} (Micro Muse)`
       });
     } catch (e) {
       console.log(e);

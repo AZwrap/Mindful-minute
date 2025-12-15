@@ -118,7 +118,7 @@ const { journals, currentJournalId, sharedEntries, setSharedEntries } = useJourn
 
   // Build text for export/copy
   const buildExportText = () => `
-MINDFUL MINUTE ENTRY
+MICRO MUSE ENTRY
 Date: ${formattedDate}
 Prompt: ${entry.prompt?.text || entry.promptText || 'No Prompt'}
 

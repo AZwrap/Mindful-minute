@@ -1,5 +1,6 @@
-import { Alert, Platform } from 'react-native';
+import { Platform } from 'react-native';
 import * as Print from 'expo-print';
+import { useUIStore } from '../stores/uiStore';
 import * as Sharing from 'expo-sharing';
 import * as FileSystem from 'expo-file-system';
 import { JournalEntry } from '../stores/entriesStore';
@@ -18,8 +19,8 @@ export const generateTherapistReport = async (allEntries: JournalEntry[]) => {
     })
     .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 
-  if (entries.length === 0) {
-    alert("No entries found in the last 30 days to report.");
+if (entries.length === 0) {
+    useUIStore.getState().showAlert("No Data", "No entries found in the last 30 days to report.");
     return;
   }
 
@@ -131,7 +132,7 @@ export const generateTherapistReport = async (allEntries: JournalEntry[]) => {
         <div class="header">
             <h1>Patient Journal Summary</h1>
             <div class="subtitle">
-                Generated via Mindful Minute App &bull; ${now.toLocaleDateString()}
+                Generated via Micro Muse App &bull; ${now.toLocaleDateString()}
             </div>
             <div class="subtitle" style="margin-top: 4px;">
                 Period: ${thirtyDaysAgo.toLocaleDateString()} - ${now.toLocaleDateString()}
@@ -180,7 +181,7 @@ export const generateTherapistReport = async (allEntries: JournalEntry[]) => {
     const { uri } = await Print.printToFileAsync({ html });
     const filename = `MindfulMinute_Report_${now.toISOString().split('T')[0]}.pdf`;
 
-    Alert.alert(
+useUIStore.getState().showAlert(
       "Report Ready",
       "Choose an action:",
       [
@@ -200,11 +201,11 @@ export const generateTherapistReport = async (allEntries: JournalEntry[]) => {
                   const base64 = await FileSystem.readAsStringAsync(uri, { encoding: FileSystem.EncodingType.Base64 });
                   const newUri = await FileSystem.StorageAccessFramework.createFileAsync(permissions.directoryUri, filename, 'application/pdf');
                   await FileSystem.writeAsStringAsync(newUri, base64, { encoding: FileSystem.EncodingType.Base64 });
-                  Alert.alert("Saved", "Report saved successfully.");
+                  useUIStore.getState().showAlert("Saved", "Report saved successfully.");
                 }
               } catch (e) {
                 console.error(e);
-                Alert.alert("Error", "Could not save file.");
+                useUIStore.getState().showAlert("Error", "Could not save file.");
               }
             } else {
               // iOS: Share sheet IS the save mechanism
@@ -215,8 +216,8 @@ export const generateTherapistReport = async (allEntries: JournalEntry[]) => {
       ]
     );
 
-  } catch (error) {
+} catch (error) {
     console.error("Report generation failed:", error);
-    alert("Could not generate report. Please try again.");
+    useUIStore.getState().showAlert("Error", "Could not generate report. Please try again.");
   }
 };

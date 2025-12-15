@@ -10,10 +10,11 @@ import {
   Animated,
   ScrollView,
   NativeModules,
-  Platform,
+Platform,
   LayoutAnimation,
   UIManager,
-  Keyboard
+  Keyboard,
+  Linking // <--- Added
 } from 'react-native';
 import { useUIStore } from '../stores/uiStore';
 import * as Haptics from 'expo-haptics';
@@ -26,7 +27,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { 
 Trash2, Save, FileText, Database, RotateCcw, Share, LogOut,
-ChevronDown, ChevronUp, Palette, Cloud, CloudDownload, Bell, Lock, Zap, Volume2, Sun, Moon, User
+ChevronDown, ChevronUp, Palette, Cloud, CloudDownload, Bell, Lock, Zap, Volume2, Sun, Moon, User,
+MessageSquare, Gift // <--- Added
 } from 'lucide-react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { updateProfile, signOut } from 'firebase/auth';
@@ -90,8 +92,9 @@ preserveTimerProgress, setPreserveTimerProgress,
 gratitudeModeEnabled, setGratitudeModeEnabled,
     zenModeEnabled, setZenModeEnabled,
     isBiometricsEnabled, setIsBiometricsEnabled,
-    smartRemindersEnabled, setSmartRemindersEnabled,
-    reminderTime, setReminderTime
+smartRemindersEnabled, setSmartRemindersEnabled,
+    reminderTime, setReminderTime,
+    isPremium // <--- Get isPremium
   } = useSettings();
 
   const entriesMap = useEntriesStore((s) => s.entries);
@@ -346,7 +349,8 @@ onPress: async () => {
     );
   };
 
-  const handleCloudSave = async () => {
+const handleCloudSave = async () => {
+    if (!isPremium) { navigation.navigate('Premium'); return; } // <--- Premium Lock
     showToast("Backing up to cloud...");
     const result = await saveBackupToCloud();
     if (result.success) {
@@ -356,7 +360,8 @@ onPress: async () => {
     }
   };
 
-  const handleCloudRestore = () => {
+const handleCloudRestore = () => {
+    if (!isPremium) { navigation.navigate('Premium'); return; } // <--- Premium Lock
     showAlert(
       "Restore from Cloud",
       "This will OVERWRITE current data with your cloud backup. Continue?",
@@ -440,7 +445,7 @@ const SettingRow = ({ label, description, value, onValueChange, icon }: any) => 
                     placeholderTextColor={palette.sub}
                     style={[styles.input, { flex: 1, color: palette.text, borderColor: palette.border, backgroundColor: palette.bg }]} 
                   />
-                  <PremiumPressable 
+<PremiumPressable 
                     onPress={handleUpdateProfile} 
                     disabled={isUpdatingProfile}
                     style={[styles.applyBtn, { backgroundColor: palette.accent, opacity: isUpdatingProfile ? 0.7 : 1 }]}
@@ -450,6 +455,39 @@ const SettingRow = ({ label, description, value, onValueChange, icon }: any) => 
                     </Text>
                   </PremiumPressable>
                 </View>
+              </View>
+
+              {/* BETA PROGRAM CARD (Tester Strategy) */}
+              <View style={[styles.card, { backgroundColor: palette.card, borderColor: palette.accent }]}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+                  <MessageSquare size={18} color={palette.accent} />
+                  <Text style={[styles.title, { color: palette.text, marginBottom: 0 }]}>Beta Program</Text>
+                </View>
+
+                {/* Bug Bounty Banner */}
+                <View style={{ flexDirection: 'row', gap: 12, alignItems: 'center', marginBottom: 16 }}>
+                   <View style={{ padding: 10, borderRadius: 12, backgroundColor: 'rgba(245, 158, 11, 0.15)' }}>
+                      <Gift size={24} color="#F59E0B" />
+                   </View>
+                   <View style={{ flex: 1 }}>
+                      <Text style={{ color: palette.text, fontWeight: '700', fontSize: 14 }}>Bug Bounty</Text>
+                      <Text style={{ color: palette.sub, fontSize: 12, lineHeight: 18 }}>
+                        Find a crash or typo? Report it below to win a <Text style={{ fontWeight: '700', color: '#F59E0B' }}>Lifetime Premium</Text> code.
+                      </Text>
+                   </View>
+                </View>
+
+                <PremiumPressable
+                  onPress={() => {
+                     // TODO: Replace with your Google Form URL
+                     Linking.openURL('https://forms.gle/vLkDC4UwUnkPHddz8'); 
+                  }}
+                  style={[styles.applyBtn, { backgroundColor: palette.accent, alignItems: 'center', paddingVertical: 14 }]}
+                >
+                  <Text style={{ color: 'white', fontWeight: '700', fontSize: 15 }}>
+                    Submit Beta Feedback
+                  </Text>
+                </PremiumPressable>
               </View>
 
               {/* 1. APPEARANCE CARD */}
@@ -483,22 +521,30 @@ const SettingRow = ({ label, description, value, onValueChange, icon }: any) => 
                         {themeDropdownOpen ? <ChevronUp size={16} color={palette.sub} /> : <ChevronDown size={16} color={palette.sub} />}
                     </Pressable>
 
-                    {themeDropdownOpen && (
+{themeDropdownOpen && (
                         <View style={{ marginTop: 6, borderRadius: 12, borderWidth: 1, borderColor: palette.border, overflow: 'hidden' }}>
-                            {["light", "dark", "system", "dynamic"].map((opt) => (
+                            {["light", "dark", "system", "dynamic"].map((opt) => {
+                                const isLocked = opt === 'dynamic' && !isPremium;
+                                return (
                                 <Pressable
                                     key={opt}
-                                    onPress={() => { setTheme(opt as ThemeType); toggleThemeDropdown(); }}
+                                    onPress={() => { 
+                                      if (isLocked) { navigation.navigate('Premium'); return; }
+                                      setTheme(opt as ThemeType); 
+                                      toggleThemeDropdown(); 
+                                    }}
                                     style={({ pressed }) => ({
                                         paddingVertical: 12, paddingHorizontal: 16,
-                                        backgroundColor: pressed ? (isDark ? '#374151' : '#E5E7EB') : 'transparent'
+                                        backgroundColor: pressed ? (isDark ? '#374151' : '#E5E7EB') : 'transparent',
+                                        flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center'
                                     })}
                                 >
-                                    <Text style={{ fontSize: 14, fontWeight: '600', color: palette.text }}>
+                                    <Text style={{ fontSize: 14, fontWeight: '600', color: isLocked ? palette.sub : palette.text }}>
                                         {opt.charAt(0).toUpperCase() + opt.slice(1)}
                                     </Text>
+                                    {isLocked && <Lock size={14} color={palette.sub} />}
                                 </Pressable>
-                            ))}
+                            )})}
                         </View>
                     )}
                 </View>
@@ -518,7 +564,10 @@ const SettingRow = ({ label, description, value, onValueChange, icon }: any) => 
 {/* ACCENT COLOR */}
                 <View style={{ marginTop: 16, zIndex: 10 }}>
                     <Pressable 
-                      onPress={toggleAccentDropdown}
+                      onPress={() => {
+                        if (!isPremium) { navigation.navigate('Premium'); return; }
+                        toggleAccentDropdown();
+                      }}
                       style={[
                         styles.dropdownHeader,
                         {
@@ -530,11 +579,12 @@ const SettingRow = ({ label, description, value, onValueChange, icon }: any) => 
                         },
                       ]}
                     >
-                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+<View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
                         <Palette size={16} color={palette.sub} />
                         <Text style={{ fontSize: 15, fontWeight: "600", color: palette.text }}>Accent Color</Text>
                       </View>
                       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                          {!isPremium && <Lock size={14} color={palette.sub} />}
                           {!accentDropdownOpen && (
                             <View style={{ width: 12, height: 12, borderRadius: 6, backgroundColor: accentColor || '#6366F1' }} />
                           )}
@@ -871,10 +921,18 @@ const SettingRow = ({ label, description, value, onValueChange, icon }: any) => 
                     <Text style={{ color: palette.subtleText }}>›</Text>
                   </PremiumPressable>
 
-                  <PremiumPressable onPress={handleBulkExport} style={styles.menuItem}>
+<PremiumPressable onPress={handleBulkExport} style={[styles.menuItem, { borderBottomWidth: 1, borderBottomColor: palette.border }]}>
                     <View style={styles.menuItemContent}>
                       <Share size={20} color={palette.accent} />
                       <Text style={[styles.menuItemTitle, { color: palette.text }]}>Download All Data</Text>
+                    </View>
+                    <Text style={{ color: palette.subtleText }}>›</Text>
+                  </PremiumPressable>
+
+                  <PremiumPressable onPress={handleFactoryReset} style={styles.menuItem}>
+                    <View style={styles.menuItemContent}>
+                      <Trash2 size={20} color="#EF4444" />
+                      <Text style={[styles.menuItemTitle, { color: "#EF4444" }]}>Factory Reset (Dev)</Text>
                     </View>
                     <Text style={{ color: palette.subtleText }}>›</Text>
                   </PremiumPressable>

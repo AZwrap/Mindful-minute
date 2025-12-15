@@ -6,6 +6,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 // TYPES
 // --------------------------------------------------
 interface SettingsState {
+  isPremium: boolean;
   hapticsEnabled: boolean;
   soundEnabled: boolean;
   preserveTimerProgress: boolean;
@@ -41,6 +42,7 @@ export const useSettings = create<SettingsStore>()(
     (set) => ({
       // STATE
       hapticsEnabled: true,
+      isPremium: false,
       soundEnabled: true,
 preserveTimerProgress: true,
       gratitudeModeEnabled: false,
@@ -58,6 +60,7 @@ preserveTimerProgress: true,
 setPreserveTimerProgress: (val) => set({ preserveTimerProgress: val }),
       setGratitudeModeEnabled: (val) => set({ gratitudeModeEnabled: val }),
       setZenModeEnabled: (val) => set({ zenModeEnabled: val }),
+      setPremium: (status: boolean) => set({ isPremium: status }),
       setHasOnboarded: (val) => set({ hasOnboarded: val }),
 setIsBiometricsEnabled: (val) => set({ isBiometricsEnabled: val }),
       setSmartRemindersEnabled: (val) => set({ smartRemindersEnabled: val }),
