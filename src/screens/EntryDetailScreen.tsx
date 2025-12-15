@@ -131,7 +131,7 @@ Mood: ${entry.moodTag?.value || 'Not specified'}
   const exportEntry = async () => {
     try {
       const content = buildExportText();
-      const fileUri = FileSystem.documentDirectory + `mindful-minute-${date}.txt`;
+      const fileUri = FileSystem.documentDirectory + `micro-muse-${date}.txt`;
       
       await FileSystem.writeAsStringAsync(fileUri, content);
       
