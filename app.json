@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "Micro Muse",
-    "slug": "micro-muse",
+    "slug": "mindful-minute",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -49,7 +49,7 @@
           "faceIDPermission": "Allow Micro Muse to use FaceID to secure your journal."
         }
       ],
-[
+      [
         "expo-image-picker",
         {
           "photosPermission": "Allow Micro Muse to access your photos to attach them to entries.",
@@ -78,6 +78,7 @@
       "eas": {
         "projectId": "5675f108-3dc5-4b92-be26-0a1a52b44660"
       }
-    }
+    },
+    "owner": "nivekfau"
   }
 }
