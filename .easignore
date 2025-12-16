@@ -7,7 +7,4 @@ web-build/
 .git/
 *.zip
 *.tar.gz
-.history/
 .tmp.driveupload/
-*.apk
-*.aab
