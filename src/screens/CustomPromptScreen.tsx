@@ -29,9 +29,9 @@ export default function CustomPromptScreen({ navigation, route }: Props) {
   
   const [promptText, setPromptText] = useState(isCustom ? currentPrompt : '');
 
-  const handleSave = async () => {
+const handleSave = async () => {
     if (!promptText.trim()) {
-      Alert.alert('Please enter a prompt');
+      Alert.alert('Please enter a reflection');
       return;
     }
 
@@ -70,8 +70,8 @@ export default function CustomPromptScreen({ navigation, route }: Props) {
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
           style={styles.content}
         >
-          <View style={styles.header}>
-            <Text style={[styles.title, { color: palette.text }]}>Write Your Own Prompt</Text>
+<View style={styles.header}>
+            <Text style={[styles.title, { color: palette.text }]}>Write Your Own Reflection</Text>
             <Text style={[styles.subtitle, { color: palette.subtleText }]}>
               Focus on what matters most to you today.
             </Text>
@@ -109,12 +109,12 @@ export default function CustomPromptScreen({ navigation, route }: Props) {
                 <Text style={{ color: palette.subtleText, fontWeight: '600', fontSize: 16 }}>Cancel</Text>
             </PremiumPressable>
             
-            <PremiumPressable 
+<PremiumPressable 
               onPress={handleSave} 
               haptic="medium"
               style={[styles.saveBtn, { backgroundColor: palette.accent }]}
             >
-              <Text style={styles.saveBtnText}>Use Prompt</Text>
+              <Text style={styles.saveBtnText}>Use Reflection</Text>
             </PremiumPressable>
           </View>
 

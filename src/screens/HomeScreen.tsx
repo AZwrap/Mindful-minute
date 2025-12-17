@@ -390,10 +390,10 @@ if (hasInProgress) {
                 style={styles.customPromptBtn}
                 accessible={true}
                 accessibilityRole="button"
-                accessibilityLabel={today.isCustom ? 'Edit custom prompt' : 'Use custom prompt instead of today\'s prompt'}
+accessibilityLabel={today.isCustom ? 'Edit custom reflection' : 'Use custom reflection instead of today\'s reflection'}
               >
                 <Text style={[styles.customPromptText, { color: brand }]}>
-                  {today.isCustom ? 'Edit Custom Prompt' : 'Use Custom Prompt'}
+                  {today.isCustom ? 'Edit Custom Reflection' : 'Use Custom Reflection'}
                 </Text>
               </PremiumPressable>
             )}
@@ -460,8 +460,8 @@ style={[
                 accessibilityRole="button"
               >
                 {!isPremium && <Lock size={12} color={brand} />}
-                <Text style={[styles.customPromptText, { color: brand }]}>
-                  {isGeneratingPrompt ? 'Generating...' : 'Generate New Smart Prompt'}
+<Text style={[styles.customPromptText, { color: brand }]}>
+                  {isGeneratingPrompt ? 'Generating...' : 'Generate New Reflection'}
                 </Text>
               </PremiumPressable>
             )}

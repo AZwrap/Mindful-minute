@@ -835,7 +835,7 @@ const SettingRow = ({ label, description, value, onValueChange, icon }: any) => 
 
 <SettingRow 
                     label="Gratitude Mode" 
-                    description="Always show gratitude prompts"
+                    description="Always show gratitude reflections"
                     value={gratitudeModeEnabled} 
                     onValueChange={setGratitudeModeEnabled} 
                 />
