@@ -76,9 +76,8 @@
     },
     "extra": {
       "eas": {
-        
+        "projectId": "5bcd398c-f65d-43bd-9003-3e2211e1efb4"
       }
-    },
-    "owner": "nivekfau"
+    }
   }
 }
