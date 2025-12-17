@@ -1,3 +1,4 @@
+// src/screens/InviteScreen.tsx
 import React, { useState } from "react";
 import {
   View,
@@ -5,12 +6,13 @@ import {
   TextInput,
   Pressable,
   StyleSheet,
-  Alert,
+  // Alert, // <--- Removed Native Alert
 } from "react-native";
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/RootStack';
 import { useSharedPalette } from "../hooks/useSharedPalette";
 import { useJournalStore } from "../stores/journalStore";
+import { useUIStore } from "../stores/uiStore"; // <--- Added UI Store
 import { auth } from "../firebaseConfig";
 import * as Clipboard from 'expo-clipboard';
 
@@ -24,8 +26,8 @@ type Props = NativeStackScreenProps<RootStackParamList, 'Invite'>;
 // --------------------------------------------------
 export default function InviteScreen({ navigation }: Props) {
   const palette = useSharedPalette();
+  const { showAlert } = useUIStore(); // <--- Hook for Global Alert
 
-// FIX: Match the actual store action names
   const createJournal = useJournalStore((s) => s.createJournal);
   const joinJournal = useJournalStore((s) => s.joinJournal);
 
@@ -35,29 +37,28 @@ export default function InviteScreen({ navigation }: Props) {
   const [isCreating, setIsCreating] = useState(false);
   const [isJoining, setIsJoining] = useState(false);
 
-const handleCreate = async () => {
+  const handleCreate = async () => {
     if (!journalName.trim()) {
-      Alert.alert("Missing Name", "Please enter a name for your shared journal.");
+      // Changed title to "Error" and used showAlert
+      showAlert("Error", "Please enter a name for your shared journal.");
       return;
     }
     
     const user = auth.currentUser;
     if (!user) {
-      Alert.alert("Error", "You must be logged in to create a shared journal.");
+      showAlert("Error", "You must be logged in to create a shared journal.");
       return;
     }
 
     setIsCreating(true);
-try {
-      // FIX: Pass journalName first, then user ID/Name
-      // Using user.email or a display name is better for 'members' array if available, otherwise UID
+    try {
       const ownerName = user.displayName || user.email?.split('@')[0] || "Anonymous";
       
       const newId = await createJournal(journalName, ownerName);
       setGeneratedCode(newId);
-      Alert.alert("Success", "Journal created! Share the code below with your partner.");
+      showAlert("Success", "Journal created! Share the code below with your partner.");
     } catch (error) {
-      Alert.alert("Error", "Failed to create journal.");
+      showAlert("Error", "Failed to create journal.");
       console.error(error);
     } finally {
       setIsCreating(false);
@@ -69,20 +70,20 @@ try {
 
     const user = auth.currentUser;
     if (!user) {
-      Alert.alert("Error", "You must be logged in to join a journal.");
+      showAlert("Error", "You must be logged in to join a journal.");
       return;
     }
 
-setIsJoining(true);
+    setIsJoining(true);
     try {
       const memberName = user.displayName || user.email?.split('@')[0] || "Member";
       await joinJournal(joinCode.trim(), memberName);
       
-      Alert.alert("Welcome!", "You have joined the journal.");
+      showAlert("Welcome!", "You have joined the journal.");
       // Navigate to the list or specific journal
       navigation.navigate('JournalList'); 
     } catch (error: any) {
-      Alert.alert("Error", error.message || "Failed to join journal.");
+      showAlert("Error", error.message || "Failed to join journal.");
     } finally {
       setIsJoining(false);
     }
@@ -91,7 +92,7 @@ setIsJoining(true);
   const copyToClipboard = async () => {
     if (generatedCode) {
       await Clipboard.setStringAsync(generatedCode);
-      Alert.alert("Copied", "Invite code copied to clipboard!");
+      showAlert("Copied", "Invite code copied to clipboard!");
     }
   };
 
@@ -122,7 +123,7 @@ setIsJoining(true);
         </Text>
       </Pressable>
 
-{generatedCode && (
+      {generatedCode && (
         <Pressable onPress={copyToClipboard} style={[styles.codeBox, { borderColor: palette.accent, backgroundColor: palette.card }]}>
           <Text style={[styles.codeLabel, { color: palette.sub }]}>Tap to Copy Invite Code:</Text>
           <Text style={[styles.codeText, { color: palette.accent }]}>{generatedCode}</Text>
@@ -196,20 +197,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
   codeBox: {
-    padding: 16,
-    borderRadius: 16,
-    marginBottom: 20,
-    borderWidth: 1,
-    alignItems: "center",
-    backgroundColor: 'rgba(99, 102, 241, 0.1)',
-    marginTop: 8,
-  },
-  divider: {
-    height: 1,
-    width: '100%',
-    marginVertical: 32,
-  },
-  codeBox: {
     marginTop: 20,
     borderWidth: 2,
     borderStyle: 'dashed',
@@ -217,6 +204,11 @@ const styles = StyleSheet.create({
     padding: 16,
     alignItems: 'center',
     marginBottom: 20,
+  },
+  divider: {
+    height: 1,
+    width: '100%',
+    marginVertical: 32,
   },
   codeLabel: {
     fontSize: 12,
