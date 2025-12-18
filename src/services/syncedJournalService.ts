@@ -17,8 +17,16 @@ onSnapshot,
 } from "firebase/firestore";
 
 import { useJournalStore, JournalMeta } from "../stores/journalStore";
-import { v4 as uuidv4 } from "uuid";
+// Removed uuid import to prevent RN crash
 import { JournalService } from "./journalService";
+
+// Helper: Generate ID without needing polyfills
+const generateUUID = () => {
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+    const r = Math.random() * 16 | 0, v = c === 'x' ? r : (r & 0x3 | 0x8);
+    return v.toString(16);
+  });
+};
 
 // --------------------------------------------------
 // TYPES
@@ -34,7 +42,7 @@ interface InviteParams {
 
 // 1. Create Shared Journal
 export async function createSharedJournal(name: string, userId: string): Promise<string> {
-  const journalId = uuidv4();
+  const journalId = generateUUID();
 
   // SCHEMA: Root 'journals' collection
   const journalRef = doc(db, "journals", journalId);

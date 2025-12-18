@@ -18,7 +18,6 @@ import { useJournalStore } from "../stores/journalStore";
 import { useUIStore } from "../stores/uiStore"; // <--- Added UI Store
 import { auth } from "../firebaseConfig";
 import * as Clipboard from 'expo-clipboard';
-import { useAuth } from "../hooks/useAuth";
 
 // --------------------------------------------------
 // TYPES
@@ -31,7 +30,6 @@ type Props = NativeStackScreenProps<RootStackParamList, 'Invite'>;
 export default function InviteScreen({ navigation }: Props) {
   const palette = useSharedPalette();
   const { showAlert } = useUIStore();
-  const { user } = useAuth();
   
   // 1. Initialize the Ref properly inside the component
   const scrollRef = useRef<ScrollView>(null);
@@ -41,18 +39,20 @@ export default function InviteScreen({ navigation }: Props) {
   const [isCreating, setIsCreating] = useState(false);
   const [isJoining, setIsJoining] = useState(false);
 
-  // 2. Define the focus handler correctly
+// 2. Define the focus handler correctly
   const handleFocus = () => {
+    // Increased delay to ensure keyboard is fully open (especially on Android) before scrolling
     setTimeout(() => {
       scrollRef.current?.scrollToEnd({ animated: true });
-    }, 100);
+    }, Platform.OS === 'ios' ? 100 : 400); 
   };
 
-  const handleCreate = async () => {
+const handleCreate = async () => {
     if (!name.trim()) return;
     setIsCreating(true);
     try {
-      const id = await createSharedJournal(name, user!.uid);
+      if (!auth.currentUser) throw new Error("Not logged in");
+      const id = await createSharedJournal(name, auth.currentUser.uid);
       navigation.goBack();
       showAlert("Success", `Journal created! ID: ${id}`);
     } catch (e) {
@@ -62,11 +62,12 @@ export default function InviteScreen({ navigation }: Props) {
     }
   };
 
-  const handleJoin = async () => {
+const handleJoin = async () => {
     if (!joinCode.trim()) return;
     setIsJoining(true);
     try {
-      await joinSharedJournal(joinCode.trim(), user!.uid);
+      if (!auth.currentUser) throw new Error("Not logged in");
+      await joinSharedJournal(joinCode.trim(), auth.currentUser.uid);
       navigation.goBack();
       showAlert("Success", "Joined journal!");
     } catch (e: any) {
