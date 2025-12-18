@@ -39,6 +39,7 @@ import MoodDropdown from '../components/MoodDropdown';
 import PremiumPressable from '../components/PremiumPressable';
 import EmptyState from '../components/EmptyState';
 import { exportSingleEntry } from '../utils/exportHelper';
+import { useUIStore } from '../stores/uiStore';
 
 // --------------------------------------------------
 // TYPES
@@ -187,6 +188,7 @@ export default function HistoryScreen({ navigation }: HistoryScreenProps) {
   const { getCurrentTheme } = useTheme();
   const currentTheme = getCurrentTheme(systemScheme);
   const isDark = currentTheme === 'dark';
+  const { showAlert } = useUIStore();
 
   const streak = useProgress((s) => s.streak) || 0;
   const map = useEntriesStore((s) => s.entries);
@@ -533,13 +535,13 @@ return result;
                   textDayHeaderFontSize: 12
                 }}
                 markedDates={markedDates}
-                onDayPress={(day) => {
+onDayPress={(day) => {
                   // Check if we have an entry for this day
                   if (map && map[day.dateString]) {
                     navigation.navigate('EntryDetail', { date: day.dateString });
                   } else {
-                    // Optional: Prompt to write a new entry for this past date?
-                    Alert.alert(
+                    // Replaced Alert.alert with showAlert from UI store
+                    showAlert(
                       "No Entry",
                       "Would you like to write an entry for this date?",
                       [
