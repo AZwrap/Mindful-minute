@@ -1,8 +1,9 @@
 import React from 'react';
 import { View, Text, StyleSheet, ScrollView, Image, TextInput, KeyboardAvoidingView, Platform, Pressable, Keyboard, Modal, Animated } from 'react-native';
-import { Swipeable } from 'react-native-gesture-handler'; // <--- Added
-import { Trash2, Edit2, ChevronLeft, Send, Heart, Flame, ThumbsUp, MessageCircle, Smile } from 'lucide-react-native';
+import { Swipeable } from 'react-native-gesture-handler'; 
+import { Trash2, Edit2, ChevronLeft, Send, Heart, Flame, ThumbsUp, MessageCircle, Smile, Flag } from 'lucide-react-native'; // <--- Added Flag
 import { LinearGradient } from 'expo-linear-gradient';
+import { reportContent } from '../services/syncedJournalService'; // <--- Added Service
 import { useUIStore } from '../stores/uiStore';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -61,7 +62,7 @@ const SwipeMonitor = ({ dragX, onSwipeStart }: any) => {
 };
 
 // Sub-component for exclusive swipe management
-const CommentItem = ({ comment, currentUser, onDelete, onRowOpen, palette, onLongPress, onReactionTap }: any) => {
+const CommentItem = ({ comment, currentUser, onDelete, onReport, onRowOpen, palette, onLongPress, onReactionTap }: any) => {
   const swipeableRef = React.useRef<Swipeable>(null);
   const isCommentAuthor = currentUser && comment.userId === currentUser.uid;
 
@@ -72,18 +73,27 @@ const CommentItem = ({ comment, currentUser, onDelete, onRowOpen, palette, onLon
       extrapolate: 'clamp',
     });
 
-    return (
-      <Pressable
-        style={styles.deleteAction}
-        onPress={() => onDelete(comment)}
-      >
-        <SwipeMonitor dragX={dragX} onSwipeStart={() => onRowOpen(swipeableRef.current)} />
-        <Animated.View style={{ transform: [{ scale }], alignItems: 'center' }}>
-          <Trash2 size={24} color="white" />
-          <Text style={styles.actionText}>Delete</Text>
-        </Animated.View>
-      </Pressable>
-    );
+    if (isCommentAuthor) {
+      return (
+        <Pressable style={styles.deleteAction} onPress={() => onDelete(comment)}>
+          <SwipeMonitor dragX={dragX} onSwipeStart={() => onRowOpen(swipeableRef.current)} />
+          <Animated.View style={{ transform: [{ scale }], alignItems: 'center' }}>
+            <Trash2 size={24} color="white" />
+            <Text style={styles.actionText}>Delete</Text>
+          </Animated.View>
+        </Pressable>
+      );
+    } else {
+      return (
+        <Pressable style={[styles.deleteAction, { backgroundColor: '#F59E0B' }]} onPress={() => onReport(comment)}>
+          <SwipeMonitor dragX={dragX} onSwipeStart={() => onRowOpen(swipeableRef.current)} />
+          <Animated.View style={{ transform: [{ scale }], alignItems: 'center' }}>
+            <Flag size={24} color="white" />
+            <Text style={styles.actionText}>Report</Text>
+          </Animated.View>
+        </Pressable>
+      );
+    }
   };
 
   const content = (
@@ -138,10 +148,7 @@ const CommentItem = ({ comment, currentUser, onDelete, onRowOpen, palette, onLon
     </Pressable>
   );
 
-  if (!isCommentAuthor) {
-    return <View style={{ marginBottom: 8 }}>{content}</View>;
-  }
-
+// Removed the check so everyone can swipe (Delete vs Report)
   return (
     <Swipeable
       ref={swipeableRef}
@@ -260,6 +267,39 @@ const handlePostComment = async () => {
     }
   };
 
+  const handleReportEntry = () => {
+     showAlert("Report Entry", "Why are you reporting this content?", [
+       { text: "Cancel", style: "cancel" },
+       { text: "It's spam", onPress: () => submitReport('entry', entry.entryId, 'spam', entry.userId, entry.text) },
+       { text: "It's abusive", onPress: () => submitReport('entry', entry.entryId, 'abusive', entry.userId, entry.text) }
+     ]);
+  };
+
+  const handleReportComment = (comment: any) => {
+     showAlert("Report Comment", "Flag this comment as inappropriate?", [
+       { text: "Cancel", style: "cancel" },
+       { text: "Report", style: "destructive", onPress: () => submitReport('comment', comment.id, 'inappropriate', comment.userId, comment.text) }
+     ]);
+  };
+
+  const submitReport = async (type: 'entry'|'comment', id: string, reason: string, authorId: string, snippet: string) => {
+      try {
+        await reportContent(
+          entry.journalId || '', 
+          entry.entryId, 
+          type, 
+          id, 
+          reason, 
+          currentUser?.uid || 'anon',
+          authorId,
+          snippet.substring(0, 100)
+        );
+        showAlert("Thank You", "We have received your report and will review it shortly.");
+      } catch (e) {
+        showAlert("Error", "Could not submit report.");
+      }
+  };
+
   const handleDelete = () => {
     showAlert(
       "Delete Entry",
@@ -321,10 +361,16 @@ return (
                  <Edit2 size={20} color={palette.text} />
                </PremiumPressable>
                
-               <PremiumPressable onPress={handleDelete} style={[styles.actionBtn, { backgroundColor: 'rgba(239, 68, 68, 0.1)' }]}>
+<PremiumPressable onPress={handleDelete} style={[styles.actionBtn, { backgroundColor: 'rgba(239, 68, 68, 0.1)' }]}>
                  <Trash2 size={20} color="#EF4444" />
                </PremiumPressable>
              </View>
+           )}
+
+           {!isAuthor && (
+              <PremiumPressable onPress={handleReportEntry} style={[styles.actionBtn, { backgroundColor: 'rgba(245, 158, 11, 0.1)' }]}>
+                 <Flag size={20} color="#F59E0B" />
+               </PremiumPressable>
            )}
         </View>
         
@@ -373,11 +419,12 @@ return (
                 <Text style={{ fontSize: 14, fontWeight: '700', color: palette.sub, textTransform: 'uppercase' }}>Comments ({entry.comments?.length || 0})</Text>
              </View>
 {entry.comments?.map((c: any) => (
-                 <CommentItem 
+<CommentItem 
                    key={c.id} 
                    comment={c} 
                    currentUser={currentUser} 
                    onDelete={handleDeleteComment} 
+                   onReport={handleReportComment} // <--- Added prop
                    onRowOpen={onRowOpen} 
                    palette={palette}
                    onLongPress={(comment: any) => {

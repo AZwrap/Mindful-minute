@@ -4,7 +4,8 @@ import { Platform } from 'react-native';
 // Configure behavior
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
-    shouldShowAlert: true,
+    shouldShowBanner: true, // Replaces shouldShowAlert
+    shouldShowList: true,   // Replaces shouldShowAlert
     shouldPlaySound: true,
     shouldSetBadge: false,
   }),

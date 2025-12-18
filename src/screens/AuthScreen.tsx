@@ -33,12 +33,19 @@ export default function AuthScreen({ navigation }: Props) {
     });
   }, []);
 
-  // 2. Handle Google Button Press
+// 2. Handle Google Button Press
   const onGoogleButtonPress = async () => {
     try {
       setLoading(true);
       await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
       
+      // Force account picker by clearing previous session
+      try {
+        await GoogleSignin.signOut();
+      } catch (error) {
+        // Ignore error if user wasn't signed in
+      }
+
       const response = await GoogleSignin.signIn();
       const idToken = response.data?.idToken || response.idToken; // Support different library versions
       
@@ -160,7 +167,7 @@ const handleGuest = () => {
                 <Text style={styles.label}>Email</Text>
                 <TextInput 
                   style={styles.input} 
-                  placeholder="hello@mindful.com" 
+                  placeholder="hello@micromuse.com"
                   autoCapitalize="none"
                   keyboardType="email-address"
                   value={email}

@@ -28,7 +28,7 @@ import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { 
 Trash2, Save, FileText, Database, RotateCcw, Share, LogOut,
 ChevronDown, ChevronUp, Palette, Cloud, CloudDownload, Bell, Lock, Zap, Volume2, Sun, Moon, User,
-MessageSquare, Gift // <--- Added
+MessageSquare, Gift, UserX 
 } from 'lucide-react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { updateProfile, signOut } from 'firebase/auth';
@@ -279,7 +279,7 @@ const handleBulkExport = () => {
      } catch (e) { showAlert("Error", "Failed to restore data."); }
   };
 
-  const handleLogout = () => {
+const handleLogout = () => {
     showAlert(
       "Log Out",
       "Are you sure you want to sign out?",
@@ -290,13 +290,30 @@ const handleBulkExport = () => {
           style: "destructive", 
           onPress: async () => {
             try {
+              // 1. Reset Global Stores (Clears Shared Journals & Entries from memory)
+              useJournalStore.getState().reset();
+              
+              // 2. Clear Private Entries (Prevents data leak between accounts)
+              useEntriesStore.setState({ 
+                 entries: {}, 
+                 drafts: {},
+                 draftTimers: {},
+                 pomodoroState: {}
+              });
+
+              // 3. Clear Settings/State if desired (Optional, but safer)
+              useSettings.setState({ isBiometricsEnabled: false });
+
+              // 4. Sign Out of Firebase
               await signOut(auth);
-              // Reset to Auth Screen
+
+              // 5. Navigate away
               navigation.reset({
                 index: 0,
                 routes: [{ name: 'Auth' }],
               });
             } catch (e) {
+              console.error(e);
               showAlert("Error", "Failed to log out.");
             }
           }
@@ -341,8 +358,50 @@ onPress: async () => {
                  }
                }
              } catch (e) {
-               showAlert("Error", "Failed to reset data.");
+showAlert("Error", "Failed to reset data.");
              }
+          }
+        }
+      ]
+    );
+  };
+
+  const handleDeleteAccount = () => {
+    showAlert(
+      "Delete Account",
+      "This will permanently delete your account and all cloud data. This action cannot be undone.",
+      [
+        { text: "Cancel", style: "cancel" },
+        { 
+          text: "Delete Forever", 
+          style: "destructive", 
+          onPress: async () => {
+            const user = auth.currentUser;
+            if (!user) return;
+            
+            try {
+              await deleteUser(user);
+              
+              // Clear local data (same as factory reset)
+              await AsyncStorage.clear();
+              useEntriesStore.setState({ 
+                 entries: {},
+                 drafts: {}, 
+                 draftTimers: {}, 
+                 pomodoroState: {} 
+               });
+               useSettings.setState({ hasOnboarded: false, isBiometricsEnabled: false });
+               useJournalStore.setState({ sharedEntries: {}, journalInfo: null });
+               
+               // Navigate to Auth
+               navigation.reset({ index: 0, routes: [{ name: 'Auth' }] });
+            } catch (e: any) {
+              if (e.code === 'auth/requires-recent-login') {
+                showAlert("Security Check", "Please log out and sign in again to confirm account deletion.");
+              } else {
+                showAlert("Error", "Failed to delete account: " + e.message);
+              }
+            }
           }
         }
       ]
@@ -929,10 +988,18 @@ const SettingRow = ({ label, description, value, onValueChange, icon }: any) => 
                     <Text style={{ color: palette.subtleText }}>›</Text>
                   </PremiumPressable>
 
-                  <PremiumPressable onPress={handleFactoryReset} style={styles.menuItem}>
+<PremiumPressable onPress={handleFactoryReset} style={[styles.menuItem, { borderBottomWidth: 1, borderBottomColor: palette.border }]}>
                     <View style={styles.menuItemContent}>
                       <Trash2 size={20} color="#EF4444" />
                       <Text style={[styles.menuItemTitle, { color: "#EF4444" }]}>Factory Reset (Dev)</Text>
+                    </View>
+                    <Text style={{ color: palette.subtleText }}>›</Text>
+                  </PremiumPressable>
+
+                  <PremiumPressable onPress={handleDeleteAccount} style={styles.menuItem}>
+                    <View style={styles.menuItemContent}>
+                      <UserX size={20} color="#EF4444" />
+                      <Text style={[styles.menuItemTitle, { color: "#EF4444" }]}>Delete Account</Text>
                     </View>
                     <Text style={{ color: palette.subtleText }}>›</Text>
                   </PremiumPressable>

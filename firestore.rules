@@ -1,19 +1,69 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Users can only read/write their own data
-    match /users/{userId}/{document=**} {
-      allow read, write: if request.auth != null && request.auth.uid == userId;
+
+    // --- HELPER FUNCTIONS ---
+    function isSignedIn() {
+      return request.auth != null;
     }
-    // Shared Journals: Must be a member to read/write
+    
+    // Checks if the document explicitly lists the user as an owner
+    function isOwner(data) {
+      return "owner" in data && data.owner == request.auth.uid;
+    }
+
+    // Checks if the document has a memberIds list and the user is in it
+    function isMember(data) {
+      return "memberIds" in data && (data.memberIds is list) && (request.auth.uid in data.memberIds);
+    }
+
+    // --- USERS COLLECTION ---
+    // Match the user profile document
+    match /users/{userId} {
+      allow read, write: if isSignedIn() && request.auth.uid == userId;
+    }
+    
+    // Match all subcollections (backups, etc.)
+    match /users/{userId}/{document=**} {
+      allow read, write: if isSignedIn() && request.auth.uid == userId;
+    }
+
+    // --- SHARED JOURNALS COLLECTION ---
     match /journals/{journalId} {
-      allow create: if request.auth != null;
-      allow read, update: if request.auth != null && request.auth.uid in resource.data.memberIds;
-      allow delete: if request.auth != null && request.auth.uid == resource.data.owner;
+      allow create: if isSignedIn();
       
+      // Read: Allow if Owner OR Member
+      allow read: if isSignedIn() && (isOwner(resource.data) || isMember(resource.data));
+      
+      // Update: Allow if Owner OR Member OR Joining (adding self to memberIds)
+      allow update: if isSignedIn() && (
+        isOwner(resource.data) || 
+        isMember(resource.data) || 
+        isMember(request.resource.data)
+      );
+
+      // Delete: Owner Only
+      allow delete: if isSignedIn() && isOwner(resource.data);
+
+      // --- ENTRIES SUBCOLLECTION ---
       match /entries/{entryId} {
-        allow read, write: if request.auth != null; 
+        // Fetch parent data safely
+        function getJournalData() {
+          return get(/databases/$(database)/documents/journals/$(journalId)).data;
+        }
+
+        // Allow Read/Write if Parent Owner OR Parent Member
+        allow read, write: if isSignedIn() && (
+          isOwner(getJournalData()) || 
+          isMember(getJournalData())
+        );
       }
+    }
+
+    // --- REPORTS COLLECTION ---
+    match /reports/{reportId} {
+      allow create: if isSignedIn();
+      allow read, update, delete: if false; // Admin only
     }
   }
 }

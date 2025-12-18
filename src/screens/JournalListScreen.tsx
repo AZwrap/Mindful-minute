@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { View, Text, FlatList, Pressable, StyleSheet, Alert, TextInput, Keyboard, RefreshControl, Image } from 'react-native';
+import { View, Text, FlatList, Pressable, StyleSheet, Alert, TextInput, Keyboard, RefreshControl, Image, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -110,11 +110,22 @@ const handleCreate = () => {
     });
   };
   
-  return (
+return (
     <LinearGradient colors={[palette.bg, palette.bg]} style={styles.container}>
       <SafeAreaView style={{ flex: 1 }}>
-        <View style={styles.headerColumn}>
-          <View style={styles.headerRow}>
+<KeyboardAvoidingView 
+          style={{ flex: 1 }} 
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        >
+          <ScrollView 
+            contentContainerStyle={{ flexGrow: 1, paddingBottom: 150 }}
+            keyboardShouldPersistTaps="handled"
+            refreshControl={
+              <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={palette.accent} />
+            }
+          >
+            <View style={styles.headerColumn}>
+            <View style={styles.headerRow}>
             <Text style={[styles.title, { color: palette.text }]}>My Groups</Text>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16 }}>
               {/* Restore (Icon Only) */}
@@ -157,13 +168,11 @@ const handleCreate = () => {
           )}
         </View>
 
-        <FlatList
+<FlatList
+          scrollEnabled={false} 
           data={journalList}
           keyExtractor={(item) => item.id}
           contentContainerStyle={styles.list}
-          refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={palette.accent} />
-          }
           ListEmptyComponent={
             <View style={styles.empty}>
               <Text style={[styles.emptyText, { color: palette.subtleText }]}>
@@ -227,8 +236,10 @@ const handleCreate = () => {
                 </View>
               </PremiumPressable>
             );
-          }}
+}}
         />
+          </ScrollView>
+        </KeyboardAvoidingView>
       </SafeAreaView>
     </LinearGradient>
   );

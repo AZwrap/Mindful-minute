@@ -8,10 +8,11 @@ doc,
   getDoc,
 updateDoc,
   collection,
-  onSnapshot,
-deleteField,
+onSnapshot,
+  deleteField,
   arrayUnion, 
-  arrayRemove, // <--- Added this
+  arrayRemove, 
+  addDoc, // <--- Added this
   DocumentData,
 } from "firebase/firestore";
 
@@ -43,13 +44,13 @@ export async function createSharedJournal(name: string, userId: string): Promise
     name,
     owner: userId,
     createdAt: Date.now(),
-    members: [userId], // Store specific roles in a separate map if needed, but array for UI
+    members: [userId], 
+    memberIds: [userId], // <--- CRITICAL: Required for Security Rules
   };
   
-  // For Firestore security rules, we might want a map of roles too
   const firestoreData = {
     ...metadata,
-    membersMap: { [userId]: 'owner' }, // Helper for security rules
+    membersMap: { [userId]: 'owner' },
     updatedAt: Date.now(),
     isShared: true,
   };
@@ -78,16 +79,18 @@ export async function joinSharedJournal(journalId: string, userId: string): Prom
     return { ...data, id: journalId } as JournalMeta;
   }
 
-  // Atomically add user to members list
+// Atomically add user to members list
   await updateDoc(journalRef, {
     members: arrayUnion(userId),
+    memberIds: arrayUnion(userId), // <--- Added
     [`membersMap.${userId}`]: 'member'
   });
 
   const newMeta = {
     ...data,
     id: journalId,
-    members: [...members, userId]
+    members: [...members, userId],
+    memberIds: [...(data.memberIds || []), userId] // <--- Added
   } as JournalMeta;
 
   // Add to local store immediately
@@ -138,8 +141,9 @@ export async function leaveSharedJournal(journalId: string, userId: string): Pro
       return;
     }
 
-    const updates: any = {
+const updates: any = {
       members: arrayRemove(userId),
+      memberIds: arrayRemove(userId), // <--- Added
       [`membersMap.${userId}`]: deleteField()
     };
 
@@ -204,4 +208,29 @@ export async function deleteSharedJournal(journalId: string): Promise<void> {
     console.error("Error deleting journal:", error);
     throw error;
   }
+}
+
+// 9. Report Content
+export async function reportContent(
+  journalId: string, 
+  entryId: string, 
+  type: 'entry' | 'comment', 
+  contentId: string, // entryId or commentId
+  reason: string, 
+  reportedBy: string,
+  contentAuthorId?: string,
+  textSnippet?: string
+): Promise<void> {
+  await addDoc(collection(db, "reports"), {
+    journalId,
+    entryId,
+    type,
+    contentId,
+    contentAuthorId,
+    textSnippet: textSnippet || '',
+    reason,
+    reportedBy,
+    createdAt: Date.now(),
+    status: 'pending'
+  });
 }
