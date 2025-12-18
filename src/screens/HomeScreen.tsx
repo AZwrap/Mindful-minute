@@ -29,7 +29,7 @@ import { useTheme } from '../stores/themeStore';
 import { useSettings } from '../stores/settingsStore';
 import { useProgress } from '../stores/progressStore'; // Import Progress Store
 import { RootStackParamList } from '../navigation/RootStack';
-import { Flame } from 'lucide-react-native'; // Import Icon
+import { Flame, Lock } from 'lucide-react-native'
 
 // Components
 import PremiumPressable from '../components/PremiumPressable';
