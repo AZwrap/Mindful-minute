@@ -1,55 +1,26 @@
 import React from "react";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
+import MainTabs from './MainTabs'; 
 
 // Screen Imports
-import HomeScreen from "../screens/HomeScreen";
+import OnboardingScreen from '../screens/OnboardingScreen';
+import AuthScreen from '../screens/AuthScreen';
 import WriteScreen from "../screens/WriteScreen";
 import FocusWriteScreen from "../screens/FocusWriteScreen";
 import MoodTagScreen from "../screens/MoodTagScreen";
 import EntryDetailScreen from "../screens/EntryDetailScreen";
-import HistoryScreen from "../screens/HistoryScreen";
-import SettingsScreen from "../screens/SettingsScreen";
-import PremiumScreen from "../screens/PremiumScreen";
-import StatsScreen from "../screens/StatsScreen";
-import CustomPromptScreen from "../screens/CustomPromptScreen";
-import AchievementsScreen from "../screens/AchievementsScreen";
 import WeeklyRecapScreen from "../screens/WeeklyRecapScreen";
-import SharedJournalScreen from "../screens/SharedJournalScreen";
+import PremiumScreen from "../screens/PremiumScreen";
+import AchievementsScreen from "../screens/AchievementsScreen";
+import CustomPromptScreen from "../screens/CustomPromptScreen";
 import SharedWriteScreen from "../screens/SharedWriteScreen";
 import SharedEntryDetailScreen from "../screens/SharedEntryDetailScreen";
 import InviteScreen from "../screens/InviteScreen";
-import OnboardingScreen from '../screens/OnboardingScreen';
-import TabNavigator from './TabNavigator';
-import AuthScreen from '../screens/AuthScreen';
+import SharedJournalScreen from "../screens/SharedJournalScreen";
 
+// Import Types
+import { RootStackParamList } from './types';
 import { useSettings } from '../stores/settingsStore';
-
-// --------------------------------------------------
-// DEFINE NAVIGATION TYPES
-// --------------------------------------------------
-export type RootStackParamList = {
-  Onboarding: undefined;
-  MainTabs: undefined;
-  Auth: undefined;
-  
-  // Modals & Features
-  Write: { date: string; prompt?: { text: string; isSmart?: boolean }; text?: string };
-  FocusWrite: { date: string; prompt?: { text: string; isSmart?: boolean }; text?: string };
-  MoodTag: { date: string; text: string; prompt?: string; savedFrom?: string };
-  EntryDetail: { date: string; savedFrom?: string };
-  WeeklyRecap: undefined;
-  CustomPrompt: { date: string; currentPrompt: string; isCustom: boolean };
-  Premium: undefined;
-  Achievements: undefined;
-
-  // Shared Journal
-JournalList: undefined;
-  JournalDetails: { journalId: string }; // New Route
-  SharedJournal: { journalId: string };
-  SharedEntryDetail: { entry: any };
-  SharedWrite: { journalId: string; entry?: any }; // 'entry' is optional for editing
-  Invite: undefined;
-};
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
@@ -57,15 +28,14 @@ export default function RootStack() {
   const hasOnboarded = useSettings((s) => s.hasOnboarded);
   const loaded = useSettings((s) => s.loaded);
 
-  // ⛔ Block rendering until Zustand has hydrated
   if (!loaded) return null;
 
   return (
-<Stack.Navigator
+    <Stack.Navigator
       initialRouteName={hasOnboarded ? "MainTabs" : "Onboarding"}
       screenOptions={{ 
         headerShown: false,
-        animation: 'slide_from_right', // Default smooth slide for standard navigation
+        animation: 'slide_from_right', 
         animationDuration: 400,
       }}
     >
@@ -80,69 +50,59 @@ export default function RootStack() {
         component={AuthScreen} 
         options={{ animation: 'slide_from_right' }} 
       />
+      
+      {/* Main Tabs (Dashboard) */}
       <Stack.Screen 
         name="MainTabs" 
-        component={TabNavigator} 
+        component={MainTabs} 
         options={{ animation: 'fade' }} 
       />
 
-      {/* Creation Flows (Slide Up Modal Style) */}
+      {/* Creation Flows */}
       <Stack.Screen 
         name="Write" 
         component={WriteScreen} 
-        options={{ 
-          presentation: 'modal', 
-          animation: 'slide_from_bottom' 
-        }} 
+        options={{ presentation: 'modal', animation: 'slide_from_bottom' }} 
       />
       <Stack.Screen 
         name="FocusWrite" 
         component={FocusWriteScreen} 
-        options={{ 
-          animation: 'fade', // Fade into focus mode for immersion
-        }} 
+        options={{ animation: 'fade' }} 
       />
       <Stack.Screen 
         name="MoodTag" 
         component={MoodTagScreen} 
-        options={{ 
-          animation: 'slide_from_right' // Slide nicely from Write screen
-        }} 
+        options={{ animation: 'slide_from_right' }} 
       />
       <Stack.Screen 
         name="CustomPrompt" 
         component={CustomPromptScreen} 
-        options={{ 
-          presentation: 'modal',
-          animation: 'slide_from_bottom'
-        }} 
+        options={{ presentation: 'modal', animation: 'slide_from_bottom' }} 
       />
       <Stack.Screen 
         name="SharedWrite" 
         component={SharedWriteScreen} 
-        options={{ 
-          presentation: 'modal',
-          animation: 'slide_from_bottom'
-        }} 
+        options={{ presentation: 'modal', animation: 'slide_from_bottom' }} 
       />
       <Stack.Screen 
         name="Invite" 
         component={InviteScreen} 
-        options={{ 
-          presentation: 'modal',
-          animation: 'slide_from_bottom'
-        }} 
+        options={{ presentation: 'modal', animation: 'slide_from_bottom' }} 
       />
 
-      {/* Detail Views (Standard Slide) */}
+      {/* Detail Views */}
       <Stack.Screen name="EntryDetail" component={EntryDetailScreen} />
       <Stack.Screen name="WeeklyRecap" component={WeeklyRecapScreen} />
       <Stack.Screen name="Premium" component={PremiumScreen} />
+      <Stack.Screen name="Achievements" component={AchievementsScreen} />
+      
+      {/* Shared Journal Specifics */}
+      <Stack.Screen name="JournalList" component={require('../screens/JournalListScreen').default} />
       <Stack.Screen name="SharedJournal" component={SharedJournalScreen} />
       <Stack.Screen name="SharedEntryDetail" component={SharedEntryDetailScreen} />
-      <Stack.Screen name="Achievements" component={AchievementsScreen} />
+      
       <Stack.Screen name="JournalDetails" component={require('../screens/JournalDetailsScreen').default} />
-      <Stack.Screen name="JournalList" component={require('../screens/JournalListScreen').default} />
+      <Stack.Screen name="GroupReports" component={require('../screens/GroupReportsScreen').default} />
     </Stack.Navigator>
   );
 }

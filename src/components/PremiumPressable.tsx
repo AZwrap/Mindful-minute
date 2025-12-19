@@ -32,9 +32,18 @@ export default function PremiumPressable({
 }: Props) {
   const scaleAnim = useRef(new Animated.Value(1)).current;
 
-  const handlePressIn = () => {
+const handlePressIn = () => {
     if (disabled) return;
     
+    // Trigger haptics immediately on touch for better responsiveness
+    if (haptic && haptic !== 'none') {
+      const feedbackStyle = 
+        haptic === 'medium' ? Haptics.ImpactFeedbackStyle.Medium :
+        haptic === 'heavy' ? Haptics.ImpactFeedbackStyle.Heavy :
+        Haptics.ImpactFeedbackStyle.Light;
+      Haptics.impactAsync(feedbackStyle).catch(() => {});
+    }
+
     Animated.spring(scaleAnim, {
       toValue: scaleTo,
       useNativeDriver: true,
@@ -54,20 +63,8 @@ export default function PremiumPressable({
     }).start();
   };
 
-  const handlePress = async (e: GestureResponderEvent) => {
+const handlePress = (e: GestureResponderEvent) => {
     if (disabled) return;
-    
-    if (haptic && haptic !== 'none') {
-      try {
-        const feedbackStyle = 
-          haptic === 'medium' ? Haptics.ImpactFeedbackStyle.Medium :
-          haptic === 'heavy' ? Haptics.ImpactFeedbackStyle.Heavy :
-          Haptics.ImpactFeedbackStyle.Light;
-          
-        await Haptics.impactAsync(feedbackStyle);
-      } catch {}
-    }
-    
     onPress?.(e);
   };
 

@@ -5,6 +5,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { Users, Copy, LogOut, ChevronLeft, Download, Shield, Trash2, MoreVertical, Camera, X } from 'lucide-react-native';
 import * as ImagePicker from 'expo-image-picker';
+import * as Clipboard from 'expo-clipboard';
 
 import { RootStackParamList } from '../navigation/RootStack';
 import { useJournalStore } from '../stores/journalStore';
@@ -127,6 +128,18 @@ showAlert(
       });
     } catch (error) {
       showAlert("Error", "Could not share link.");
+    }
+  };
+  
+const handleCopyCode = async () => {
+    if (!journalId) return;
+    try {
+      console.log("Copying Journal ID:", journalId); // Debug check
+      await Clipboard.setStringAsync(journalId);
+      showAlert("Copied", "Journal code copied to clipboard.");
+    } catch (e) {
+      console.error("Clipboard Error:", e);
+      showAlert("Error", "Failed to copy code.");
     }
   };
 
@@ -252,15 +265,38 @@ showAlert(
                 
                 <View style={[styles.divider, { backgroundColor: palette.border }]} />
                 
-                {/* Invite Link */}
+{/* Invite Link */}
                 <Text style={[styles.label, { color: palette.subtleText }]}>INVITE LINK</Text>
                 <PremiumPressable onPress={handleShareLink} style={styles.codeRow}>
                     <Text style={[styles.code, { color: palette.accent, textDecorationLine: 'underline' }]}>Share Invite Link</Text>
                     <Copy size={16} color={palette.accent} />
                 </PremiumPressable>
-                <Text style={{ fontSize: 10, color: palette.subtleText, marginTop: 6 }}>
-                    Code: {journal.id}
-                </Text>
+
+                <View style={[styles.divider, { backgroundColor: palette.border }]} />
+
+{/* Journal Code */}
+                <Text style={[styles.label, { color: palette.subtleText }]}>JOURNAL CODE</Text>
+                <PremiumPressable 
+                  onPress={handleCopyCode} 
+                  style={[
+                    styles.codeRow, 
+                    { 
+                      justifyContent: 'space-between', 
+                      width: '100%', 
+                      paddingVertical: 14, // Extra height for easier tapping on Android
+                      paddingHorizontal: 4 
+                    }
+                  ]}
+                >
+                    <Text 
+                      style={[styles.value, { color: palette.text, fontSize: 14, flex: 1 }]}
+                      numberOfLines={1}
+                      ellipsizeMode="middle"
+                    >
+                      {journal.id}
+                    </Text>
+                    <Copy size={16} color={palette.accent} />
+                </PremiumPressable>
             </View>
 
             {/* MEMBERS LIST */}
@@ -308,10 +344,24 @@ showAlert(
                 }}
             />
 
-            {/* ACTIONS */}
+{/* ACTIONS */}
             <Text style={[styles.sectionTitle, { color: palette.subtleText, marginTop: 24 }]}>
                 ACTIONS
             </Text>
+
+            {/* Admin Only: Moderation Queue */}
+{isAdmin && (
+                <PremiumPressable 
+                    onPress={() => navigation.navigate('GroupReports', { journalId })}
+                    style={[styles.actionRow, { backgroundColor: palette.card, borderColor: palette.border, marginBottom: 12 }]}
+                >
+                    <Shield size={20} color="#F59E0B" />
+                    <View style={{ flex: 1 }}>
+                        <Text style={[styles.actionText, { color: palette.text }]}>Moderation Queue</Text>
+                        <Text style={{ fontSize: 10, color: palette.subtleText }}>Review reported content</Text>
+                    </View>
+                </PremiumPressable>
+            )}
 
             <PremiumPressable 
                 onPress={handleExport}

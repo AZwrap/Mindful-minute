@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import { useColorScheme } from 'react-native';
+import { onAuthStateChanged } from 'firebase/auth';
 import { auth } from '../firebaseConfig'; 
 import { useJournalStore } from '../stores/journalStore'; 
 import * as SplashScreen from 'expo-splash-screen';
@@ -86,30 +87,29 @@ export function useAppInitialization() {
     initSync();
   }, []);
 
-  // 5. Shared Journals: Restore & Listen for Notifications (MOVED TO TOP LEVEL)
+// 5. Shared Journals: Auth-Reactive Restore & Sync
   useEffect(() => {
-    const initShared = async () => {
-      // Small delay to ensure Firebase Auth is ready
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-const user = auth.currentUser;
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (user) {
         try {
-          // 0. Ensure Store knows current user (Critical for notifications)
+          // 1. Update Store Identity
           useJournalStore.getState().setCurrentUser(user.uid);
 
-          // 1. Restore the user's groups from the cloud
+          // 2. Fetch Journals from Firestore
           await useJournalStore.getState().restoreJournals();
           
-          // 2. Start listening to ALL groups for notifications
+          // 3. Start Live Listeners
           useJournalStore.getState().subscribeToAllJournals();
         } catch (e) {
-          console.warn("Failed to init shared journals:", e);
+          console.warn("Failed to init shared journals on login:", e);
         }
+      } else {
+        // User logged out: Clear shared journal data from memory
+        useJournalStore.getState().leaveJournal();
       }
-    };
+    });
 
-    initShared();
+    return () => unsubscribe();
   }, []);
 
   return {

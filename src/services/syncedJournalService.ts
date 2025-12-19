@@ -229,7 +229,8 @@ export async function reportContent(
   contentAuthorId?: string,
   textSnippet?: string
 ): Promise<void> {
-  await addDoc(collection(db, "reports"), {
+  // Store report INSIDE the journal so Group Admins can access it via rules
+  await addDoc(collection(db, "journals", journalId, "reports"), {
     journalId,
     entryId,
     type,

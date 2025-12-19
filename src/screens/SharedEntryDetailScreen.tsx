@@ -62,9 +62,13 @@ const SwipeMonitor = ({ dragX, onSwipeStart }: any) => {
 };
 
 // Sub-component for exclusive swipe management
-const CommentItem = ({ comment, currentUser, onDelete, onReport, onRowOpen, palette, onLongPress, onReactionTap }: any) => {
+// Sub-component for exclusive swipe management
+const CommentItem = ({ comment, currentUser, onDelete, onReport, onRowOpen, palette, onLongPress, onReactionTap, isGroupAdmin }: any) => {
   const swipeableRef = React.useRef<Swipeable>(null);
   const isCommentAuthor = currentUser && comment.userId === currentUser.uid;
+  
+  // Allow delete if: You wrote it OR You are an Admin
+  const canDelete = isCommentAuthor || isGroupAdmin;
 
   const renderRightActions = (progress: any, dragX: any) => {
     const scale = dragX.interpolate({
@@ -73,7 +77,7 @@ const CommentItem = ({ comment, currentUser, onDelete, onReport, onRowOpen, pale
       extrapolate: 'clamp',
     });
 
-    if (isCommentAuthor) {
+    if (canDelete) {
       return (
         <Pressable style={styles.deleteAction} onPress={() => onDelete(comment)}>
           <SwipeMonitor dragX={dragX} onSwipeStart={() => onRowOpen(swipeableRef.current)} />
@@ -148,7 +152,6 @@ const CommentItem = ({ comment, currentUser, onDelete, onReport, onRowOpen, pale
     </Pressable>
   );
 
-// Removed the check so everyone can swipe (Delete vs Report)
   return (
     <Swipeable
       ref={swipeableRef}
@@ -200,7 +203,7 @@ const showSub = Keyboard.addListener('keyboardDidShow', (e) => {
 
 const { entry: initialEntry } = route.params;
   const palette = useSharedPalette();
-  const { deleteSharedEntry, toggleCommentReaction } = useJournalStore();
+  const { deleteSharedEntry, toggleCommentReaction, journals } = useJournalStore();
 
   // Exclusive Swipe Logic
   const openSwipeableRef = React.useRef<Swipeable | null>(null);
@@ -212,9 +215,14 @@ const { entry: initialEntry } = route.params;
   };
   
   // 1. Get LIVE entry from store (fallback to params if not found yet)
-  const entry = useJournalStore(s => 
+const entry = useJournalStore(s => 
     s.sharedEntries[initialEntry.journalId]?.find(e => e.entryId === initialEntry.entryId)
   ) || initialEntry;
+  
+  // Check if user is a Group Admin
+  const journal = useJournalStore(s => s.journals[entry.journalId]);
+  const userRole = journal?.roles?.[auth.currentUser?.uid || ''] || 'member';
+  const isGroupAdmin = (auth.currentUser?.uid === journal?.owner) || userRole === 'admin' || userRole === 'owner';
 
   const [commentText, setCommentText] = React.useState('');
   const insets = useSafeAreaInsets();
@@ -275,10 +283,11 @@ const handlePostComment = async () => {
      ]);
   };
 
-  const handleReportComment = (comment: any) => {
-     showAlert("Report Comment", "Flag this comment as inappropriate?", [
+const handleReportComment = (comment: any) => {
+     showAlert("Report Comment", "Why are you reporting this comment?", [
        { text: "Cancel", style: "cancel" },
-       { text: "Report", style: "destructive", onPress: () => submitReport('comment', comment.id, 'inappropriate', comment.userId, comment.text) }
+       { text: "It's spam", onPress: () => submitReport('comment', comment.id, 'spam', comment.userId, comment.text) },
+       { text: "It's inappropriate", style: "destructive", onPress: () => submitReport('comment', comment.id, 'inappropriate', comment.userId, comment.text) }
      ]);
   };
 
@@ -367,7 +376,8 @@ return (
              </View>
            )}
 
-           {!isAuthor && (
+{/* Only show Report button if NOT author and NOT admin */}
+           {!isAuthor && !isGroupAdmin && (
               <PremiumPressable onPress={handleReportEntry} style={[styles.actionBtn, { backgroundColor: 'rgba(245, 158, 11, 0.1)' }]}>
                  <Flag size={20} color="#F59E0B" />
                </PremiumPressable>
@@ -412,17 +422,18 @@ return (
              </Pressable>
            </View>
 
-           {/* COMMENTS */}
+{/* COMMENTS */}
            <View style={styles.commentsSection}>
              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 12 }}>
                 <MessageCircle size={16} color={palette.sub} />
                 <Text style={{ fontSize: 14, fontWeight: '700', color: palette.sub, textTransform: 'uppercase' }}>Comments ({entry.comments?.length || 0})</Text>
              </View>
-{entry.comments?.map((c: any) => (
-<CommentItem 
+             {entry.comments?.map((c: any) => (
+               <CommentItem 
                    key={c.id} 
                    comment={c} 
                    currentUser={currentUser} 
+                   isGroupAdmin={isGroupAdmin} // <--- Pass the permission
                    onDelete={handleDeleteComment} 
                    onReport={handleReportComment} // <--- Added prop
                    onRowOpen={onRowOpen} 

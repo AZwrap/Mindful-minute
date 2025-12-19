@@ -15,8 +15,9 @@ import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/RootStack';
 import { useSharedPalette } from "../hooks/useSharedPalette";
 import { useJournalStore } from "../stores/journalStore";
-import { useUIStore } from "../stores/uiStore"; // <--- Added UI Store
+import { useUIStore } from "../stores/uiStore"; 
 import { auth } from "../firebaseConfig";
+import { createSharedJournal, joinSharedJournal } from "../services/syncedJournalService";
 import * as Clipboard from 'expo-clipboard';
 
 // --------------------------------------------------
@@ -55,7 +56,8 @@ const handleCreate = async () => {
       const id = await createSharedJournal(name, auth.currentUser.uid);
       navigation.goBack();
       showAlert("Success", `Journal created! ID: ${id}`);
-    } catch (e) {
+} catch (e) {
+      console.error("Create Journal Error:", e);
       showAlert("Error", "Failed to create journal.");
     } finally {
       setIsCreating(false);
@@ -70,7 +72,8 @@ const handleJoin = async () => {
       await joinSharedJournal(joinCode.trim(), auth.currentUser.uid);
       navigation.goBack();
       showAlert("Success", "Joined journal!");
-    } catch (e: any) {
+} catch (e: any) {
+      console.error("Join Journal Error:", e);
       showAlert("Error", e.message || "Failed to join journal.");
     } finally {
       setIsJoining(false);

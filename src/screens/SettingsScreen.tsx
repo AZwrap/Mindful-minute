@@ -28,7 +28,7 @@ import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { 
 Trash2, Save, FileText, Database, RotateCcw, Share, LogOut,
 ChevronDown, ChevronUp, Palette, Cloud, CloudDownload, Bell, Lock, Zap, Volume2, Sun, Moon, User,
-MessageSquare, Gift, UserX 
+MessageSquare, Gift, UserX, Shield
 } from 'lucide-react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { updateProfile, signOut } from 'firebase/auth';
@@ -470,6 +470,8 @@ const SettingRow = ({ label, description, value, onValueChange, icon }: any) => 
     light: { primary: ['#F8FAFC', '#F1F5F9', '#E2E8F0'] },
   };
   const currentGradient = gradients[currentTheme === 'dark' ? 'dark' : 'light'];
+
+  console.log("MY UID:", auth.currentUser?.uid);
 
   return (
     <View style={{ flex: 1, backgroundColor: palette.bg }}>

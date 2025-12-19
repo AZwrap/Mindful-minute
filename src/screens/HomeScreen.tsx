@@ -92,8 +92,9 @@ const { hapticsEnabled, isPremium } = useSettings(); // <--- Get isPremium
     return 'Good Evening';
   };
 
-// Check Guest Status
-  const isGuest = !auth.currentUser;
+// Check Guest Status (Reactive to Store)
+  const currentUser = useJournalStore(s => s.currentUser);
+  const isGuest = !currentUser;
 
   const sharedJournalsList = useMemo(() => {
     if (isGuest) return []; // Hide journals for guests
