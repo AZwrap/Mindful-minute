@@ -63,8 +63,12 @@
           "cameraPermission": "Allow Micro Muse to access your camera."
         }
       ],
-      "@react-native-google-signin/google-signin"
+"@react-native-google-signin/google-signin"
     ],
+"notification": {
+      "icon": "./assets/notification-icon.png",
+      "color": "#6366F1"
+    },
     "web": {
       "favicon": "./assets/favicon.png",
       "name": "Micro Muse",

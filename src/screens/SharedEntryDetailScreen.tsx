@@ -193,38 +193,33 @@ export default function SharedEntryDetailScreen({ navigation, route }: Props) {
   // Track which comment we are reacting to (null = reacting to the main entry)
   const [activeComment, setActiveComment] = React.useState<any>(null);
 
-  // 1. State to hold the recent emojis
+// 1. State for recent emojis
   const [recentEmojis, setRecentEmojis] = React.useState<string[]>([]);
 
-  // Place this near your other state variables (like showCustomEmojiPicker)
-const [isReacting, setIsReacting] = React.useState(false);
-
-  // 2. Load recents from phone memory when the screen opens
+  // 2. Load from storage on mount
   React.useEffect(() => {
     const loadRecents = async () => {
       try {
         const stored = await AsyncStorage.getItem('recent_emojis');
-        if (stored) {
-          setRecentEmojis(JSON.parse(stored));
-        }
-      } catch (e) {
-        console.error("Failed to load recents", e);
-      }
+        if (stored) setRecentEmojis(JSON.parse(stored));
+      } catch (e) { console.error(e); }
     };
     loadRecents();
   }, []);
 
-  // 3. Helper function to update the list when an emoji is clicked
+  // 3. Update storage helper
   const updateRecents = async (emoji: string) => {
-    // We take the new emoji, put it at the start, 
-    // remove it if it was already in the list (no duplicates),
-    // and keep only the top 7 (one full row).
     const filtered = recentEmojis.filter(e => e !== emoji);
-    const newRecents = [emoji, ...filtered].slice(0, 7);
-    
+    const newRecents = [emoji, ...filtered].slice(0, 7); // Keep top 7
     setRecentEmojis(newRecents);
     await AsyncStorage.setItem('recent_emojis', JSON.stringify(newRecents));
   };
+
+  // Place this near your other state variables (like showCustomEmojiPicker)
+  const [isReacting, setIsReacting] = React.useState(false);
+
+  // State for viewing who reacted
+  const [reactionSummary, setReactionSummary] = React.useState<{ emoji: string, userIds: string[] } | null>(null);
   
   React.useEffect(() => {
     if (Platform.OS === 'ios') return; // iOS works fine with KeyboardAvoidingView
@@ -480,16 +475,16 @@ return (
 
            <Text style={[styles.text, { color: palette.text }]}>{entry.text}</Text>
            
-           {/* REACTIONS */}
+{/* REACTIONS */}
            <View style={[styles.reactionRow, { borderColor: palette.border }]}>
-             {Object.entries(entry.reactions || {}).map(([emoji, userList]: any) => {
+             {Object.entries(entry?.reactions || {}).map(([emoji, userList]: any) => {
                 const count = userList?.length || 0;
                 if (count === 0) return null;
                 const hasReacted = currentUser && userList.includes(currentUser.uid);
                 return (
-                 <Pressable 
+<Pressable 
                    key={emoji} 
-                   onPress={() => handleReaction(emoji)}
+                   onPress={() => setReactionSummary({ emoji, userIds: userList })}
                    style={[styles.reactionPill, { backgroundColor: hasReacted ? palette.accent + '20' : 'transparent', borderColor: hasReacted ? palette.accent : palette.border }]}
                  >
                    <Text style={{ fontSize: 16 }}>{emoji}</Text>
@@ -500,7 +495,8 @@ return (
 <Pressable 
                onPress={() => {
                  setActiveComment(null);
-                 Keyboard.dismiss(); // Close keyboard if typing a comment
+                 Keyboard.dismiss(); 
+                 setIsReacting(true); // Lock the UI to prevent jitters
                  setShowCustomEmojiPicker(true);
                }}
                style={[styles.reactionPill, { borderColor: palette.border, borderStyle: 'dashed', paddingHorizontal: 10 }]}
@@ -608,12 +604,17 @@ onReactionTap={(comment: any, emoji: string) => {
       }}
     />
 
-    <View style={{ 
+<View style={{ 
       height: 350, 
       backgroundColor: palette.card, 
       borderTopWidth: 1, 
       borderTopColor: palette.border,
-      paddingBottom: insets.bottom || 20 
+      paddingBottom: insets.bottom || 20,
+      position: 'absolute',
+      bottom: 0,
+      left: 0,
+      right: 0,
+      zIndex: 100
     }}>
 {/* Header with Close Button */}
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', padding: 12, alignItems: 'center' }}>
@@ -665,10 +666,10 @@ onPress={() => {
                         // Close and Unlock everything
                         setShowCustomEmojiPicker(false);
                         setActiveComment(null);
-                        setIsReacting(false); 
+setIsReacting(false); 
                         Keyboard.dismiss(); 
                         
-                        updateRecents(emoji);
+                        updateRecents(emoji); // <--- Restored this call
                         
                         if (targetComment) {
                           toggleCommentReaction(entry.journalId, entry.entryId, targetComment.id, currentUser?.uid || '', emoji);
@@ -686,8 +687,82 @@ onPress={() => {
               )}
 />
           </View>
-        </> // <--- This closes the Fragment we opened for the backdrop
+</> 
       )}
+
+      {/* REACTION SUMMARY MODAL */}
+      <Modal
+        visible={!!reactionSummary}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setReactionSummary(null)}
+      >
+        <Pressable 
+            style={styles.modalOverlay} 
+            onPress={() => setReactionSummary(null)}
+        >
+          {/* Prevent clicks on the card from closing the modal */}
+          <Pressable style={[styles.emojiPickerCard, { backgroundColor: palette.card, borderColor: palette.border, height: 'auto', maxHeight: 400 }]}>
+            
+            {/* Modal Header */}
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', width: '100%', marginBottom: 16 }}>
+                 <Text style={{ fontSize: 16, fontWeight: '700', color: palette.text }}>
+                   Reactions {reactionSummary?.emoji}
+                 </Text>
+                 <Pressable onPress={() => setReactionSummary(null)} hitSlop={10}>
+                   <X size={20} color={palette.text} />
+                 </Pressable>
+            </View>
+
+            {/* User List */}
+            <ScrollView style={{ width: '100%' }} contentContainerStyle={{ gap: 12 }}>
+              {reactionSummary?.userIds.map(uid => {
+                 // Resolve Name/Photo from Journal Store
+                 const name = journal?.membersMap?.[uid] || 'Member';
+                 const photo = journal?.memberPhotos?.[uid];
+                 const isMe = uid === currentUser?.uid;
+
+                 return (
+                    <View key={uid} style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                       {photo ? (
+                          <Image source={{ uri: photo }} style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: palette.border }} />
+                       ) : (
+                          <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: palette.accent + '20', alignItems: 'center', justifyContent: 'center' }}>
+                             <Users size={16} color={palette.accent} />
+                          </View>
+                       )}
+                       <Text style={{ fontSize: 15, fontWeight: isMe ? '700' : '400', color: palette.text, flex: 1 }}>
+                          {isMe ? 'You' : name}
+                       </Text>
+                    </View>
+                 );
+              })}
+            </ScrollView>
+            
+            {/* "Remove My Reaction" Button (Only if I reacted with this emoji) */}
+            {reactionSummary && currentUser && reactionSummary.userIds.includes(currentUser.uid) && (
+                <Pressable 
+                    onPress={() => {
+                        handleReaction(reactionSummary.emoji); // Toggle it OFF
+                        setReactionSummary(null); // Close modal
+                    }}
+                    style={({ pressed }) => ({ 
+                      marginTop: 20, 
+                      padding: 12, 
+                      width: '100%', 
+                      alignItems: 'center', 
+                      backgroundColor: 'rgba(239, 68, 68, 0.1)', 
+                      borderRadius: 12,
+                      opacity: pressed ? 0.7 : 1
+                    })}
+                >
+                   <Text style={{ color: '#EF4444', fontWeight: '600' }}>Remove My Reaction</Text>
+                </Pressable>
+            )}
+          </Pressable>
+        </Pressable>
+      </Modal>
+
     </LinearGradient>
   );
 }
