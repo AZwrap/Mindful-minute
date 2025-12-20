@@ -23,8 +23,25 @@ type Props = NativeStackScreenProps<RootStackParamList, 'JournalDetails'>;
 
 export default function JournalDetailsScreen({ navigation, route }: Props) {
   const { journalId } = route.params;
-const { showAlert } = useUIStore();
-  const palette = useSharedPalette();
+  const { showAlert } = useUIStore();
+const palette = useSharedPalette();
+  const scrollRef = useRef<ScrollView>(null);
+  const inputRef = useRef<TextInput>(null);
+  const [savedScrollY, setSavedScrollY] = useState(0);
+  const currentScrollY = useRef(0);
+  const handleFinishEditing = (save: boolean = false, memberId?: string) => {
+    // 1. Immediate scroll back
+    scrollRef.current?.scrollTo({ y: savedScrollY, animated: true });
+    
+    // 2. Immediate keyboard dismiss
+    Keyboard.dismiss();
+
+    // 3. Logic update
+    if (save && memberId) {
+      useJournalStore.getState().setMemberNickname(journalId, memberId, tempNickname);
+    }
+    setEditingMember(null);
+  };
   const [previewImage, setPreviewImage] = useState<string | null>(null);
 
 
@@ -36,10 +53,24 @@ const { showAlert } = useUIStore();
   // Member Nickname Editing
   const [editingMember, setEditingMember] = useState<string | null>(null);
   const [tempNickname, setTempNickname] = useState('');
+useEffect(() => {
+    if (editingMember) {
+      // Save position only when starting to edit
+      setSavedScrollY(currentScrollY.current);
+      
+      setTimeout(() => {
+        inputRef.current?.focus();
+        scrollRef.current?.scrollTo({ 
+          y: 400 + (journal.memberIds.indexOf(editingMember) * 70), 
+          animated: true 
+        });
+      }, 100);
+    }
+  }, [editingMember]);
   
   // Get store actions and data
   const { journals, removeJournal, sharedEntries, updateJournalMeta, leaveJournal } = useJournalStore();
-  
+
   // 1. Safety Check: Get journal or fallback
   const journal = journals[journalId];
 
@@ -284,15 +315,18 @@ onPress: async () => {
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}
           keyboardVerticalOffset={Platform.OS === 'ios' ? 64 : 0}
         >
-        <ScrollView 
+<ScrollView 
+          ref={scrollRef}
           style={styles.content} 
-          // 1. Ensure we have enough base padding
           contentContainerStyle={{ paddingBottom: 100 }} 
-          keyboardShouldPersistTaps="handled"
-          // 2. This is the magic prop for Android Edge-to-Edge
+          keyboardShouldPersistTaps="always"
           automaticallyAdjustKeyboardInsets={true}
+          scrollEventThrottle={16}
+          onScroll={(e) => {
+            currentScrollY.current = e.nativeEvent.contentOffset.y;
+          }}
         >
-            
+            <Pressable onPress={() => Keyboard.dismiss()} style={{ flex: 1 }}>
             {/* GROUP PHOTO */}
             <View style={{ alignItems: 'center', marginBottom: 24 }}>
               <View>
@@ -417,6 +451,7 @@ onPress: async () => {
                 data={journal.memberIds || []}
                 keyExtractor={(item) => item}
                 scrollEnabled={false}
+                keyboardShouldPersistTaps="always"
                 renderItem={({ item, index }) => {
                   // Priority: 1. Check explicit Role Map
                   //           2. If no role map entry, but is Creator -> 'admin'
@@ -473,28 +508,39 @@ onPress: async () => {
                         <View style={{ flex: 1 }}>
                           {isEditingThisUser ? (
                               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                                <TextInput 
+<TextInput 
+                                  ref={inputRef}
                                   value={tempNickname}
                                   onChangeText={setTempNickname}
+                                  onSubmitEditing={() => handleFinishEditing(true, item)}
+                                  returnKeyType="done"
+                                  blurOnSubmit={false}
                                   style={{ 
-                                    flex: 1, 
+                                    flex: 1,
                                     borderBottomWidth: 1, 
                                     borderBottomColor: palette.accent,
                                     fontSize: 16,
                                     color: palette.text,
                                     padding: 0
                                   }}
-                                  autoFocus
                                 />
-                                <TouchableOpacity onPress={() => {
-                                    useJournalStore.getState().setMemberNickname(journalId, item, tempNickname);
-                                    setEditingMember(null);
-                                }}>
+<Pressable 
+                                  onPress={() => handleFinishEditing(true, item)}
+                                  hitSlop={25}
+                                  style={({ pressed }) => [{ 
+                                    padding: 4,
+                                    opacity: pressed ? 0.5 : 1 
+                                  }]}
+                                >
                                    <Check size={18} color="#10B981" />
-                                </TouchableOpacity>
-                                <TouchableOpacity onPress={() => setEditingMember(null)}>
+                                </Pressable>
+                                <PremiumPressable 
+                                  onPress={() => handleFinishEditing(false)}
+                                  hitSlop={20}
+                                  style={{ padding: 4 }}
+                                >
                                    <X size={18} color="#EF4444" />
-                                </TouchableOpacity>
+                                </PremiumPressable>
                               </View>
                           ) : (
                               <Text style={[styles.memberName, { color: palette.text }]}>
@@ -571,9 +617,9 @@ onPress: async () => {
                     <Trash2 size={18} color="#EF4444" />
                     <Text style={styles.leaveText}>Delete Group</Text>
                 </PremiumPressable>
-            )}
-            
-</ScrollView>
+)}
+          </Pressable>
+        </ScrollView>
         </KeyboardAvoidingView>
 
 {/* Full Screen Image Modal */}

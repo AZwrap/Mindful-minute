@@ -8,6 +8,7 @@ import {
   Animated,
   AccessibilityInfo,
   ScrollView,
+  Image,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
@@ -317,7 +318,7 @@ if (hasInProgress) {
       accessibilityRole="header"
       accessibilityLabel="Micro Muse Home Screen"
     >
-      <SafeAreaView style={{ flex: 1 }} edges={['top']}>
+<SafeAreaView style={{ flex: 1 }} edges={['top']}>
       <Animated.View style={{ opacity: contentFadeAnim, flex: 1 }}>
 <LinearGradient
         colors={currentGradient.card}
@@ -327,9 +328,11 @@ if (hasInProgress) {
         accessible={true}
         accessibilityRole="summary"
       >
-        <ScrollView 
-          contentContainerStyle={styles.scrollContent} 
+<ScrollView 
+          contentContainerStyle={[styles.scrollContent, { flexGrow: 1 }]} 
           showsVerticalScrollIndicator={false}
+          overScrollMode="never"
+          // Remove the scrollEnabled check to let RN handle it naturally
         >
           {/* New Header: Greeting + Streak */}
           <View style={styles.headerRow}>
@@ -513,7 +516,7 @@ style={[
 
         </View>
 
-{/* GROUPED SECTION: Integrated Shared Journals Card */}
+{/* GROUPED SECTION: Shared Journals & Groups */}
         <View style={[styles.card, { 
           backgroundColor: palette.card, 
           borderColor: palette.border, 
@@ -521,59 +524,82 @@ style={[
           marginTop: 16, 
           overflow: 'hidden' 
         }]}>
-{/* Header / Main Action (Always visible) */}
+          
+          {/* 1. Invite/Join Action */}
           <PremiumPressable
             onPress={() => isGuest ? navigation.navigate("Auth" as any) : navigation.navigate("Invite")}
             haptic="light"
-            style={{
-              flexDirection: 'row',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              padding: 16,
-            }}
+            style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 14 }}
           >
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-              <Users size={20} color={palette.text} />
-              <Text style={{ color: palette.text, fontSize: 16, fontWeight: '600' }}>
-                Shared Journals
-              </Text>
+              <Users size={18} color={palette.accent} />
+              <Text style={{ color: palette.text, fontSize: 15, fontWeight: '600' }}>Shared Journals</Text>
             </View>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-              {sharedJournalsList.length === 0 && (
-                <Text style={{ color: palette.sub, fontSize: 13 }}>
-                  {isGuest ? "Login to Join" : "Create or Join"}
-                </Text>
-              )}
-              <Text style={{ color: palette.subtleText, fontSize: 18, opacity: 0.5 }}>›</Text>
-            </View>
+            <Text style={{ color: palette.subtleText, fontSize: 12 }}>Invite or Join ›</Text>
           </PremiumPressable>
 
-          {/* List of Joined Journals (Rendered inside the same card) */}
+          <View style={{ height: 1, backgroundColor: palette.border, marginHorizontal: 16 }} />
+
+          {/* 2. My Groups (View All) */}
+          {!isGuest && (
+            <PremiumPressable
+              onPress={() => navigation.navigate('JournalList')}
+              haptic="light"
+              style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 14 }}
+            >
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                <View style={{ width: 18, alignItems: 'center' }}>
+                   <View style={{ width: 4, height: 4, borderRadius: 2, backgroundColor: palette.text, marginBottom: 2 }} />
+                   <View style={{ width: 4, height: 4, borderRadius: 2, backgroundColor: palette.text, marginBottom: 2 }} />
+                   <View style={{ width: 4, height: 4, borderRadius: 2, backgroundColor: palette.text }} />
+                </View>
+                <Text style={{ color: palette.text, fontSize: 15, fontWeight: '600' }}>My Groups</Text>
+              </View>
+              <Text style={{ color: palette.subtleText, fontSize: 12 }}>View All ({sharedJournalsList.length}) ›</Text>
+            </PremiumPressable>
+          )}
+
+          {/* 3. Quick Access: Last 3 Groups */}
           {sharedJournalsList.length > 0 && (
-            <View>
-              <View style={{ height: 1, backgroundColor: palette.border, marginLeft: 52 }} />
-              {sharedJournalsList.map((j) => (
+            <View style={{ backgroundColor: isDark ? 'rgba(0,0,0,0.1)' : 'rgba(0,0,0,0.02)', paddingBottom: 4 }}>
+              <View style={{ height: 1, backgroundColor: palette.border, marginHorizontal: 16, marginBottom: 4 }} />
+              
+              {sharedJournalsList.slice(0, 3).map((j) => (
                 <Pressable
                   key={j.id}
-                  onPress={() => navigation.navigate('JournalList')}
+                  // DIRECT NAVIGATION: Go straight to the specific journal
+                  onPress={() => navigation.navigate('SharedJournal', { journalId: j.id })}
                   style={({ pressed }) => ({
-                    paddingVertical: 14,
+                    paddingVertical: 10,
                     paddingHorizontal: 16,
-                    paddingLeft: 52, // Indent to align with text above
                     backgroundColor: pressed ? (isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)') : 'transparent',
                     flexDirection: 'row',
-                    justifyContent: 'space-between',
-                    alignItems: 'center'
+                    alignItems: 'center',
+                    gap: 12
                   })}
                 >
-                  <View>
-<Text style={{ color: palette.text, fontSize: 15, fontWeight: "500" }}>
-                      {j.name}
-                    </Text>
-                    <Text style={{ color: palette.sub, fontSize: 12, marginTop: 2 }}>
-                      {j.memberIds?.length || j.members?.length || 0} member{(j.memberIds?.length || j.members?.length) !== 1 ? 's' : ''}
-                    </Text>
-                  </View>
+                  {/* Avatar Thumbnail */}
+                  {j.photoUrl ? (
+                    <Image 
+                      source={{ uri: j.photoUrl }} 
+                      style={{ width: 30, height: 30, borderRadius: 8, borderWidth: 1, borderColor: palette.border }} 
+                    />
+                  ) : (
+                    <View style={{ 
+                      width: 30, height: 30, borderRadius: 8, 
+                      backgroundColor: palette.accent + '15', 
+                      alignItems: 'center', justifyContent: 'center',
+                      borderWidth: 1, borderColor: palette.border
+                    }}>
+                      <Users size={14} color={palette.accent} />
+                    </View>
+                  )}
+
+<Text style={{ color: palette.text, fontSize: 14, fontWeight: "500", flex: 1 }} numberOfLines={1}>
+                    {j.name}
+                  </Text>
+                  
+                  <Text style={{ color: palette.subtleText, fontSize: 16, opacity: 0.3 }}>›</Text>
                 </Pressable>
               ))}
             </View>
@@ -611,7 +637,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
 contentCard: {
-    flex: 1,
+    flex: 1, // Restore this so the card fills available space
     margin: 16,
     marginTop: 10,
     borderRadius: 24,
@@ -632,10 +658,10 @@ headerRow: {
     fontSize: 24,
     fontWeight: '800',
   },
-  scrollContent: {
+scrollContent: {
     padding: 16,
     gap: 20,
-    paddingBottom: 60, // <--- THIS is the safe spacing you asked for!
+    paddingBottom: 20, // Reduced padding to prevent unnecessary scrolling
   },
   streakBadge: {
     flexDirection: 'row',

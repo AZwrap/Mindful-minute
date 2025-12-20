@@ -6,7 +6,7 @@ import { Swipeable } from 'react-native-gesture-handler';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { PenTool, Share2, LogOut, Search, X, Trash2, MessageCircle, Heart } from 'lucide-react-native';
+import { PenTool, Share2, LogOut, Search, X, Trash2, MessageCircle, Heart, Users } from 'lucide-react-native';
 
 import { RootStackParamList } from '../navigation/RootStack';
 import { useJournalStore } from '../stores/journalStore';
@@ -151,19 +151,38 @@ const handleInvite = async () => {
 return (
     <LinearGradient colors={[palette.bg, palette.bg]} style={styles.container}>
       <SafeAreaView style={{ flex: 1 }}>
-        <View style={styles.header}>
+<View style={styles.header}>
           <PremiumPressable onPress={() => navigation.navigate('JournalDetails', { journalId })}>
-             <View>
-<Text style={[styles.title, { color: palette.text }]}>
-                  {journal?.name || 'Shared Journal'} <Text style={{ fontSize: 16, color: palette.subtleText }}>ⓘ</Text>
-                </Text>
-<Text style={[styles.subtitle, { color: palette.subtleText }]}>
+             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                {/* Journal Avatar Thumbnail */}
+                {journal?.photoUrl ? (
+                  <Image 
+                    source={{ uri: journal.photoUrl }} 
+                    style={{ width: 38, height: 38, borderRadius: 12, borderWidth: 1, borderColor: palette.border }} 
+                  />
+                ) : (
+                  <View style={{ 
+                    width: 38, height: 38, borderRadius: 12, 
+                    backgroundColor: palette.accent + '15', 
+                    alignItems: 'center', justifyContent: 'center',
+                    borderWidth: 1, borderColor: palette.border
+                  }}>
+                    <Users size={18} color={palette.accent} />
+                  </View>
+                )}
+
+                <View>
+                  <Text style={[styles.title, { color: palette.text, fontSize: 18 }]}>
+                    {journal?.name || 'Shared Journal'} <Text style={{ fontSize: 14, color: palette.subtleText }}>ⓘ</Text>
+                  </Text>
+                  <Text style={[styles.subtitle, { color: palette.subtleText, marginTop: 0 }]}>
                     {(() => {
                        const count = journal?.memberIds?.length || journal?.members?.length || 1;
                        const entryCount = entries.length;
                        return `${count} ${count === 1 ? 'Member' : 'Members'} • ${entryCount} ${entryCount === 1 ? 'Entry' : 'Entries'}`;
                     })()}
-                </Text>
+                  </Text>
+                </View>
              </View>
           </PremiumPressable>
           <View style={{ flexDirection: 'row', gap: 12 }}>
@@ -220,10 +239,11 @@ renderItem={({ item }) => {
                 item.userId === currentUserId && 
                 item.comments?.some((c: any) => c.createdAt > lastReadTime && c.userId !== currentUserId);
 
-            return (
+return (
               <SharedEntryItem
                 item={item}
-                hasUnreadComment={hasUnreadComment} // <--- Pass prop
+                journal={journal} // <--- Added this line
+                hasUnreadComment={hasUnreadComment}
                 isOwner={journal?.owner === currentUserId}
                 isAdmin={isAdmin}
                 currentUserId={currentUserId}
@@ -231,7 +251,7 @@ renderItem={({ item }) => {
                 navigation={navigation}
                 palette={palette}
                 safeDate={safeDate}
-                onRowOpen={onRowOpen} // <--- Pass the handler
+                onRowOpen={onRowOpen}
               />
             );
           }}
@@ -261,7 +281,7 @@ ListEmptyComponent={
 }
 
 // Sub-component to handle deletion animation smoothly
-const SharedEntryItem = ({ item, isOwner, isAdmin, currentUserId, onDelete, navigation, palette, safeDate, onRowOpen, hasUnreadComment }: any) => {
+const SharedEntryItem = ({ item, isOwner, isAdmin, currentUserId, onDelete, navigation, palette, safeDate, onRowOpen, hasUnreadComment, journal }: any) => {
   const swipeableRef = useRef<Swipeable>(null); // <--- Local ref
 
   const isAuthor = item.userId === currentUserId;
@@ -337,12 +357,30 @@ return (
              </View>
           )}
         </View>
-        <Text style={[styles.entryText, { color: palette.text }]} numberOfLines={3}>
+<Text style={[styles.entryText, { color: palette.text }]} numberOfLines={3}>
           {item.text}
         </Text>
-        <Text style={[styles.entryAuthor, { color: palette.accent }]}>
-          — {item.authorName || 'Anonymous'}
-        </Text>
+        
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+          {/* Author Profile Picture */}
+          {journal?.memberPhotos?.[item.userId] ? (
+            <Image 
+              source={{ uri: journal.memberPhotos[item.userId] }} 
+              style={{ width: 20, height: 20, borderRadius: 10, borderWidth: 1, borderColor: palette.border }} 
+            />
+          ) : (
+            <View style={{ 
+              width: 20, height: 20, borderRadius: 10, 
+              backgroundColor: palette.accent + '20', 
+              alignItems: 'center', justifyContent: 'center' 
+            }}>
+              <Users size={10} color={palette.accent} />
+            </View>
+          )}
+          <Text style={[styles.entryAuthor, { color: palette.accent, marginBottom: 0 }]}>
+            {item.authorName || 'Anonymous'}
+          </Text>
+        </View>
         
 {/* Render image preview if exists */}
         {item.imageUri && (
@@ -378,7 +416,7 @@ const styles = StyleSheet.create({
   entryCard: { padding: 16, borderRadius: 16, borderWidth: 1 },
   entryDate: { fontSize: 12, marginBottom: 8, fontWeight: '600' },
   entryText: { fontSize: 16, lineHeight: 24, marginBottom: 12 },
-  entryAuthor: { fontSize: 12, fontWeight: '700', fontStyle: 'italic' },
+entryAuthor: { fontSize: 12, fontWeight: '700' },
   fab: { position: 'absolute', bottom: 30, right: 24, width: 56, height: 56, borderRadius: 28, alignItems: 'center', justifyContent: 'center', shadowOpacity: 0.3, shadowRadius: 8, shadowOffset: { width: 0, height: 4 } },
   empty: { padding: 40, alignItems: 'center' },
   emptyText: { fontSize: 16 },

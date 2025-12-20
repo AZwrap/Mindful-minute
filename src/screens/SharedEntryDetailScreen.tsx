@@ -1,7 +1,8 @@
 import React from 'react';
-import { View, Text, StyleSheet, ScrollView, Image, TextInput, KeyboardAvoidingView, Platform, Pressable, Keyboard, Modal, Animated, InteractionManager } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Image, TextInput, KeyboardAvoidingView, Platform, Pressable, Keyboard, Modal, Animated, InteractionManager, FlatList, SectionList } from 'react-native';
 import { Swipeable } from 'react-native-gesture-handler'; 
-import { Trash2, Edit2, ChevronLeft, Send, Heart, Flame, ThumbsUp, MessageCircle, Smile, Flag } from 'lucide-react-native'; // <--- Added Flag
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Trash2, Edit2, ChevronLeft, Send, Heart, Flame, ThumbsUp, MessageCircle, Smile, Flag, Users, X } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { reportContent } from '../services/syncedJournalService'; // <--- Added Service
 import { useUIStore } from '../stores/uiStore';
@@ -18,32 +19,28 @@ type Props = NativeStackScreenProps<RootStackParamList, 'SharedEntryDetail'>;
 
 import { JournalService } from '../services/journalService'; // Ensure this is imported
 
-const QUICK_REACTIONS = [
-  // Hearts & Love
-  "❤️", "🧡", "💛", "💚", "💙", "💜", "🖤", "🤍", "🤎", "💔", "❣️", "💕", "💞", "💓", "💗", "💖", "💘", "💝",
-  
-  // Faces (Positive)
-  "😀", "😃", "😄", "😁", "😆", "😅", "😂", "🤣", "🥲", "😊", "😇", "🙂", "🙃", "😉", "😌", "😍", "🥰", "😘", 
-  "😗", "😙", "😚", "😋", "😛", "😝", "😜", "🤪", "🤨", "🧐", "🤓", "😎", "🥸", "🤩", "🥳",
-  
-  // Faces (Neutral/Negative)
-  "😏", "😒", "😞", "😔", "😟", "😕", "🙁", "☹️", "😣", "😖", "😫", "😩", "🥺", "😢", "😭", "😤", "😠", 
-  "😡", "🤬", "🤯", "😳", "🥵", "🥶", "😱", "😨", "😰", "😥", "😓", "🤗", "🤔", "🤭", "🤫", "🤥", "😶", 
-  "😐", "😑", "😬", "🙄", "😯", "😦", "😧", "😮", "😲", "🥱", "😴", "🤤", "😪", "😵", "🤐", "🥴", "🤢", "🤮", 
-  "🤧", "😷", "🤒", "🤕", "🤑", "🤠", "😈", "👿", "👹", "👺", "🤡", "💩", "👻", "💀", "☠️", "👽", "👾", "🤖",
-  
-  // Hands & Gestures
-  "👋", "🤚", "🖐", "✋", "🖖", "👌", "🤌", "🤏", "✌️", "🤞", "🤟", "🤘", "🤙", "👈", "👉", "👆", "🖕", "👇", 
-  "☝️", "👍", "👎", "✊", "👊", "🤛", "🤜", "👏", "🙌", "👐", "🤲", "🤝", "🙏", "✍️", "💅", "🤳", "💪",
-  
-  // Nature & Animals
-  "💐", "🌹", "🥀", "🌺", "🌸", "🌼", "🌻", "☀️", "🌤", "☁️", "⛈", "🌈", "❄️", "🔥", "🌊", "✨", "🌟", 
-  "🐶", "🐱", "🐭", "🐹", "🐰", "🦊", "🐻", "🐼", "🐨", "🐯", "🦁", "🐮", "🐷", "🐸", "🐵", "🐔", "🐧", "🐦",
-  
-  // Objects & Symbols
-  "💯", "💢", "💥", "💫", "💦", "💨", "🕳", "💣", "💬", "👁️‍🗨️", "🗨️", "🗯️", "💭", "💤", "🎵", "🎶", "🎼",
-  "🏆", "🥇", "🥈", "🥉", "🏅", "🎖", "🎁", "🎈", "🎉", "🎊", "🕯", "💡", "💰", "💸", "💎", "🔮", "🧬", "💊"
+const EMOJI_CATEGORIES = [
+  { title: "Recently Used", data: [] }, 
+  { title: "Smileys & Emotion", data: [
+    "😂", "😊", "🥰", "😍", "🤩", "🥳", "😇", "🙂", "🙃", "😉", "😌", "😏", "🤔", "🧐", "🤨", "😎", "🤓", "🫠", "😋", "😛", "😜", "🤪", "🥺", "😢", "😭", "😤", "😠", "😡", "🤯", "😳", "🥵", "🥶", "😱", "😨", "😰", "😥", "😓", "😴", "🥱", "🤮", "😵‍💫", "😷", "🤒", "🥴"
+  ]},
+  { title: "Hearts & Symbols", data: [
+    "❤️", "🧡", "💛", "💚", "💙", "💜", "🤎", "🖤", "🤍", "💔", "❣️", "💕", "💞", "💓", "💗", "💖", "💘", "💝", "🔥", "✨", "🌟", "💯", "✅", "💢", "💥", "💫", "💦", "💨", "💬", "💭", "💤"
+  ]},
+  { title: "Hands & Gestures", data: [
+    "🙌", "🙏", "👍", "👏", "💪", "🤝", "👌", "✌️", "🤞", "🤟", "🤘", "🤙", "👈", "👉", "👆", "👇", "☝️", "✋", "🤚", "🖐️", "🖖", "👋", "✍️", "💅", "🤳", "👂", "👃"
+  ]},
+  { title: "Animals & Nature", data: [
+    "🐶", "🐱", "🐭", "🐹", "🐰", "🦊", "🐻", "🐼", "🐻‍❄️", "🐨", "🐯", "🦁", "🐮", "🐷", "🐸", "🐵", "🐒", "🐔", "🐧", "🐦", "🐤", "🦆", "🦅", "🦉", "🦇", "🐺", "🐗", "🐴", "🦄", "🐝", "🪱", "🐛", "🦋", "🐌", "🐞", "🐜", "🦟", "🐢", "🐍", "🦎", "🦖", "🥦", "🍓", "🍒", "🍎"
+  ]},
+  { title: "Sky & Weather", data: [
+    "☀️", "🌤️", "⛅", "🌥️", "☁️", "🌦️", "🌧️", "⛈️", "🌩️", "🌨️", "❄️", "☃️", "⛄", "🌬️", "💨", "🌪️", "🌫️", "🌈", "☔", "💧", "🌊", "🌙", "🌛", "🌑", "🪐"
+  ]},
+  { title: "Objects & Travel", data: [
+    "🏠", "🏡", "🏢", "🏫", "⛪", "🕌", "⛩️", "⛰️", "🌋", "🗻", "🏕️", "🏖️", "🏝️", "🏜️", "🚀", "✈️", "🚢", "🚗", "🚲", "🛴", "🕯️", "💡", "💰", "💸", "💎", "🎁", "🎈", "🎉", "🎨", "🎭", "🎮", "📚", "🔮", "🧬"
+  ]}
 ];
+
 
 // Helper component to detect swipe start for immediate closure of other rows
 const SwipeMonitor = ({ dragX, onSwipeStart }: any) => {
@@ -61,9 +58,7 @@ const SwipeMonitor = ({ dragX, onSwipeStart }: any) => {
   return null;
 };
 
-// Sub-component for exclusive swipe management
-// Sub-component for exclusive swipe management
-const CommentItem = ({ comment, currentUser, onDelete, onReport, onRowOpen, palette, onLongPress, onReactionTap, isGroupAdmin }: any) => {
+const CommentItem = ({ comment, currentUser, onDelete, onReport, onRowOpen, palette, onLongPress, onReactionTap, isGroupAdmin, journal }: any) => {
   const swipeableRef = React.useRef<Swipeable>(null);
   const isCommentAuthor = currentUser && comment.userId === currentUser.uid;
   
@@ -87,13 +82,13 @@ const CommentItem = ({ comment, currentUser, onDelete, onReport, onRowOpen, pale
           </Animated.View>
         </Pressable>
       );
-} else {
+    } else {
       return (
         <Pressable 
           style={[styles.deleteAction, { backgroundColor: '#F59E0B' }]} 
           onPress={() => {
-            swipeableRef.current?.close(); // <--- Close the row first
-            onReport(comment);             // <--- Then show alert
+            swipeableRef.current?.close(); 
+            onReport(comment);             
           }}
         >
           <SwipeMonitor dragX={dragX} onSwipeStart={() => onRowOpen(swipeableRef.current)} />
@@ -120,19 +115,38 @@ const CommentItem = ({ comment, currentUser, onDelete, onReport, onRowOpen, pale
       ]}
       onTouchStart={() => onRowOpen(swipeableRef.current)}
     >
-      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-        <View>
-          <Text style={{ fontSize: 12, fontWeight: '700', color: palette.accent }}>{comment.authorName}</Text>
-          <Text style={{ fontSize: 10, color: palette.sub }}>
-            {new Date(comment.createdAt).toLocaleDateString()}
-          </Text>
+      <View style={{ flexDirection: 'row', gap: 10, alignItems: 'flex-start' }}>
+        {/* Commenter Avatar */}
+        {journal?.memberPhotos?.[comment.userId] ? (
+          <Image 
+            source={{ uri: journal.memberPhotos[comment.userId] }} 
+            style={{ width: 26, height: 26, borderRadius: 13, marginTop: 2 }} 
+          />
+        ) : (
+          <View style={{ 
+            width: 26, height: 26, borderRadius: 13, 
+            backgroundColor: palette.accent + '20', 
+            alignItems: 'center', justifyContent: 'center',
+            marginTop: 2
+          }}>
+            <Users size={12} color={palette.accent} />
+          </View>
+        )}
+
+        <View style={{ flex: 1 }}>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+            <Text style={{ fontSize: 12, fontWeight: '700', color: palette.accent }}>{comment.authorName}</Text>
+            <Text style={{ fontSize: 10, color: palette.sub }}>
+              {new Date(comment.createdAt).toLocaleDateString()}
+            </Text>
+          </View>
+          <Text style={{ color: palette.text, marginTop: 2, fontSize: 14 }}>{comment.text}</Text>
         </View>
       </View>
-      <Text style={{ color: palette.text, marginTop: 4, fontSize: 14 }}>{comment.text}</Text>
       
       {/* Comment Reactions */}
       {comment.reactions && Object.keys(comment.reactions).length > 0 && (
-        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 8 }}>
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 8, marginLeft: 36 }}>
           {Object.entries(comment.reactions).map(([emoji, userList]: any) => {
              const count = userList?.length || 0;
              if (count === 0) return null;
@@ -178,27 +192,71 @@ export default function SharedEntryDetailScreen({ navigation, route }: Props) {
 
   // Track which comment we are reacting to (null = reacting to the main entry)
   const [activeComment, setActiveComment] = React.useState<any>(null);
+
+  // 1. State to hold the recent emojis
+  const [recentEmojis, setRecentEmojis] = React.useState<string[]>([]);
+
+  // Place this near your other state variables (like showCustomEmojiPicker)
+const [isReacting, setIsReacting] = React.useState(false);
+
+  // 2. Load recents from phone memory when the screen opens
+  React.useEffect(() => {
+    const loadRecents = async () => {
+      try {
+        const stored = await AsyncStorage.getItem('recent_emojis');
+        if (stored) {
+          setRecentEmojis(JSON.parse(stored));
+        }
+      } catch (e) {
+        console.error("Failed to load recents", e);
+      }
+    };
+    loadRecents();
+  }, []);
+
+  // 3. Helper function to update the list when an emoji is clicked
+  const updateRecents = async (emoji: string) => {
+    // We take the new emoji, put it at the start, 
+    // remove it if it was already in the list (no duplicates),
+    // and keep only the top 7 (one full row).
+    const filtered = recentEmojis.filter(e => e !== emoji);
+    const newRecents = [emoji, ...filtered].slice(0, 7);
+    
+    setRecentEmojis(newRecents);
+    await AsyncStorage.setItem('recent_emojis', JSON.stringify(newRecents));
+  };
   
   React.useEffect(() => {
     if (Platform.OS === 'ios') return; // iOS works fine with KeyboardAvoidingView
 
 const showSub = Keyboard.addListener('keyboardDidShow', (e) => {
-      // Animate to keyboard height explicitly (add buffer to prevent overlap)
-      Animated.timing(bottomPadding, {
-        toValue: e.endCoordinates.height + 15, 
-        duration: 150,
-        useNativeDriver: false,
-      }).start();
-    });
+  // If we are reacting, do NOT move the bottom padding
+  if (isReacting) {
+    bottomPadding.setValue(0);
+    return;
+  }
+  
+  Animated.timing(bottomPadding, {
+    toValue: e.endCoordinates.height + 15, 
+    duration: 150,
+    useNativeDriver: false,
+  }).start();
+});
 
-    const hideSub = Keyboard.addListener('keyboardDidHide', () => {
-      // Force reset to 0 when keyboard hides
-      Animated.timing(bottomPadding, {
-        toValue: 0,
-        duration: 100,
-        useNativeDriver: false,
-      }).start();
-    });
+const hideSub = Keyboard.addListener('keyboardDidHide', () => {
+  // Always reset the padding when the keyboard hides
+  Animated.timing(bottomPadding, {
+    toValue: 0,
+    duration: 100,
+    useNativeDriver: false,
+  }).start();
+  
+  // Optional: if the keyboard hides, and we aren't showing the emoji picker, 
+  // we should ensure isReacting is false
+  if (!showCustomEmojiPicker) {
+    setIsReacting(false);
+  }
+});
 
     return () => {
       showSub.remove();
@@ -249,8 +307,8 @@ const entry = useJournalStore(s =>
   const currentUser = auth.currentUser;
   const isAuthor = currentUser?.uid && entry.userId === currentUser.uid;
 
-// Emoji Picker State
-  const [showEmojiPicker, setShowEmojiPicker] = React.useState(false);
+// Toggle for the custom emoji bottom sheet
+  const [showCustomEmojiPicker, setShowCustomEmojiPicker] = React.useState(false);
 
   const handleReaction = async (type: string) => {
     if (!currentUser || !entry.journalId) return;
@@ -414,7 +472,7 @@ return (
           keyboardShouldPersistTaps="handled"
         >
            <Text style={[styles.date, { color: palette.subtleText }]}>{dateStr}</Text>
-           <Text style={[styles.author, { color: palette.accent }]}>Written by {entry.authorName || 'Anonymous'}</Text>
+           <Text style={[styles.author, { color: palette.accent }]}>By {entry.authorName || 'Anonymous'}</Text>
 
            {entry.imageUri && (
              <Image source={{ uri: entry.imageUri }} style={styles.image} resizeMode="cover" />
@@ -439,7 +497,14 @@ return (
                  </Pressable>
                 );
              })}
-             <Pressable onPress={() => setShowEmojiPicker(true)} style={[styles.reactionPill, { borderColor: palette.border, borderStyle: 'dashed', paddingHorizontal: 10 }]}>
+<Pressable 
+               onPress={() => {
+                 setActiveComment(null);
+                 Keyboard.dismiss(); // Close keyboard if typing a comment
+                 setShowCustomEmojiPicker(true);
+               }}
+               style={[styles.reactionPill, { borderColor: palette.border, borderStyle: 'dashed', paddingHorizontal: 10 }]}
+             >
                <Smile size={18} color={palette.sub} />
                <Text style={{ fontSize: 14, color: palette.sub, fontWeight: '600' }}>+</Text>
              </Pressable>
@@ -451,20 +516,23 @@ return (
                 <MessageCircle size={16} color={palette.sub} />
                 <Text style={{ fontSize: 14, fontWeight: '700', color: palette.sub, textTransform: 'uppercase' }}>Comments ({entry.comments?.length || 0})</Text>
              </View>
-             {entry.comments?.map((c: any) => (
+{entry.comments?.map((c: any) => (
                <CommentItem 
                    key={c.id} 
                    comment={c} 
-                   currentUser={currentUser} 
+                   journal={journal} // <--- Added this line
+                   currentUser={currentUser}
                    isGroupAdmin={isGroupAdmin} // <--- Pass the permission
                    onDelete={handleDeleteComment} 
                    onReport={handleReportComment} // <--- Added prop
                    onRowOpen={onRowOpen} 
                    palette={palette}
-                   onLongPress={(comment: any) => {
-                     setActiveComment(comment);
-                     setShowEmojiPicker(true);
-                   }}
+onLongPress={(comment: any) => {
+  setIsReacting(true);        // 1. Lock the UI
+  Keyboard.dismiss();         // 2. Clear any active keyboard
+  setActiveComment(comment);  // 3. Target this specific comment
+  setShowCustomEmojiPicker(true);
+}}
 onReactionTap={(comment: any, emoji: string) => {
                       toggleCommentReaction(
                         entry.journalId, 
@@ -484,22 +552,27 @@ onReactionTap={(comment: any, emoji: string) => {
 
         {/* INPUT BAR */}
         {/* iOS: Uses standard behavior. Android: Uses manual Animated padding. */}
-        <KeyboardAvoidingView
+<KeyboardAvoidingView
+          // This is the critical fix: disable it when picking an emoji
+          enabled={!isReacting} 
           behavior={Platform.OS === "ios" ? "padding" : undefined}
           keyboardVerticalOffset={Platform.OS === "ios" ? 100 : 0}
-          style={{ flexGrow: 0 }} // Ensure it doesn't fight for space
+          style={{ flexGrow: 0 }}
         >
-          <Animated.View style={[
-              styles.inputContainer, 
-              { 
-                backgroundColor: palette.card, 
-                borderTopColor: palette.border,
-                // iOS: Standard padding. Android: Animated Keyboard Height + Safe Area
-                paddingBottom: Platform.OS === 'ios' 
-                  ? 12 
-                  : Animated.add(bottomPadding, Math.max(insets.bottom, 12))
-              }
-            ]}>
+<Animated.View style={[
+    styles.inputContainer, 
+    { 
+      backgroundColor: palette.card, 
+      borderTopColor: palette.border,
+      // Logic: Dim the bar slightly when reacting
+      opacity: isReacting ? 0.6 : 1,
+      paddingBottom: Platform.OS === 'ios' 
+        ? 12 
+        : isReacting 
+          ? Math.max(insets.bottom, 12) 
+          : Animated.add(bottomPadding, Math.max(insets.bottom, 12))
+    }
+]}>
             <TextInput
               value={commentText}
               onChangeText={setCommentText}
@@ -520,64 +593,101 @@ onReactionTap={(comment: any, emoji: string) => {
 
       </SafeAreaView>
 
-{/* --- CUSTOM EMOJI PICKER MODAL --- */}
-             <Modal
-               visible={showEmojiPicker}
-               transparent={true}
-               animationType="fade"
-               onRequestClose={() => {
-                 setShowEmojiPicker(false);
-                 setActiveComment(null); // Reset
-               }}
-             >
-               <Pressable 
-                 style={styles.modalOverlay} 
-                 onPress={() => {
-                    setShowEmojiPicker(false);
-                    setActiveComment(null);
-                 }}
-               >
-          <View style={[styles.emojiPickerCard, { backgroundColor: palette.card, borderColor: palette.border, maxHeight: '70%' }]}>
-             <Text style={[styles.pickerTitle, { color: palette.sub }]}>Quick Reactions</Text>
-             <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.emojiGrid}>
-{QUICK_REACTIONS.map(emoji => (
-                       <Pressable
-                         key={emoji}
-                         onPress={() => {
-                           // 1. Capture target comment before clearing state
-                           const targetComment = activeComment;
-                           
-                           // 2. Close UI Immediately (Optimistic)
-                           setShowEmojiPicker(false);
-                           setActiveComment(null);
+{/* Custom Emoji Keyboard (Bottom Sheet) */}
+{showCustomEmojiPicker && (
+  <>
+    {/* DIMMED BACKDROP */}
+{/* DIMMED BACKDROP - Tapping anywhere outside the picker closes it */}
+    <Pressable 
+      style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(0,0,0,0.4)' }]} 
+      onPress={() => {
+        setShowCustomEmojiPicker(false);
+        setActiveComment(null);
+        setIsReacting(false);
+        Keyboard.dismiss();
+      }}
+    />
 
-                           // 3. Perform Network Request in Background
-if (targetComment) {
-                             // --- COMMENT REACTION (Optimistic) ---
-                             toggleCommentReaction(
-                               entry.journalId, 
-                               entry.entryId, 
-                               targetComment.id, 
-                               currentUser?.uid || '', 
-                               emoji
-                             );
-                           } else {
-                             // --- ENTRY REACTION ---
-                             const hasReacted = currentUser && entry.reactions?.[emoji]?.includes(currentUser.uid);
-                             if (!hasReacted) {
-                                handleReaction(emoji).catch(err => console.log("Entry reaction failed:", err));
-                             }
-                           }
-                         }}
-                         style={styles.emojiCell}
-                       >
-                         <Text style={{ fontSize: 28 }}>{emoji}</Text>
-                       </Pressable>
-                     ))}
-             </ScrollView>
-           </View>
-         </Pressable>
-       </Modal>
+    <View style={{ 
+      height: 350, 
+      backgroundColor: palette.card, 
+      borderTopWidth: 1, 
+      borderTopColor: palette.border,
+      paddingBottom: insets.bottom || 20 
+    }}>
+{/* Header with Close Button */}
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', padding: 12, alignItems: 'center' }}>
+              <Text style={{ fontSize: 12, fontWeight: '700', color: palette.sub, textTransform: 'uppercase', letterSpacing: 1 }}>
+                Reactions
+              </Text>
+              <Pressable 
+                onPress={() => {
+                  setShowCustomEmojiPicker(false); // 1. Hide picker
+                  setActiveComment(null);          // 2. Reset target
+                  setIsReacting(false);            // 3. Unlock Comment Bar
+                  Keyboard.dismiss();              // 4. Clean up keyboard
+                }}
+                style={{ padding: 8 }}
+              >
+                <X size={22} color={palette.text} />
+              </Pressable>
+            </View>
+
+            <SectionList
+              sections={[
+                // Only show "Recently Used" section if there are actually recents
+                ...(recentEmojis.length > 0 ? [{ title: "Recently Used", data: [recentEmojis] }] : []),
+                // Map through your EMOJI_CATEGORIES from Step 2
+                ...EMOJI_CATEGORIES.map(cat => ({ ...cat, data: [cat.data] }))
+              ]}
+              keyExtractor={(item, index) => index.toString()}
+              stickySectionHeadersEnabled={true}
+              showsVerticalScrollIndicator={false}
+              renderSectionHeader={({ section: { title } }) => (
+                <View style={{ 
+                  backgroundColor: palette.card, 
+                  paddingHorizontal: 16, 
+                  paddingVertical: 6,
+                  borderBottomWidth: 0.5,
+                  borderBottomColor: palette.border + '40' 
+                }}>
+                  <Text style={{ fontSize: 11, fontWeight: '800', color: palette.accent }}>{title}</Text>
+                </View>
+              )}
+              renderItem={({ item }) => (
+                // This View wraps the emojis into a grid layout
+                <View style={{ flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: 8, paddingTop: 8 }}>
+                  {item.map((emoji: string) => (
+                    <Pressable
+                      key={emoji}
+onPress={() => {
+                        const targetComment = activeComment;
+                        // Close and Unlock everything
+                        setShowCustomEmojiPicker(false);
+                        setActiveComment(null);
+                        setIsReacting(false); 
+                        Keyboard.dismiss(); 
+                        
+                        updateRecents(emoji);
+                        
+                        if (targetComment) {
+                          toggleCommentReaction(entry.journalId, entry.entryId, targetComment.id, currentUser?.uid || '', emoji);
+                        } else {
+                          handleReaction(emoji);
+                        }
+                      }}
+                      // 14.28% width creates exactly 7 columns (100 / 7)
+                      style={{ width: '14.28%', alignItems: 'center', paddingVertical: 12 }}
+                    >
+                      <Text style={{ fontSize: 26 }}>{emoji}</Text>
+                    </Pressable>
+                  ))}
+                </View>
+              )}
+/>
+          </View>
+        </> // <--- This closes the Fragment we opened for the backdrop
+      )}
     </LinearGradient>
   );
 }
