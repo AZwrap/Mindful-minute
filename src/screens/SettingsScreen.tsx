@@ -195,7 +195,27 @@ setIsUpdatingProfile(true);
           displayName: displayName.trim()
       });
 
-// 3. Save Photo Locally & Sync to Shared Journals
+      // --- NEW: Sync Name to Shared Journals & Local Store ---
+      const uid = auth.currentUser?.uid;
+      if (uid) {
+          // A. Update Cloud (Firestore)
+          // This ensures other members see your new name
+          await updateUserNameInJournals(uid, displayName.trim());
+
+          // B. Update Local App State (Instant UI Refresh)
+          // We manually update the 'membersMap' in the store so you don't have to wait for a sync
+          Object.values(allJournals).forEach(j => {
+              if (j.memberIds?.includes(uid)) {
+                    const newMap = { ...(j.membersMap || {}), [uid]: displayName.trim() };
+                    if (updateJournalMeta) {
+                      updateJournalMeta(j.id, { membersMap: newMap });
+                    }
+              }
+          });
+      }
+      // -------------------------------------------------------
+
+      // 3. Save Photo Locally & Sync to Shared Journals
       if (finalPhotoUrl) {
           const uid = auth.currentUser?.uid;
           if (uid) {

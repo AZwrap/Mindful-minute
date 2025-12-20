@@ -53,11 +53,12 @@ service cloud.firestore {
         );
       }
 
-      // 5. Shared Entries & Other Subcollections
-      match /{allSubcollections=**} {
-        allow read, write: if request.auth != null && (
-          get(/databases/$(database)/documents/journals/$(journalId)).data.owner == request.auth.uid ||
-          request.auth.uid in get(/databases/$(database)/documents/journals/$(journalId)).data.memberIds
+// 5. Entries Subcollection
+      match /entries/{entryId} {
+        allow read, write: if request.auth != null && 
+          exists(/databases/$(database)/documents/journals/$(journalId)) && (
+            get(/databases/$(database)/documents/journals/$(journalId)).data.owner == request.auth.uid ||
+            request.auth.uid in get(/databases/$(database)/documents/journals/$(journalId)).data.memberIds
         );
       }
     }

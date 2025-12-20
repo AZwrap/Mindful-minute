@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, FlatList, Share, Image, TouchableOpacity, Modal, Pressable, ScrollView, TextInput } from 'react-native';
+import React, { useState, useEffect, useRef } from 'react';
+import { View, Text, StyleSheet, FlatList, Share, Image, TouchableOpacity, Modal, Pressable, ScrollView, TextInput, Platform, Keyboard, Animated, KeyboardAvoidingView } from 'react-native';
 import { collection, query, where, onSnapshot } from 'firebase/firestore';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -26,6 +26,8 @@ export default function JournalDetailsScreen({ navigation, route }: Props) {
 const { showAlert } = useUIStore();
   const palette = useSharedPalette();
   const [previewImage, setPreviewImage] = useState<string | null>(null);
+
+
 
   // Restore Missing State: Journal Name Editing
   const [isEditingName, setIsEditingName] = useState(false);
@@ -274,10 +276,22 @@ onPress: async () => {
             <ChevronLeft size={24} color={palette.text} />
           </PremiumPressable>
           <Text style={[styles.headerTitle, { color: palette.text }]}>Group Info</Text>
-          <View style={{ width: 24 }} /> 
+<View style={{ width: 24 }} /> 
         </View>
 
-        <ScrollView style={styles.content}>
+<KeyboardAvoidingView
+          style={{ flex: 1 }}
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          keyboardVerticalOffset={Platform.OS === 'ios' ? 64 : 0}
+        >
+        <ScrollView 
+          style={styles.content} 
+          // 1. Ensure we have enough base padding
+          contentContainerStyle={{ paddingBottom: 100 }} 
+          keyboardShouldPersistTaps="handled"
+          // 2. This is the magic prop for Android Edge-to-Edge
+          automaticallyAdjustKeyboardInsets={true}
+        >
             
             {/* GROUP PHOTO */}
             <View style={{ alignItems: 'center', marginBottom: 24 }}>
@@ -559,8 +573,8 @@ onPress: async () => {
                 </PremiumPressable>
             )}
             
-            <View style={{ height: 40 }} />
-        </ScrollView>
+</ScrollView>
+        </KeyboardAvoidingView>
 
 {/* Full Screen Image Modal */}
         <Modal visible={!!previewImage} transparent={true} animationType="fade" onRequestClose={() => setPreviewImage(null)}>
