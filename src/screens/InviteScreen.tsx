@@ -53,7 +53,8 @@ const handleCreate = async () => {
     setIsCreating(true);
     try {
       if (!auth.currentUser) throw new Error("Not logged in");
-      const id = await createSharedJournal(name, auth.currentUser.uid);
+      // Pass the Display Name to be saved in membersMap
+      const id = await createSharedJournal(name, auth.currentUser.uid, auth.currentUser.displayName || "Founder");
       navigation.goBack();
       showAlert("Success", `Journal created! ID: ${id}`);
 } catch (e) {
@@ -69,7 +70,8 @@ const handleJoin = async () => {
     setIsJoining(true);
     try {
       if (!auth.currentUser) throw new Error("Not logged in");
-      await joinSharedJournal(joinCode.trim(), auth.currentUser.uid);
+      // Pass the Display Name to be saved in membersMap
+      await joinSharedJournal(joinCode.trim(), auth.currentUser.uid, auth.currentUser.displayName || "Member");
       navigation.goBack();
       showAlert("Success", "Joined journal!");
 } catch (e: any) {

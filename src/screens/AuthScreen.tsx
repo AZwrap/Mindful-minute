@@ -19,6 +19,7 @@ import { auth } from '../firebaseConfig';
 import { useSettings } from '../stores/settingsStore';
 import PremiumPressable from '../components/PremiumPressable';
 import { useUIStore } from '../stores/uiStore';
+import { useJournalStore } from '../stores/journalStore'; // <--- Added
 import { RootStackParamList } from '../navigation/RootStack';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Auth'>;
@@ -54,9 +55,14 @@ export default function AuthScreen({ navigation }: Props) {
       // Create a Firebase credential with the token
       const googleCredential = GoogleAuthProvider.credential(idToken);
       
-      // Sign-in the user with the credential
+// Sign-in the user with the credential
       await signInWithCredential(auth, googleCredential);
       
+      // Force Store Update immediately
+      if (auth.currentUser) {
+        useJournalStore.getState().setCurrentUser(auth.currentUser.uid);
+      }
+
       setHasOnboarded(true);
       navigation.replace('MainTabs');
     } catch (error: any) {
@@ -101,11 +107,17 @@ showAlert('Password Mismatch', 'Passwords do not match.');
 
     setLoading(true);
 try {
-      if (isLogin) {
+if (isLogin) {
         await signInWithEmailAndPassword(auth, email, password);
       } else {
         await createUserWithEmailAndPassword(auth, email, password);
       }
+
+      // Force Store Update immediately
+      if (auth.currentUser) {
+        useJournalStore.getState().setCurrentUser(auth.currentUser.uid);
+      }
+
       // On success
       setHasOnboarded(true);
       navigation.replace('MainTabs');

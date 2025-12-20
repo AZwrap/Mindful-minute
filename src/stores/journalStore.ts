@@ -14,7 +14,10 @@ export interface JournalMeta {
   id: string;
   name: string;
   members: string[]; 
-  memberIds?: string[]; 
+  memberIds?: string[];
+membersMap?: Record<string, string>; // Maps UID -> Display Name
+  memberPhotos?: Record<string, string>; // Maps UID -> Photo URL
+  nicknames?: Record<string, string>; // Maps UID -> Local Nickname (Private) <--- Added
   photoUrl?: string;
   createdAt?: any;
   owner?: string;
@@ -45,11 +48,12 @@ interface JournalActions {
   restoreJournals: () => Promise<number>;
   subscribeToJournal: (journalId: string) => void;
   subscribeToAllJournals: () => void; // <--- ADDED: Missing function
-addSharedEntry: (entry: any) => Promise<void>;
   deleteSharedEntry: (journalId: string, entryId: string) => Promise<void>;
   toggleCommentReaction: (journalId: string, entryId: string, commentId: string, userId: string, emoji: string) => Promise<void>;
-  setSharedEntries: (journalId: string, entries: any[]) => void;  
+  setSharedEntries: (journalId: string, entries: any[]) => void; 
+  addSharedEntry: (entry: any) => Promise<void>; 
   updateJournalMeta: (journalId: string, data: any) => void;
+  setMemberNickname: (journalId: string, userId: string, nickname: string) => void; // <--- Added
   addJournal: (journal: JournalMeta) => void;
   removeJournal: (journalId: string) => void;
   setCurrentUser: (userId: string) => void;
@@ -360,7 +364,7 @@ toggleCommentReaction: async (journalId, entryId, commentId, userId, emoji) => {
           sharedEntries: { ...(state.sharedEntries || {}), [journalId]: entries },
         })),
 
-      updateJournalMeta: (journalId, data) =>
+        updateJournalMeta: (journalId, data) =>
         set((state) => ({
           journalInfo: { ...(state.journalInfo || { id: journalId, name: 'Unknown', members: [] }), ...data },
           journals: {
@@ -368,6 +372,22 @@ toggleCommentReaction: async (journalId, entryId, commentId, userId, emoji) => {
             [journalId]: { ...(state.journals?.[journalId] || {}), ...data }
           }
         })),
+
+setMemberNickname: (journalId, userId, nickname) => {
+        set((state) => {
+          const journal = state.journals[journalId];
+          if (!journal) return state;
+
+          const newNicknames = { ...(journal.nicknames || {}), [userId]: nickname };
+          
+          return {
+            journals: {
+              ...state.journals,
+              [journalId]: { ...journal, nicknames: newNicknames }
+            }
+          };
+        });
+      },
 
       addSharedEntryList: (journalId, entries) =>
         set((state) => ({

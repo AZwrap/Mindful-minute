@@ -44,7 +44,7 @@ interface InviteParams {
 // --------------------------------------------------
 
 // 1. Create Shared Journal
-export async function createSharedJournal(name: string, userId: string): Promise<string> {
+export async function createSharedJournal(name: string, userId: string, userName?: string, userPhoto?: string | null): Promise<string> {
   const journalId = generateUUID();
 
   // SCHEMA: Root 'journals' collection
@@ -56,7 +56,9 @@ export async function createSharedJournal(name: string, userId: string): Promise
     owner: userId,
     createdAt: Date.now(),
     members: [userId], 
-    memberIds: [userId], // <--- CRITICAL: Required for Security Rules
+    memberIds: [userId],
+    membersMap: { [userId]: userName || "Founder" },
+    memberPhotos: userPhoto ? { [userId]: userPhoto } : {}, // <--- Save Photo
   };
   
 const firestoreData = {
@@ -74,7 +76,7 @@ const firestoreData = {
   return journalId;
 }
 // 2. Join Shared Journal
-export async function joinSharedJournal(journalId: string, userId: string): Promise<JournalMeta> {
+export async function joinSharedJournal(journalId: string, userId: string, userName?: string, userPhoto?: string | null): Promise<JournalMeta> {
   const journalRef = doc(db, "journals", journalId);
   const journalSnap = await getDoc(journalRef);
 
@@ -91,17 +93,26 @@ export async function joinSharedJournal(journalId: string, userId: string): Prom
   }
 
 // Atomically add user to members list
-await updateDoc(journalRef, {
+const updates: any = {
     members: arrayUnion(userId),
     memberIds: arrayUnion(userId),
-    [`roles.${userId}`]: 'member' // <--- Changed from membersMap
-  });
+    [`roles.${userId}`]: 'member',
+    [`membersMap.${userId}`]: userName || "Member"
+};
+if (userPhoto) {
+    updates[`memberPhotos.${userId}`] = userPhoto;
+}
 
-  const newMeta = {
+await updateDoc(journalRef, updates);
+
+const newMeta = {
     ...data,
     id: journalId,
     members: [...members, userId],
-    memberIds: [...(data.memberIds || []), userId] // <--- Added
+    memberIds: [...(data.memberIds || []), userId],
+    // Ensure local state has the new user's name and photo immediately
+    membersMap: { ...(data.membersMap || {}), [userId]: userName || "Member" },
+    memberPhotos: { ...(data.memberPhotos || {}), [userId]: userPhoto || null }
   } as JournalMeta;
 
   // Add to local store immediately
@@ -236,6 +247,23 @@ export async function updateMemberRole(journalId: string, userId: string, role: 
       store.updateJournalMeta(journalId, { roles: newRoles });
   }
 }
+
+// 7.5 Update Journal Name (Admin/Owner)
+export async function updateJournalName(journalId: string, newName: string): Promise<void> {
+  if (!newName.trim()) return;
+  
+  const journalRef = doc(db, "journals", journalId);
+
+  // 1. Update Firestore
+  await updateDoc(journalRef, {
+    name: newName.trim()
+  });
+
+  // 2. Update Local Store
+  const store = useJournalStore.getState();
+  store.updateJournalMeta(journalId, { name: newName.trim() });
+}
+
 // 8. Delete Entire Journal (Owner Only)
 export async function deleteSharedJournal(journalId: string): Promise<void> {
   try {
@@ -288,4 +316,35 @@ contentAuthorId?: string,
     createdAt: Date.now(),
     status: 'pending'
   });
+}
+
+// 10. Sync Profile Photo to Journals
+export async function updateUserPhotoInJournals(userId: string, photoUrl: string): Promise<void> {
+  // Update Cloud Only (Local update will be handled by the Screen to avoid loops)
+  const q = query(collection(db, "journals"), where("memberIds", "array-contains", userId));
+  const snapshot = await getDocs(q);
+  
+  const batchUpdates = snapshot.docs.map(docSnap => {
+     return updateDoc(docSnap.ref, {
+         [`memberPhotos.${userId}`]: photoUrl
+     });
+  });
+  
+  await Promise.all(batchUpdates);
+}
+
+// 11. Sync Profile Name to Journals
+export async function updateUserNameInJournals(userId: string, newName: string): Promise<void> {
+  // Find all journals where this user is a member
+  const q = query(collection(db, "journals"), where("memberIds", "array-contains", userId));
+  const snapshot = await getDocs(q);
+  
+  // Update the name in all found journals
+  const batchUpdates = snapshot.docs.map(docSnap => {
+     return updateDoc(docSnap.ref, {
+         [`membersMap.${userId}`]: newName
+     });
+  });
+  
+  await Promise.all(batchUpdates);
 }

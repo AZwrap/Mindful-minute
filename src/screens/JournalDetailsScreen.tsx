@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, FlatList, Share, Image, TouchableOpacity, Modal, Pressable, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, FlatList, Share, Image, TouchableOpacity, Modal, Pressable, ScrollView, TextInput } from 'react-native';
 import { collection, query, where, onSnapshot } from 'firebase/firestore';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { Users, Copy, LogOut, ChevronLeft, Download, Shield, Trash2, MoreVertical, Camera, X } from 'lucide-react-native';
+import { Users, Copy, LogOut, ChevronLeft, Download, Shield, Trash2, MoreVertical, Camera, X, Pencil, Check } from 'lucide-react-native';
 import * as ImagePicker from 'expo-image-picker';
 import * as Clipboard from 'expo-clipboard';
 
@@ -14,7 +14,7 @@ import { useSharedPalette } from '../hooks/useSharedPalette';
 import { JournalService } from '../services/journalService';
 import { MediaService } from '../services/mediaService';
 import { useUIStore } from '../stores/uiStore';
-import { leaveSharedJournal, kickMember, updateMemberRole } from '../services/syncedJournalService';
+import { leaveSharedJournal, kickMember, updateMemberRole, updateJournalName } from '../services/syncedJournalService';
 import { exportSharedJournalPDF } from '../utils/exportHelper';
 import { auth, db } from '../firebaseConfig';
 import PremiumPressable from '../components/PremiumPressable';
@@ -23,9 +23,17 @@ type Props = NativeStackScreenProps<RootStackParamList, 'JournalDetails'>;
 
 export default function JournalDetailsScreen({ navigation, route }: Props) {
   const { journalId } = route.params;
-  const { showAlert } = useUIStore();
+const { showAlert } = useUIStore();
   const palette = useSharedPalette();
-  const [showFullScreen, setShowFullScreen] = useState(false);
+  const [previewImage, setPreviewImage] = useState<string | null>(null);
+
+  // Restore Missing State: Journal Name Editing
+  const [isEditingName, setIsEditingName] = useState(false);
+  const [tempName, setTempName] = useState('');
+
+  // Member Nickname Editing
+  const [editingMember, setEditingMember] = useState<string | null>(null);
+  const [tempNickname, setTempNickname] = useState('');
   
   // Get store actions and data
   const { journals, removeJournal, sharedEntries, updateJournalMeta, leaveJournal } = useJournalStore();
@@ -33,12 +41,12 @@ export default function JournalDetailsScreen({ navigation, route }: Props) {
   // 1. Safety Check: Get journal or fallback
   const journal = journals[journalId];
 
-  // 2. Logic: Permissions
+// 2. Logic: Permissions
   const currentUserId = auth.currentUser?.uid;
-  const userRole = journal?.roles?.[currentUserId || ''] || 'member';
+  const rawRole = journal?.roles?.[currentUserId || ''];
   
-// Admin Privileges: Owner OR Admin
-  const isAdmin = journal?.owner === currentUserId || userRole === 'admin' || userRole === 'owner';
+  // Admin Privileges: Admin/Owner role OR Creator (unless explicitly demoted)
+  const isAdmin = rawRole === 'admin' || rawRole === 'owner' || (journal?.owner === currentUserId && rawRole !== 'member');
   const isOwner = journal?.owner === currentUserId;
 
   // Logic: Listen for pending reports (Badge)
@@ -64,20 +72,30 @@ export default function JournalDetailsScreen({ navigation, route }: Props) {
   };
 
 const handleMemberPress = (memberId: string, memberName: string) => {
-    if (!isAdmin || memberId === currentUserId) return;
+    // Allow clicking anyone EXCEPT yourself
+    if (memberId === currentUserId) return;
 
-    // 1. Determine Role
+    // 1. Determine Role of the target user
     let memberRole = journal.roles?.[memberId] || 'member';
-    
-    // Treat Owner as Admin so they can be managed (Equality Rule)
     if (memberId === journal.owner || memberRole === 'owner') {
         memberRole = 'admin';
     }
     
-    // Base actions (Always available)
+    // 2. Build Actions (Available to Everyone)
     const actions: any[] = [
         { text: "Cancel", style: "cancel" },
-        { 
+        {
+          text: "Set Nickname", 
+          onPress: () => {
+             setTempNickname(memberName);
+             setEditingMember(memberId);
+          }
+        }
+    ];
+
+    // 3. Add Admin-Only Actions
+    if (isAdmin) {
+        actions.push({ 
           text: "Remove from Group", 
           style: "destructive",
           onPress: async () => {
@@ -87,56 +105,43 @@ const handleMemberPress = (memberId: string, memberName: string) => {
                showAlert("Error", "Failed to remove user.");
              }
           }
-        }
-    ];
+        });
 
-// Conditional Actions
-    if (memberRole === 'member') {
-        actions.push({ 
-          text: "Make Admin", 
-          onPress: () => {
-            // Confirmation Alert
-            showAlert("Confirm Admin", "Are you sure you want to make this user an Admin?", [
-              { text: "Cancel", style: "cancel" },
-              { 
-                text: "Confirm", 
-                onPress: async () => {
-                   try {
-                     await updateMemberRole(journalId, memberId, 'admin');
-                     showAlert("Success", "User has been promoted to Admin.");
-                   } catch (e) {
-                     showAlert("Error", "Failed to promote user.");
-                   }
-                }
+        if (memberRole === 'member') {
+            actions.push({ 
+              text: "Make Admin", 
+              onPress: () => {
+                showAlert("Confirm Admin", "Make this user an Admin?", [
+                  { text: "Cancel", style: "cancel" },
+                  { 
+                    text: "Confirm", 
+                    onPress: async () => {
+                       await updateMemberRole(journalId, memberId, 'admin');
+                    }
+                  }
+                ]);
               }
-            ]);
-          }
-        });
-    } else if (memberRole === 'admin') {
-        actions.push({ 
-            text: "Demote to Member", 
-            onPress: () => {
-               // Confirmation Alert
-               showAlert("Confirm Demotion", "Are you sure you want to demote this user to Member?", [
-                 { text: "Cancel", style: "cancel" },
-                 { 
-                   text: "Confirm", 
-                   style: "destructive",
-                   onPress: async () => {
-                      try {
-                        await updateMemberRole(journalId, memberId, 'member');
-                        showAlert("Success", "User has been demoted to Member.");
-                      } catch (e) {
-                        showAlert("Error", "Failed to demote user.");
-                      }
-                   }
-                 }
-               ]);
-            }
-        });
+            });
+        } else if (memberRole === 'admin') {
+            actions.push({ 
+                text: "Demote to Member", 
+                onPress: () => {
+                   showAlert("Confirm Demotion", "Demote to Member?", [
+                     { text: "Cancel", style: "cancel" },
+                     { 
+                       text: "Confirm", 
+                       style: "destructive",
+                       onPress: async () => {
+                          await updateMemberRole(journalId, memberId, 'member');
+                       }
+                     }
+                   ]);
+                }
+            });
+        }
     }
 
-    showAlert("Manage Member", `Manage ${memberName}`, actions);
+    showAlert("Manage Member", `Options for ${memberName}`, actions);
   };
 
   const handleDeleteGroup = () => {
@@ -198,11 +203,11 @@ const handleCopyCode = async () => {
         { 
           text: "Leave", 
           style: "destructive", 
-          onPress: async () => {
+onPress: async () => {
             if (currentUserId) {
                 await leaveSharedJournal(journalId, currentUserId);
-                leaveJournal(); // Clear active
-                removeJournal(journalId); // Remove from list
+                // leaveJournal(); <--- REMOVED: This was logging you out!
+                removeJournal(journalId); 
                 navigation.reset({ index: 0, routes: [{ name: 'MainTabs' }] });
             }
           }
@@ -277,9 +282,9 @@ const handleCopyCode = async () => {
             {/* GROUP PHOTO */}
             <View style={{ alignItems: 'center', marginBottom: 24 }}>
               <View>
-                {/* View Image Action */}
+{/* View Image Action */}
                 <TouchableOpacity 
-                  onPress={() => journal.photoUrl && setShowFullScreen(true)} 
+                  onPress={() => journal.photoUrl && setPreviewImage(journal.photoUrl)} 
                   activeOpacity={0.9}
                   disabled={!journal.photoUrl}
                 >
@@ -304,10 +309,54 @@ const handleCopyCode = async () => {
               </View>
             </View>
 
-            {/* INFO CARD */}
+{/* INFO CARD */}
             <View style={[styles.card, { backgroundColor: palette.card, borderColor: palette.border }]}>
                 <Text style={[styles.label, { color: palette.subtleText }]}>JOURNAL NAME</Text>
-                <Text style={[styles.value, { color: palette.text }]}>{journal.name}</Text>
+                
+                {isEditingName ? (
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 12 }}>
+                    <TextInput 
+                      value={tempName}
+                      onChangeText={setTempName}
+                      style={{ 
+                        flex: 1, 
+                        fontSize: 18, 
+                        fontWeight: '600', 
+                        color: palette.text,
+                        borderBottomWidth: 1,
+                        borderBottomColor: palette.accent,
+                        paddingVertical: 4
+                      }}
+                      autoFocus
+                    />
+                    <TouchableOpacity onPress={async () => {
+                        if (tempName.trim()) {
+                           await updateJournalName(journalId, tempName.trim());
+                           setIsEditingName(false);
+                        }
+                    }}>
+                       <Check size={20} color="#10B981" />
+                    </TouchableOpacity>
+                    <TouchableOpacity onPress={() => setIsEditingName(false)}>
+                       <X size={20} color="#EF4444" />
+                    </TouchableOpacity>
+                  </View>
+                ) : (
+                  <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 0 }}>
+                    <Text style={[styles.value, { color: palette.text }]}>{journal.name}</Text>
+                    {isAdmin && (
+                      <TouchableOpacity 
+                        style={{ padding: 8 }}
+                        onPress={() => {
+                          setTempName(journal.name);
+                          setIsEditingName(true);
+                        }}
+                      >
+                        <Pencil size={16} color={palette.subtleText} />
+                      </TouchableOpacity>
+                    )}
+                  </View>
+                )}
                 
                 <View style={[styles.divider, { backgroundColor: palette.border }]} />
                 
@@ -354,8 +403,8 @@ const handleCopyCode = async () => {
                 data={journal.memberIds || []}
                 keyExtractor={(item) => item}
                 scrollEnabled={false}
-renderItem={({ item, index }) => {
-// Priority: 1. Check explicit Role Map (This allows demoting the Creator)
+                renderItem={({ item, index }) => {
+                  // Priority: 1. Check explicit Role Map
                   //           2. If no role map entry, but is Creator -> 'admin'
                   //           3. Default -> 'member'
                   let role = journal.roles?.[item];
@@ -374,25 +423,72 @@ renderItem={({ item, index }) => {
                   const isMe = item === currentUserId;
                   const displayRole = role.charAt(0).toUpperCase() + role.slice(1);
                   
-                  // Match ID to Name using the index (assuming arrays are synced)
-                  const rawName = journal.members?.[index] || "Unknown User";
-                  const displayName = isMe ? "You" : rawName;
+                  // Priority: 1. Local Nickname 2. Saved Name 3. Legacy Array 4. Fallback
+                  const nickname = journal.nicknames?.[item];
+                  const storedName = journal.membersMap?.[item];
+                  const legacyName = journal.members?.[index];
+                  
+                  // The name everyone sees
+                  const publicName = storedName || (legacyName !== item ? legacyName : null) || `User...${item.slice(-4)}`;
+                  // The name ONLY YOU see
+                  const displayName = nickname || publicName; 
+                  
+                  const userPhoto = journal.memberPhotos?.[item];
+                  const isEditingThisUser = editingMember === item;
 
                   return (
                     <PremiumPressable 
-                      onPress={() => handleMemberPress(item, rawName)}
+                      onPress={() => handleMemberPress(item, displayName)}
                       style={[styles.memberRow, { borderColor: palette.border, marginBottom: 8, justifyContent: 'space-between' }]}
                     >
-                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-                        <View style={[styles.avatar, { backgroundColor: role === 'owner' ? '#F59E0B' : palette.accent }]}>
-                          {role === 'owner' ? <Shield size={16} color="white" /> : <Users size={16} color="white" />}
-                        </View>
-                        <View>
-                          <Text style={[styles.memberName, { color: palette.text }]}>
-                            {isMe ? 'You' : `User...${item.slice(-4)}`}
-                          </Text>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1 }}>
+                        {/* Avatar: Photo (Clickable) OR Icon */}
+                        {userPhoto ? (
+                             <TouchableOpacity onPress={() => setPreviewImage(userPhoto)}>
+                               <Image 
+                                 source={{ uri: userPhoto }} 
+                                 style={{ width: 36, height: 36, borderRadius: 18, borderWidth: 1, borderColor: palette.border }} 
+                               />
+                             </TouchableOpacity>
+                        ) : (
+                             <View style={[styles.avatar, { backgroundColor: role === 'owner' ? '#F59E0B' : palette.accent }]}>
+                                {role === 'owner' ? <Shield size={16} color="white" /> : <Users size={16} color="white" />}
+                             </View>
+                        )}
+
+                        <View style={{ flex: 1 }}>
+                          {isEditingThisUser ? (
+                              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                                <TextInput 
+                                  value={tempNickname}
+                                  onChangeText={setTempNickname}
+                                  style={{ 
+                                    flex: 1, 
+                                    borderBottomWidth: 1, 
+                                    borderBottomColor: palette.accent,
+                                    fontSize: 16,
+                                    color: palette.text,
+                                    padding: 0
+                                  }}
+                                  autoFocus
+                                />
+                                <TouchableOpacity onPress={() => {
+                                    useJournalStore.getState().setMemberNickname(journalId, item, tempNickname);
+                                    setEditingMember(null);
+                                }}>
+                                   <Check size={18} color="#10B981" />
+                                </TouchableOpacity>
+                                <TouchableOpacity onPress={() => setEditingMember(null)}>
+                                   <X size={18} color="#EF4444" />
+                                </TouchableOpacity>
+                              </View>
+                          ) : (
+                              <Text style={[styles.memberName, { color: palette.text }]}>
+                                {isMe ? 'You' : displayName}
+                              </Text>
+                          )}
                           <Text style={{ fontSize: 12, color: palette.subtleText }}>
-                            {displayRole}
+                            {displayRole} {nickname ? `• (${publicName})` : ''}
                           </Text>
                         </View>
                       </View>
@@ -466,15 +562,15 @@ renderItem={({ item, index }) => {
             <View style={{ height: 40 }} />
         </ScrollView>
 
-        {/* Full Screen Image Modal */}
-        <Modal visible={showFullScreen} transparent={true} animationType="fade" onRequestClose={() => setShowFullScreen(false)}>
+{/* Full Screen Image Modal */}
+        <Modal visible={!!previewImage} transparent={true} animationType="fade" onRequestClose={() => setPreviewImage(null)}>
           <View style={styles.fullScreenContainer}>
-            <Pressable style={styles.closeBtn} onPress={() => setShowFullScreen(false)}>
+            <Pressable style={styles.closeBtn} onPress={() => setPreviewImage(null)}>
               <X color="white" size={30} />
             </Pressable>
-            {journal.photoUrl && (
+            {previewImage && (
               <Image 
-                source={{ uri: journal.photoUrl }} 
+                source={{ uri: previewImage }} 
                 style={styles.fullScreenImage} 
                 resizeMode="contain" 
               />

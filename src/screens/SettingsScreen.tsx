@@ -12,12 +12,15 @@ import {
   NativeModules,
 Platform,
   LayoutAnimation,
-  UIManager,
+UIManager,
   Keyboard,
-  Linking // <--- Added
+  Linking,
+  Image, // <--- Added
+  TouchableOpacity // <--- Added
 } from 'react-native';
 import { useUIStore } from '../stores/uiStore';
 import * as Haptics from 'expo-haptics';
+import * as ImagePicker from 'expo-image-picker'; // <--- Added
 import * as Sharing from 'expo-sharing';
 import * as FileSystem from 'expo-file-system';
 import * as DocumentPicker from 'expo-document-picker';
@@ -40,7 +43,10 @@ import { useEntriesStore } from "../stores/entriesStore";
 import { useJournalStore } from '../stores/journalStore';
 import { useTheme, ThemeType } from "../stores/themeStore";
 import { useWritingSettings } from "../stores/writingSettingsStore";
+import { updateUserNameInJournals } from '../services/syncedJournalService'; // <--- Added
 import { saveBackupToCloud, restoreBackupFromCloud } from '../services/cloudBackupService';
+import { updateUserPhotoInJournals } from '../services/syncedJournalService'; // <--- Added
+import { MediaService } from '../services/mediaService'; // <--- Added
 import { analyzeWritingAnalytics } from '../constants/writingAnalytics';
 import { scheduleDailyReminder, cancelDailyReminders } from '../lib/notifications'; 
 import { exportBulkEntries } from '../utils/exportHelper';
@@ -75,6 +81,10 @@ export default function SettingsScreen({ navigation }: Props) {
   const currentTheme = getCurrentTheme(systemScheme);
   const isDark = currentTheme === 'dark';
   const palette = useSharedPalette();
+
+  // FIX: Get Store actions via Hook (Prevents "undefined" error)
+  const updateJournalMeta = useJournalStore(state => state.updateJournalMeta);
+  const allJournals = useJournalStore(state => state.journals);
   
   const loaded = useSettings((s) => s.loaded);
   
@@ -122,9 +132,41 @@ const {
     accentColor, setAccentColor
   } = useTheme();
 
-  // --- PROFILE STATE ---
+// --- PROFILE STATE ---
   const [displayName, setDisplayName] = useState(auth.currentUser?.displayName || '');
+  const [photoUrl, setPhotoUrl] = useState(auth.currentUser?.photoURL || null); 
   const [isUpdatingProfile, setIsUpdatingProfile] = useState(false);
+
+// Load local avatar override (Unique to this user)
+  React.useEffect(() => {
+    const uid = auth.currentUser?.uid;
+    if (uid) {
+      AsyncStorage.getItem(`user_avatar_${uid}`).then(local => {
+         if (local) setPhotoUrl(local);
+         else setPhotoUrl(null); // Reset if no local photo found for this user
+      });
+    }
+  }, []);
+
+const handlePickAvatar = async () => {
+    try {
+      const result = await ImagePicker.launchImageLibraryAsync({
+        // FIX 1: New array syntax to remove deprecation warning
+        mediaTypes: ['images'], 
+        allowsEditing: true,
+        aspect: [1, 1],
+        // FIX 2: Lower quality to 0.2 to keep Base64 string small for Firestore
+        quality: 0.2, 
+      });
+
+      if (!result.canceled && result.assets[0].uri) {
+         setPhotoUrl(result.assets[0].uri); 
+      }
+    } catch (e) {
+      console.error("Pick Avatar Error:", e);
+      showAlert("Error", "Could not pick image.");
+    }
+  };
 
   const handleUpdateProfile = async () => {
     if (!auth.currentUser) {
@@ -133,12 +175,54 @@ const {
     }
     if (!displayName.trim()) return;
 
-    setIsUpdatingProfile(true);
+setIsUpdatingProfile(true);
     try {
-      await updateProfile(auth.currentUser, { displayName: displayName.trim() });
-      showToast('Profile Name Updated');
+      let finalPhotoUrl = auth.currentUser?.photoURL;
+
+      // 1. Process Photo if changed (if it's not an http link, it's a local URI or base64)
+      // We check if it starts with 'file://' (local) or if it's different from current
+      if (photoUrl && photoUrl !== auth.currentUser?.photoURL) {
+          // If it's already a web URL, ignore. If it's local file, convert.
+          if (!photoUrl.startsWith('http')) {
+             const uploaded = await MediaService.uploadImage(photoUrl);
+             if (uploaded) finalPhotoUrl = uploaded;
+          }
+      }
+
+// 2. Update Auth Profile (Name Only)
+      // Note: We DO NOT save photoURL here because Base64 is too long for Firebase Auth.
+      await updateProfile(auth.currentUser, { 
+          displayName: displayName.trim()
+      });
+
+// 3. Save Photo Locally & Sync to Shared Journals
+      if (finalPhotoUrl) {
+          const uid = auth.currentUser?.uid;
+          if (uid) {
+            await AsyncStorage.setItem(`user_avatar_${uid}`, finalPhotoUrl);
+            
+            // A. Update Cloud (Firestore)
+            await updateUserPhotoInJournals(uid, finalPhotoUrl);
+
+// B. Update Local App State
+            // We use the variables from the hook we defined at the top
+            Object.values(allJournals).forEach(j => {
+                // If I am a member, update my photo in this journal locally
+                if (j.memberIds?.includes(uid)) {
+                     const newPhotos = { ...(j.memberPhotos || {}), [uid]: finalPhotoUrl };
+                     // Check if function exists before calling
+                     if (updateJournalMeta) {
+                        updateJournalMeta(j.id, { memberPhotos: newPhotos });
+                     }
+                }
+            });
+          }
+      }
+
+      showToast('Profile Updated');
       Keyboard.dismiss();
     } catch (e) {
+      console.error("Profile Update Error:", e);
       showAlert("Error", "Failed to update profile.");
       const handleConfirmTime = async (date: Date) => {
     const h = date.getHours();
@@ -490,15 +574,31 @@ const SettingRow = ({ label, description, value, onValueChange, icon }: any) => 
               showsVerticalScrollIndicator={false}
             >
               
-              {/* 0. PROFILE CARD */}
+{/* 0. PROFILE CARD */}
               <View style={[styles.card, { backgroundColor: palette.card, borderColor: palette.border }]}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12 }}>
                   <User size={18} color={palette.accent} />
                   <Text style={[styles.title, { color: palette.text, marginBottom: 0 }]}>Profile Identity</Text>
                 </View>
                 
-                <Text style={[styles.label, { color: palette.sub, marginBottom: 8 }]}>Display Name (for Shared Journals)</Text>
-                <View style={{ flexDirection: 'row', gap: 8 }}>
+                <View style={{ flexDirection: 'row', gap: 16, alignItems: 'center', marginBottom: 16 }}>
+                    {/* Avatar Picker */}
+                    <TouchableOpacity onPress={handlePickAvatar} style={{ position: 'relative' }}>
+                        <View style={{ width: 60, height: 60, borderRadius: 30, backgroundColor: palette.bg, borderWidth: 1, borderColor: palette.border, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
+                            {photoUrl ? (
+                                <Image source={{ uri: photoUrl }} style={{ width: '100%', height: '100%' }} />
+                            ) : (
+                                <User size={24} color={palette.sub} />
+                            )}
+                        </View>
+                        <View style={{ position: 'absolute', bottom: -2, right: -2, backgroundColor: palette.accent, borderRadius: 12, padding: 4, borderWidth: 2, borderColor: palette.card }}>
+                            <Palette size={10} color="white" /> 
+                        </View>
+                    </TouchableOpacity>
+
+                    <View style={{ flex: 1 }}>
+                        <Text style={[styles.label, { color: palette.sub, marginBottom: 8 }]}>Display Name</Text>
+                        <View style={{ flexDirection: 'row', gap: 8 }}>
                   <TextInput 
                     value={displayName}
                     onChangeText={setDisplayName}
@@ -511,12 +611,14 @@ const SettingRow = ({ label, description, value, onValueChange, icon }: any) => 
                     disabled={isUpdatingProfile}
                     style={[styles.applyBtn, { backgroundColor: palette.accent, opacity: isUpdatingProfile ? 0.7 : 1 }]}
                   >
-                    <Text style={{ color: 'white', fontWeight: '600', fontSize: 12 }}>
+<Text style={{ color: 'white', fontWeight: '600', fontSize: 12 }}>
                       {isUpdatingProfile ? '...' : 'Save'}
                     </Text>
                   </PremiumPressable>
                 </View>
               </View>
+            </View>
+          </View>
 
               {/* BETA PROGRAM CARD (Tester Strategy) */}
               <View style={[styles.card, { backgroundColor: palette.card, borderColor: palette.accent }]}>
