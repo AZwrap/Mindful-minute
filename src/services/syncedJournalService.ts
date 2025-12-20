@@ -11,8 +11,11 @@ updateDoc,
 onSnapshot,
   deleteField,
   arrayUnion, 
-  arrayRemove, 
-  addDoc, // <--- Added this
+arrayRemove, 
+  addDoc,
+  query,      // <--- Added
+  where,      // <--- Added
+  getDocs,    // <--- Added
   DocumentData,
 } from "firebase/firestore";
 
@@ -56,9 +59,9 @@ export async function createSharedJournal(name: string, userId: string): Promise
     memberIds: [userId], // <--- CRITICAL: Required for Security Rules
   };
   
-  const firestoreData = {
+const firestoreData = {
     ...metadata,
-    membersMap: { [userId]: 'owner' },
+    roles: { [userId]: 'owner' }, // <--- Changed from membersMap
     updatedAt: Date.now(),
     isShared: true,
   };
@@ -88,10 +91,10 @@ export async function joinSharedJournal(journalId: string, userId: string): Prom
   }
 
 // Atomically add user to members list
-  await updateDoc(journalRef, {
+await updateDoc(journalRef, {
     members: arrayUnion(userId),
-    memberIds: arrayUnion(userId), // <--- Added
-    [`membersMap.${userId}`]: 'member'
+    memberIds: arrayUnion(userId),
+    [`roles.${userId}`]: 'member' // <--- Changed from membersMap
   });
 
   const newMeta = {
@@ -149,31 +152,33 @@ export async function leaveSharedJournal(journalId: string, userId: string): Pro
       return;
     }
 
-const updates: any = {
+const roles = data.roles || data.membersMap || {}; // Fallback for legacy
+    
+    const updates: any = {
       members: arrayRemove(userId),
-      memberIds: arrayRemove(userId), // <--- Added
-      [`membersMap.${userId}`]: deleteField()
+      memberIds: arrayRemove(userId),
+      [`roles.${userId}`]: deleteField() // <--- Changed
     };
 
     // Check if the leaving user was the Owner or the last Admin
     const isOwner = data.owner === userId;
     // Check if there are any other admins/owners left
     const hasOtherAdmin = remainingMembers.some(id => 
-      membersMap[id] === 'owner' || membersMap[id] === 'admin'
+      roles[id] === 'owner' || roles[id] === 'admin'
     );
 
     // Transfer Authority Logic:
     // If Owner leaves OR (Admin leaves AND no other admins exist)
-    if (isOwner || (!hasOtherAdmin && membersMap[userId] === 'admin')) {
+    if (isOwner || (!hasOtherAdmin && roles[userId] === 'admin')) {
         const newAdminId = remainingMembers[0]; // Next oldest member
         
         // If owner left, transfer ownership completely
         if (isOwner) {
             updates.owner = newAdminId;
-            updates[`membersMap.${newAdminId}`] = 'owner';
+            updates[`roles.${newAdminId}`] = 'owner'; // <--- Changed
         } else {
             // Otherwise just make them admin to ensure someone is in charge
-            updates[`membersMap.${newAdminId}`] = 'admin';
+            updates[`roles.${newAdminId}`] = 'admin'; // <--- Changed
         }
     }
 
@@ -190,17 +195,46 @@ const updates: any = {
 // 7. Manage Members (Admin)
 export async function kickMember(journalId: string, userId: string): Promise<void> {
   const journalRef = doc(db, "journals", journalId);
+  
+  // 1. Update Firestore (Use roles)
   await updateDoc(journalRef, {
     members: arrayRemove(userId),
-    [`membersMap.${userId}`]: deleteField()
+    memberIds: arrayRemove(userId),
+    [`roles.${userId}`]: deleteField() // <--- Changed
   });
+
+  // 2. Update Local Store
+  const store = useJournalStore.getState();
+  const journal = store.journals[journalId];
+  if (journal) {
+      const newMembers = (journal.members || []).filter(m => m !== userId);
+      const newMemberIds = (journal.memberIds || []).filter(id => id !== userId);
+      const newRoles = { ...(journal.roles || {}) };
+      delete newRoles[userId];
+      
+      store.updateJournalMeta(journalId, { 
+          members: newMembers, 
+          memberIds: newMemberIds, 
+          roles: newRoles 
+      });
+  }
 }
 
 export async function updateMemberRole(journalId: string, userId: string, role: 'admin' | 'member'): Promise<void> {
   const journalRef = doc(db, "journals", journalId);
+  
+  // 1. Update Firestore (Use roles)
   await updateDoc(journalRef, {
-    [`membersMap.${userId}`]: role
+    [`roles.${userId}`]: role // <--- Changed
   });
+
+  // 2. Update Local Store (Instant UI Refresh)
+  const store = useJournalStore.getState();
+  const journal = store.journals[journalId];
+  if (journal) {
+      const newRoles = { ...(journal.roles || {}), [userId]: role };
+      store.updateJournalMeta(journalId, { roles: newRoles });
+  }
 }
 // 8. Delete Entire Journal (Owner Only)
 export async function deleteSharedJournal(journalId: string): Promise<void> {
@@ -226,10 +260,22 @@ export async function reportContent(
   contentId: string, // entryId or commentId
   reason: string, 
   reportedBy: string,
-  contentAuthorId?: string,
+contentAuthorId?: string,
   textSnippet?: string
 ): Promise<void> {
-  // Store report INSIDE the journal so Group Admins can access it via rules
+  // 1. Check if user already reported this content
+  const q = query(
+    collection(db, "journals", journalId, "reports"),
+    where("contentId", "==", contentId),
+    where("reportedBy", "==", reportedBy)
+  );
+  
+  const snap = await getDocs(q);
+  if (!snap.empty) {
+    throw new Error("You have already reported this content.");
+  }
+
+  // 2. Store report INSIDE the journal
   await addDoc(collection(db, "journals", journalId, "reports"), {
     journalId,
     entryId,

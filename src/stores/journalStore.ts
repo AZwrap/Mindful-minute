@@ -19,10 +19,11 @@ export interface JournalMeta {
   createdAt?: any;
   owner?: string;
   updatedAt?: number;
-  lastEntry?: {
+lastEntry?: {
     text: string;
     author: string;
     createdAt: number;
+    userId?: string; // <--- Added userId
   };
 }
 
@@ -53,8 +54,9 @@ addSharedEntry: (entry: any) => Promise<void>;
   removeJournal: (journalId: string) => void;
   setCurrentUser: (userId: string) => void;
   markAsRead: (journalId: string) => void;
-  leaveJournal: () => void;
+leaveJournal: () => void;
   reset: () => void;
+  deleteComment: (journalId: string, entryId: string, comment: any) => Promise<void>;
 }
 
 type JournalStore = JournalState & JournalActions;
@@ -198,11 +200,12 @@ export const useJournalStore = create<JournalStore>()(
               if (currentJournal) {
                   const latest = merged.length > 0 ? merged[0] : null;
                   const newMeta = { ...currentJournal };
-                  if (latest) {
+if (latest) {
                       newMeta.lastEntry = {
                           text: latest.text || "",
                           author: latest.authorName || "Anonymous",
-                          createdAt: latest.createdAt
+                          createdAt: latest.createdAt,
+                          userId: latest.userId // <--- Save User ID
                       };
                       newMeta.updatedAt = latest.createdAt;
                   }
@@ -271,11 +274,12 @@ export const useJournalStore = create<JournalStore>()(
             const updatedJournals = { ...(state.journals || {}) };
             if (updatedJournals[journalId]) {
                 const updatedMeta = { ...updatedJournals[journalId] };
-                if (latest) {
+if (latest) {
                     updatedMeta.lastEntry = {
                         text: latest.text || "",
                         author: latest.authorName || "Anonymous",
-                        createdAt: latest.createdAt
+                        createdAt: latest.createdAt,
+                        userId: latest.userId // <--- Save User ID
                     };
                 } else {
                     delete updatedMeta.lastEntry;
@@ -409,9 +413,31 @@ toggleCommentReaction: async (journalId, entryId, commentId, userId, emoji) => {
         });
       },
 
-      reset: () => {
+reset: () => {
         get().leaveJournal();
       },
+
+      deleteComment: async (journalId, entryId, comment) => {
+         // 1. Optimistic Update (Remove from UI immediately)
+         set((state) => {
+            const entries = state.sharedEntries?.[journalId] || [];
+            const updatedEntries = entries.map(e => {
+                if (e.entryId !== entryId) return e;
+// Filter out the specific comment (Use ID for safety)
+                const newComments = (e.comments || []).filter((c: any) => c.id !== comment.id);
+                return { ...e, comments: newComments };
+            });
+            return { sharedEntries: { ...(state.sharedEntries || {}), [journalId]: updatedEntries } };
+         });
+
+         // 2. Network Request
+         try {
+             await JournalService.deleteComment(journalId, entryId, comment);
+         } catch (e) {
+             console.error("Failed to delete comment:", e);
+             // Optionally revert here if needed
+         }
+      }
     }),
     {
       name: "journal-store",

@@ -11,7 +11,23 @@ import StatsScreen from '../screens/StatsScreen';           // Insights
 import AchievementsScreen from '../screens/AchievementsScreen'; // Awards
 import SettingsScreen from '../screens/SettingsScreen';
 
+// --- JOURNAL SCREENS (For Tab Visibility) ---
+import SharedJournalScreen from "../screens/SharedJournalScreen";
+import { createNativeStackNavigator } from '@react-navigation/native-stack';
+
 const Tab = createBottomTabNavigator();
+const HomeStack = createNativeStackNavigator();
+
+function HomeStackNavigator() {
+  return (
+    <HomeStack.Navigator screenOptions={{ headerShown: false, animation: 'slide_from_right' }}>
+      <HomeStack.Screen name="HomeScreen" component={HomeScreen} />
+      {/* ONLY these two are added here to keep the Tab Bar visible */}
+      <HomeStack.Screen name="JournalList" component={require('../screens/JournalListScreen').default} />
+      <HomeStack.Screen name="SharedJournal" component={SharedJournalScreen} />
+    </HomeStack.Navigator>
+  );
+}
 
 export default function MainTabs() {
   const palette = useSharedPalette();
@@ -36,10 +52,10 @@ export default function MainTabs() {
         tabBarInactiveTintColor: palette.sub,
       }}
     >
-      {/* 1. TODAY -> HomeScreen (Restores your main dashboard) */}
+{/* 1. TODAY -> HomeStack (Includes Journal Lists) */}
       <Tab.Screen 
         name="Today" 
-        component={HomeScreen}
+        component={HomeStackNavigator}
         options={{
           tabBarIcon: ({ color }) => <Sun color={color} size={24} />,
         }}

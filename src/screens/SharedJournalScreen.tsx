@@ -6,7 +6,7 @@ import { Swipeable } from 'react-native-gesture-handler';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { PenTool, Share2, LogOut, Search, X, Trash2 } from 'lucide-react-native';
+import { PenTool, Share2, LogOut, Search, X, Trash2, MessageCircle, Heart } from 'lucide-react-native';
 
 import { RootStackParamList } from '../navigation/RootStack';
 import { useJournalStore } from '../stores/journalStore';
@@ -101,11 +101,9 @@ const entries = sharedEntries[journalId] || [];
 
 // Load journal data on mount
   useEffect(() => {
-    subscribeToJournal(journalId); // <--- Changed from joinJournal
-    markAsRead(journalId);
-    
-    // Optional: Mark as read again when leaving to catch updates while open
-    return () => markAsRead(journalId);
+    subscribeToJournal(journalId);
+    // Note: We removed markAsRead() here. 
+    // We now only mark as read when you actually open the SharedEntryDetailScreen.
   }, [journalId]);
 
 const handleInvite = async () => {
@@ -215,10 +213,17 @@ return (
 renderItem={({ item }) => {
             const myRole = journal?.roles?.[currentUserId || ''];
             const isAdmin = myRole === 'admin' || myRole === 'owner';
+            
+// Check if THIS entry is mine AND has new comments (that are not mine)
+            const lastReadTime = useJournalStore.getState().lastRead[journalId] || 0;
+            const hasUnreadComment = 
+                item.userId === currentUserId && 
+                item.comments?.some((c: any) => c.createdAt > lastReadTime && c.userId !== currentUserId);
 
-return (
+            return (
               <SharedEntryItem
                 item={item}
+                hasUnreadComment={hasUnreadComment} // <--- Pass prop
                 isOwner={journal?.owner === currentUserId}
                 isAdmin={isAdmin}
                 currentUserId={currentUserId}
@@ -256,10 +261,14 @@ ListEmptyComponent={
 }
 
 // Sub-component to handle deletion animation smoothly
-const SharedEntryItem = ({ item, isOwner, isAdmin, currentUserId, onDelete, navigation, palette, safeDate, onRowOpen }: any) => {
+const SharedEntryItem = ({ item, isOwner, isAdmin, currentUserId, onDelete, navigation, palette, safeDate, onRowOpen, hasUnreadComment }: any) => {
   const swipeableRef = useRef<Swipeable>(null); // <--- Local ref
 
   const isAuthor = item.userId === currentUserId;
+
+  // Calculate stats
+  const commentCount = item.comments?.length || 0;
+  const reactionCount = Object.values(item.reactions || {}).reduce((acc: number, users: any) => acc + (users?.length || 0), 0);
   // Allow delete if: Owner, Admin, or Author
   const canDelete = isOwner || isAdmin || isAuthor;
   
@@ -313,13 +322,20 @@ return (
     >
 <PremiumPressable 
         onPress={() => navigation.navigate('SharedEntryDetail', { entry: item })}
-        onTouchStart={() => onRowOpen(swipeableRef.current)} // <--- Instantly close others on touch
+        onTouchStart={() => onRowOpen(swipeableRef.current)} 
         style={[styles.entryCard, { backgroundColor: palette.card, borderColor: palette.border }]}
       >
-        <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
           <Text style={[styles.entryDate, { color: palette.subtleText }]}>
             {safeDate(item.createdAt)}
           </Text>
+{/* New Comment Indicator (Only for my posts) */}
+          {hasUnreadComment && (
+             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: palette.accent + '15', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 8 }}>
+                <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: palette.accent }} />
+                <Text style={{ fontSize: 10, color: palette.accent, fontWeight: '700' }}>New Comment</Text>
+             </View>
+          )}
         </View>
         <Text style={[styles.entryText, { color: palette.text }]} numberOfLines={3}>
           {item.text}
@@ -328,7 +344,7 @@ return (
           — {item.authorName || 'Anonymous'}
         </Text>
         
-        {/* Render image preview if exists */}
+{/* Render image preview if exists */}
         {item.imageUri && (
           <Image 
             source={{ uri: item.imageUri }} 
@@ -336,6 +352,18 @@ return (
             resizeMode="cover"
           />
         )}
+
+        {/* Stats Row */}
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16, marginTop: 12 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+            <MessageCircle size={14} color={palette.subtleText} />
+            <Text style={{ fontSize: 12, color: palette.subtleText, fontWeight: '600' }}>{commentCount}</Text>
+          </View>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+            <Heart size={14} color={palette.subtleText} />
+            <Text style={{ fontSize: 12, color: palette.subtleText, fontWeight: '600' }}>{reactionCount}</Text>
+          </View>
+        </View>
       </PremiumPressable>
     </Swipeable>
   );

@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, FlatList, Alert } from 'react-native';
-import { collection, query, orderBy, onSnapshot, doc, deleteDoc } from 'firebase/firestore';
+import { collection, query, orderBy, onSnapshot, doc, deleteDoc, writeBatch } from 'firebase/firestore';
 import { db } from '../firebaseConfig';
 import { useSharedPalette } from '../hooks/useSharedPalette';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -19,32 +19,65 @@ export default function GroupReportsScreen({ navigation, route }: any) {
   
   const [reports, setReports] = useState<any[]>([]);
 
-  // Live Listen to Reports Subcollection
+// Live Listen to Reports Subcollection (Grouped by Content)
   useEffect(() => {
     const q = query(collection(db, "journals", journalId, "reports"), orderBy("createdAt", "desc"));
     const unsub = onSnapshot(q, (snap) => {
-      const data = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-      setReports(data);
+      const grouped: Record<string, any> = {};
+
+      snap.docs.forEach((doc) => {
+        const data = doc.data();
+        const cid = data.contentId;
+
+        // Initialize group if new
+        if (!grouped[cid]) {
+          grouped[cid] = {
+            contentId: cid,
+            entryId: data.entryId, // Ensure we have entryId for deletions
+            type: data.type,
+            textSnippet: data.textSnippet,
+            latestAt: data.createdAt,
+            reasons: new Set(), // Track unique reasons
+            reportIds: [] // Track all report IDs for this content
+          };
+        }
+
+        grouped[cid].reportIds.push(doc.id);
+        grouped[cid].reasons.add(data.reason);
+      });
+
+      // Convert back to array for FlatList
+      const results = Object.values(grouped).map(g => ({
+        ...g,
+        reason: Array.from(g.reasons).join(", "), // "spam, abusive"
+        count: g.reportIds.length,
+        id: g.reportIds[0] // Key for React List
+      }));
+
+      setReports(results);
     });
     return () => unsub();
   }, [journalId]);
 
-const handleDismiss = async (reportId: string) => {
+// Batch delete all reports associated with this content
+  const handleDismiss = async (reportIds: string[]) => {
     try {
-      console.log(`Attempting to delete report: journals/${journalId}/reports/${reportId}`);
-      await deleteDoc(doc(db, "journals", journalId, "reports", reportId));
-      console.log("Delete success!");
+      const batch = writeBatch(db);
+      reportIds.forEach((id) => {
+        const ref = doc(db, "journals", journalId, "reports", id);
+        batch.delete(ref);
+      });
+      await batch.commit();
     } catch (e: any) {
       console.error("Delete Report Error:", e);
-      // Show the actual error message to help debug
-      showAlert("Delete Failed", e.message || "Could not dismiss report.");
+      showAlert("Delete Failed", "Could not dismiss reports.");
     }
   };
 
-  const handleTakeAction = (report: any) => {
+  const handleTakeAction = (item: any) => {
     showAlert(
       "Review Content",
-      `Reported for: ${report.reason}\n\n"${report.textSnippet}"`,
+      `Reported by ${item.count} user(s)\nReason: ${item.reason}\n\n"${item.textSnippet}"`,
       [
         { text: "Cancel", style: "cancel" },
         { 
@@ -52,24 +85,25 @@ const handleDismiss = async (reportId: string) => {
           style: "destructive", 
           onPress: async () => {
             try {
-              // 1. Delete the actual content
-              if (report.type === 'entry') {
-                await deleteSharedEntry(journalId, report.contentId);
+              // 1. Delete the actual content (Entry or Comment)
+              if (item.type === 'entry') {
+                await deleteSharedEntry(journalId, item.contentId);
               } else {
-                await JournalService.deleteComment(journalId, report.entryId, { id: report.contentId });
+                // For comments, we need the parent entryId, which we captured in grouping
+                await JournalService.deleteComment(journalId, item.entryId, { id: item.contentId });
               }
-              // 2. Delete the report
-              await deleteDoc(doc(db, "journals", journalId, "reports", report.id));
-              showAlert("Success", "Content removed.");
+              // 2. Clean up ALL reports for this item
+              await handleDismiss(item.reportIds);
+              showAlert("Success", "Content removed and reports resolved.");
             } catch (e) {
               console.log(e);
               showAlert("Error", "Content may already be deleted.");
-              // Delete report anyway if content is gone
-              handleDismiss(report.id);
+              // Clean up reports anyway
+              handleDismiss(item.reportIds);
             }
           }
         },
-        { text: "Dismiss Report", onPress: () => handleDismiss(report.id) }
+        { text: "Dismiss All", onPress: () => handleDismiss(item.reportIds) }
       ]
     );
   };
@@ -94,16 +128,28 @@ const handleDismiss = async (reportId: string) => {
                 <Text style={{ color: palette.sub, fontSize: 16 }}>All good! No reports.</Text>
             </View>
           }
-          renderItem={({ item }) => (
+renderItem={({ item }) => (
             <PremiumPressable 
               onPress={() => handleTakeAction(item)}
               style={[styles.card, { backgroundColor: palette.card, borderColor: palette.border }]}
             >
-              <View style={styles.row}>
-                <AlertTriangle size={16} color="#F59E0B" />
-                <Text style={[styles.type, { color: palette.accent }]}>{item.type.toUpperCase()}</Text>
-                <Text style={{ color: palette.sub, fontSize: 12 }}>• {new Date(item.createdAt).toLocaleDateString()}</Text>
+              <View style={[styles.row, { justifyContent: 'space-between' }]}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                   <AlertTriangle size={16} color="#F59E0B" />
+                   <Text style={[styles.type, { color: palette.accent }]}>{item.type.toUpperCase()}</Text>
+                </View>
+                
+                {/* URGENCY BADGE */}
+                {item.count > 1 && (
+                  <View style={{ backgroundColor: '#EF4444', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 8 }}>
+                    <Text style={{ color: 'white', fontSize: 10, fontWeight: '800' }}>{item.count} REPORTS</Text>
+                  </View>
+                )}
               </View>
+              
+              <Text style={{ color: palette.sub, fontSize: 12, marginTop: 4, marginBottom: 8 }}>
+                 Last reported: {new Date(item.latestAt).toLocaleDateString()}
+              </Text>
               
               <Text style={[styles.reason, { color: palette.text }]}>Reason: {item.reason}</Text>
               <Text numberOfLines={2} style={[styles.snippet, { color: palette.sub }]}>"{item.textSnippet}"</Text>

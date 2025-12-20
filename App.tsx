@@ -5,6 +5,7 @@ import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { NavigationContainer } from "@react-navigation/native";
 import { StatusBar } from "expo-status-bar";
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { View, Text } from 'react-native';
 
 // Navigation & Logic
 import RootStack from "./src/navigation/RootStack";
@@ -20,6 +21,7 @@ import './src/utils/ignoreWarnings';
 
 export default function App() {
   const { isReady, theme, linking } = useAppInitialization();
+  const [currentRouteName, setCurrentRouteName] = React.useState<string | undefined>();
 
   // Listen for notification taps
   useEffect(() => {
@@ -27,15 +29,13 @@ export default function App() {
       const data = response.notification.request.content.data;
       // Check if the notification contains a journalId and navigate
 if (data?.journalId && navigationRef.current) {
-        // Reset stack to ensure a clean back history (Home -> Groups -> Journal)
-        // This prevents going back to unrelated screens like 'Write'
-        (navigationRef.current as any).reset({
-          index: 2,
-          routes: [
-            { name: 'MainTabs' },
-            { name: 'JournalList' },
-            { name: 'SharedJournal', params: { journalId: data.journalId } },
-          ],
+        // Navigate to the nested SharedJournal screen inside MainTabs -> Today
+        (navigationRef.current as any).navigate('MainTabs', {
+          screen: 'Today',
+          params: {
+            screen: 'SharedJournal',
+            params: { journalId: data.journalId }
+          }
         });
       }
     });
@@ -46,14 +46,31 @@ if (data?.journalId && navigationRef.current) {
   if (!isReady) return null;
 
   return (
-    <SafeAreaProvider>
+<SafeAreaProvider>
       <GestureHandlerRootView style={{ flex: 1 }}>
-        <NavigationContainer ref={navigationRef} linking={linking}>
+        <NavigationContainer 
+          ref={navigationRef} 
+          linking={linking}
+          onReady={() => setCurrentRouteName(navigationRef.current?.getCurrentRoute()?.name)}
+          onStateChange={() => setCurrentRouteName(navigationRef.current?.getCurrentRoute()?.name)}
+        >
           <ThemeFadeWrapper>
 <ErrorBoundary>
-              <SecurityGate> 
+<SecurityGate> 
                  <RootStack />
                  <GlobalAlert />
+                 
+                 {/* DEV HEADER: Shows current screen name */}
+                 {currentRouteName && (
+                   <View style={{ position: 'absolute', top: 50, alignSelf: 'center', zIndex: 9999, pointerEvents: 'none' }}>
+                     <View style={{ backgroundColor: 'rgba(0,0,0,0.6)', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12 }}>
+                        <Text style={{ color: '#00ff00', fontSize: 10, fontWeight: 'bold' }}>
+                          DEV: {currentRouteName}
+                        </Text>
+                     </View>
+                   </View>
+                 )}
+
                  <StatusBar style={theme === "dark" ? "light" : "dark"} />
               </SecurityGate>
             </ErrorBoundary>

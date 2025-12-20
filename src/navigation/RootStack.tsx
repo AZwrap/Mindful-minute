@@ -96,9 +96,8 @@ export default function RootStack() {
       <Stack.Screen name="Premium" component={PremiumScreen} />
       <Stack.Screen name="Achievements" component={AchievementsScreen} />
       
-      {/* Shared Journal Specifics */}
-      <Stack.Screen name="JournalList" component={require('../screens/JournalListScreen').default} />
-      <Stack.Screen name="SharedJournal" component={SharedJournalScreen} />
+{/* Shared Journal Specifics */}
+      {/* JournalList & SharedJournal moved to MainTabs/HomeStack */}
       <Stack.Screen name="SharedEntryDetail" component={SharedEntryDetailScreen} />
       
       <Stack.Screen name="JournalDetails" component={require('../screens/JournalDetailsScreen').default} />

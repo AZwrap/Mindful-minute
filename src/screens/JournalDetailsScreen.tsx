@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, FlatList, Share, Image, TouchableOpacity, Modal, Pressable, ScrollView } from 'react-native';
+import { collection, query, where, onSnapshot } from 'firebase/firestore';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -15,7 +16,7 @@ import { MediaService } from '../services/mediaService';
 import { useUIStore } from '../stores/uiStore';
 import { leaveSharedJournal, kickMember, updateMemberRole } from '../services/syncedJournalService';
 import { exportSharedJournalPDF } from '../utils/exportHelper';
-import { auth } from '../firebaseConfig';
+import { auth, db } from '../firebaseConfig';
 import PremiumPressable from '../components/PremiumPressable';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'JournalDetails'>;
@@ -36,9 +37,21 @@ export default function JournalDetailsScreen({ navigation, route }: Props) {
   const currentUserId = auth.currentUser?.uid;
   const userRole = journal?.roles?.[currentUserId || ''] || 'member';
   
-  // Admin Privileges: Owner OR Admin
+// Admin Privileges: Owner OR Admin
   const isAdmin = journal?.owner === currentUserId || userRole === 'admin' || userRole === 'owner';
   const isOwner = journal?.owner === currentUserId;
+
+  // Logic: Listen for pending reports (Badge)
+  const [reportCount, setReportCount] = useState(0);
+  useEffect(() => {
+    if (!isAdmin || !journalId) return;
+    const q = query(
+      collection(db, "journals", journalId, "reports"), 
+      where("status", "==", "pending")
+    );
+    // Listen for real-time updates
+    return onSnapshot(q, snap => setReportCount(snap.size));
+  }, [journalId, isAdmin]);
 
   // Logic: Export PDF
   const handleExport = async () => {
@@ -53,10 +66,16 @@ export default function JournalDetailsScreen({ navigation, route }: Props) {
 const handleMemberPress = (memberId: string, memberName: string) => {
     if (!isAdmin || memberId === currentUserId) return;
 
-showAlert(
-      "Manage Member",
-      `Manage ${memberName}`,
-      [
+    // 1. Determine Role
+    let memberRole = journal.roles?.[memberId] || 'member';
+    
+    // Treat Owner as Admin so they can be managed (Equality Rule)
+    if (memberId === journal.owner || memberRole === 'owner') {
+        memberRole = 'admin';
+    }
+    
+    // Base actions (Always available)
+    const actions: any[] = [
         { text: "Cancel", style: "cancel" },
         { 
           text: "Remove from Group", 
@@ -68,29 +87,56 @@ showAlert(
                showAlert("Error", "Failed to remove user.");
              }
           }
-        },
-        { 
+        }
+    ];
+
+// Conditional Actions
+    if (memberRole === 'member') {
+        actions.push({ 
           text: "Make Admin", 
-          onPress: async () => {
-             try {
-               await updateMemberRole(journalId, memberId, 'admin');
-             } catch (e) {
-               showAlert("Error", "Failed to promote user.");
-             }
+          onPress: () => {
+            // Confirmation Alert
+            showAlert("Confirm Admin", "Are you sure you want to make this user an Admin?", [
+              { text: "Cancel", style: "cancel" },
+              { 
+                text: "Confirm", 
+                onPress: async () => {
+                   try {
+                     await updateMemberRole(journalId, memberId, 'admin');
+                     showAlert("Success", "User has been promoted to Admin.");
+                   } catch (e) {
+                     showAlert("Error", "Failed to promote user.");
+                   }
+                }
+              }
+            ]);
           }
-        },
-        { 
+        });
+    } else if (memberRole === 'admin') {
+        actions.push({ 
             text: "Demote to Member", 
-            onPress: async () => {
-               try {
-                 await updateMemberRole(journalId, memberId, 'member');
-               } catch (e) {
-                 showAlert("Error", "Failed to demote user.");
-               }
+            onPress: () => {
+               // Confirmation Alert
+               showAlert("Confirm Demotion", "Are you sure you want to demote this user to Member?", [
+                 { text: "Cancel", style: "cancel" },
+                 { 
+                   text: "Confirm", 
+                   style: "destructive",
+                   onPress: async () => {
+                      try {
+                        await updateMemberRole(journalId, memberId, 'member');
+                        showAlert("Success", "User has been demoted to Member.");
+                      } catch (e) {
+                        showAlert("Error", "Failed to demote user.");
+                      }
+                   }
+                 }
+               ]);
             }
-          }
-      ]
-    );
+        });
+    }
+
+    showAlert("Manage Member", `Manage ${memberName}`, actions);
   };
 
   const handleDeleteGroup = () => {
@@ -308,8 +354,23 @@ const handleCopyCode = async () => {
                 data={journal.memberIds || []}
                 keyExtractor={(item) => item}
                 scrollEnabled={false}
-                renderItem={({ item, index }) => {
-                  const role = journal.roles?.[item] || 'member';
+renderItem={({ item, index }) => {
+// Priority: 1. Check explicit Role Map (This allows demoting the Creator)
+                  //           2. If no role map entry, but is Creator -> 'admin'
+                  //           3. Default -> 'member'
+                  let role = journal.roles?.[item];
+                  
+                  if (!role && item === journal.owner) {
+                      role = 'admin'; // Legacy fallback
+                  }
+                  
+                  if (!role) {
+                      role = 'member';
+                  }
+
+                  // Force "owner" string to "admin" just in case it slipped through
+                  if (role === 'owner') role = 'admin';
+
                   const isMe = item === currentUserId;
                   const displayRole = role.charAt(0).toUpperCase() + role.slice(1);
                   
@@ -349,16 +410,25 @@ const handleCopyCode = async () => {
                 ACTIONS
             </Text>
 
-            {/* Admin Only: Moderation Queue */}
-{isAdmin && (
+{/* Admin Only: Moderation Queue */}
+            {isAdmin && (
                 <PremiumPressable 
                     onPress={() => navigation.navigate('GroupReports', { journalId })}
                     style={[styles.actionRow, { backgroundColor: palette.card, borderColor: palette.border, marginBottom: 12 }]}
                 >
                     <Shield size={20} color="#F59E0B" />
                     <View style={{ flex: 1 }}>
-                        <Text style={[styles.actionText, { color: palette.text }]}>Moderation Queue</Text>
-                        <Text style={{ fontSize: 10, color: palette.subtleText }}>Review reported content</Text>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                          <Text style={[styles.actionText, { color: palette.text }]}>Moderation Queue</Text>
+                          {reportCount > 0 && (
+                            <View style={{ backgroundColor: '#EF4444', borderRadius: 8, paddingHorizontal: 6, paddingVertical: 1 }}>
+                              <Text style={{ color: 'white', fontSize: 10, fontWeight: '700' }}>{reportCount}</Text>
+                            </View>
+                          )}
+                        </View>
+                        <Text style={{ fontSize: 10, color: palette.subtleText }}>
+                           {reportCount > 0 ? `${reportCount} pending review` : "Review reported content"}
+                        </Text>
                     </View>
                 </PremiumPressable>
             )}

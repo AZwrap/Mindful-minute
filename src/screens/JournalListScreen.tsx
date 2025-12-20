@@ -17,11 +17,17 @@ type Props = NativeStackScreenProps<RootStackParamList, 'JournalList'>;
 export default function JournalListScreen({ navigation }: Props) {
   const palette = useSharedPalette();
   
-  // 1. SAFETIES: Default to {} if store returns undefined to prevent crashes
+// 1. SAFETIES: Default to {} if store returns undefined to prevent crashes
   const isPremium = useSettings((s) => s.isPremium);
   const journals = useJournalStore((s) => s.journals) || {};
   const lastRead = useJournalStore((s) => s.lastRead) || {};
-  const { joinJournal, restoreJournals, currentUser } = useJournalStore();
+  const sharedEntries = useJournalStore((s) => s.sharedEntries) || {}; 
+  const { joinJournal, restoreJournals, currentUser, subscribeToAllJournals } = useJournalStore();
+
+  // Listen for updates on ALL journals so notifications (dots) appear instantly
+  React.useEffect(() => {
+    subscribeToAllJournals();
+  }, []);
 
   // 2. Sort journals by activity (Newest updated first)
   const journalList = useMemo(() => {
@@ -195,8 +201,23 @@ return (
 
             const lastMsg = item.lastEntry;
             const lastReadTime = lastRead[item.id] || 0;
-            // Check if updated AFTER last read time
-            const isUnread = (item.updatedAt || 0) > lastReadTime;
+            
+            // Notification Logic:
+            // 1. New Entry?
+const hasNewEntry = 
+              (item.lastEntry?.createdAt || 0) > lastReadTime && 
+              item.lastEntry?.userId !== currentUser;
+            
+// 2. New Comment on MY Entry Check
+            // We check if ANY entry in this journal belongs to me AND has a comment newer than my last read time
+            // AND the comment is NOT written by me (prevent self-notification)
+            const hasNewCommentOnMyPost = sharedEntries[item.id]?.some((e: any) => 
+               e.userId === currentUser && 
+               e.comments?.some((c: any) => c.createdAt > lastReadTime && c.userId !== currentUser)
+            );
+
+            // Show dot if either is true
+            const isUnread = hasNewEntry || hasNewCommentOnMyPost;
 
             return (
               <PremiumPressable

@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, ScrollView, Image, TextInput, KeyboardAvoidingView, Platform, Pressable, Keyboard, Modal, Animated } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Image, TextInput, KeyboardAvoidingView, Platform, Pressable, Keyboard, Modal, Animated, InteractionManager } from 'react-native';
 import { Swipeable } from 'react-native-gesture-handler'; 
 import { Trash2, Edit2, ChevronLeft, Send, Heart, Flame, ThumbsUp, MessageCircle, Smile, Flag } from 'lucide-react-native'; // <--- Added Flag
 import { LinearGradient } from 'expo-linear-gradient';
@@ -87,9 +87,15 @@ const CommentItem = ({ comment, currentUser, onDelete, onReport, onRowOpen, pale
           </Animated.View>
         </Pressable>
       );
-    } else {
+} else {
       return (
-        <Pressable style={[styles.deleteAction, { backgroundColor: '#F59E0B' }]} onPress={() => onReport(comment)}>
+        <Pressable 
+          style={[styles.deleteAction, { backgroundColor: '#F59E0B' }]} 
+          onPress={() => {
+            swipeableRef.current?.close(); // <--- Close the row first
+            onReport(comment);             // <--- Then show alert
+          }}
+        >
           <SwipeMonitor dragX={dragX} onSwipeStart={() => onRowOpen(swipeableRef.current)} />
           <Animated.View style={{ transform: [{ scale }], alignItems: 'center' }}>
             <Flag size={24} color="white" />
@@ -201,9 +207,20 @@ const showSub = Keyboard.addListener('keyboardDidShow', (e) => {
   }, []);
   // ----------------------------------------------
 
-const { entry: initialEntry } = route.params;
+  const { entry: initialEntry } = route.params;
   const palette = useSharedPalette();
-  const { deleteSharedEntry, toggleCommentReaction, journals } = useJournalStore();
+  const { deleteSharedEntry, toggleCommentReaction, deleteComment, journals, markAsRead } = useJournalStore();
+
+// Mark journal as read only when LEAVING (Unmounting).
+  // This keeps the "New Comment" badge visible during the navigation transition
+  // and clears it only after you have finished reading and returned to the list.
+  React.useEffect(() => {
+    return () => {
+      if (initialEntry.journalId) {
+        markAsRead(initialEntry.journalId);
+      }
+    };
+  }, [initialEntry.journalId, markAsRead]);
 
   // Exclusive Swipe Logic
   const openSwipeableRef = React.useRef<Swipeable | null>(null);
@@ -244,7 +261,8 @@ const entry = useJournalStore(s =>
 const handleDeleteComment = async (comment: any) => {
     if (!entry.journalId || !entry.entryId) return;
     try {
-      await JournalService.deleteComment(entry.journalId, entry.entryId, comment);
+      // Use Store Action for Instant UI Update
+      await deleteComment(entry.journalId, entry.entryId, comment);
     } catch (e) {
       console.error("Failed to delete comment:", e);
       showAlert("Error", "Could not delete comment.");
@@ -301,11 +319,16 @@ const handleReportComment = (comment: any) => {
           reason, 
           currentUser?.uid || 'anon',
           authorId,
-          snippet.substring(0, 100)
+snippet.substring(0, 100)
         );
         showAlert("Thank You", "We have received your report and will review it shortly.");
-      } catch (e) {
-        showAlert("Error", "Could not submit report.");
+      } catch (e: any) {
+        // Handle "Already Reported" specific error
+        if (e.message === "You have already reported this content.") {
+           showAlert("Notice", e.message);
+        } else {
+           showAlert("Error", "Could not submit report.");
+        }
       }
   };
 

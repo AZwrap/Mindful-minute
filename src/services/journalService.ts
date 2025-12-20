@@ -257,24 +257,40 @@ async deleteJournal(journalId: string) {
     }
   },
 
-  async addComment(journalId: string, entryId: string, comment: { text: string; userId: string; authorName: string }) {
+async addComment(journalId: string, entryId: string, comment: { text: string; userId: string; authorName: string }) {
     const ref = doc(db, "journals", journalId, "entries", entryId);
+    const journalRef = doc(db, "journals", journalId);
     const newComment = {
       id: Math.random().toString(36).substr(2, 9),
       createdAt: Date.now(),
       ...comment
     };
 
-await updateDoc(ref, {
+    // 1. Add comment to entry
+    await updateDoc(ref, {
       comments: arrayUnion(newComment)
+    });
+
+    // 2. Touch journal timestamp so lists know there's an update
+    await updateDoc(journalRef, {
+      updatedAt: Date.now()
     });
   },
 
 async deleteComment(journalId: string, entryId: string, commentObject: any) {
     const ref = doc(db, "journals", journalId, "entries", entryId);
-    await updateDoc(ref, {
-      comments: arrayRemove(commentObject) // Removes the exact matching object
-    });
+    const snap = await getDoc(ref);
+    
+    if (snap.exists()) {
+      const data = snap.data();
+      const currentComments = data.comments || [];
+      // Filter by ID to ensure deletion works regardless of object reference
+      const updatedComments = currentComments.filter((c: any) => c.id !== commentObject.id);
+      
+      await updateDoc(ref, {
+        comments: updatedComments
+      });
+    }
   },
 
   async toggleCommentReaction(journalId: string, entryId: string, commentId: string, userId: string, type: string) {
