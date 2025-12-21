@@ -47,7 +47,7 @@ export default function App() {
       }
 
       // 2. Handle Journal Navigation
-      if (data?.journalId && navigationRef.isReady()) {
+if (data?.journalId && navigationRef.isReady()) {
         navigationRef.navigate('MainTabs', {
           screen: 'Today',
           params: {
@@ -57,6 +57,9 @@ export default function App() {
         } as any);
       }
     });
+
+    return () => subscription.remove();
+  }, []);
 
   if (!isReady) return null;
 

@@ -63,10 +63,13 @@ export async function scheduleDailyReminder(hour: number, minute: number) {
     // NUCLEAR CANCELLATION: Explicitly find and kill all existing schedules
     // This fixes the "Duplicate" bug where cancelAll() sometimes fails silently on Android
     const scheduled = await Notifications.getAllScheduledNotificationsAsync();
-    for (const n of scheduled) {
+for (const n of scheduled) {
       await Notifications.cancelScheduledNotificationAsync(n.identifier);
     }
     await Notifications.cancelAllScheduledNotificationsAsync(); // Double tap
+
+    // SAFETY: Wait 500ms to ensure Android processes the cancellations before adding new ones
+    await new Promise(resolve => setTimeout(resolve, 500));
 
     const h = Math.floor(hour);
     const m = Math.floor(minute);

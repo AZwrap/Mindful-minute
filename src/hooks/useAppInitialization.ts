@@ -42,19 +42,9 @@ export function useAppInitialization() {
     },
   };
 
-  // 3. Notifications (Schedule & Tap Handler)
+// 3. Notifications (Schedule Only - Tap handled in App.tsx)
   useEffect(() => {
-    // A. Handle "Tap to Open"
-    const subscription = Notifications.addNotificationResponseReceivedListener((response) => {
-      if (navigationRef.isReady()) {
-        navigationRef.navigate("Write", {
-          date: new Date().toISOString().split('T')[0],
-          prompt: { text: "Time for your daily mindful minute.", isSmart: false }
-        });
-      }
-    });
-
-    // B. Manage Schedule based on Settings
+    // A. Manage Schedule based on Settings
     const manageSchedule = async () => {
       if (smartRemindersEnabled) {
         const token = await registerForPushNotificationsAsync();
@@ -67,11 +57,9 @@ export function useAppInitialization() {
       }
     };
 
-    if (settingsLoaded) {
+if (settingsLoaded) {
       manageSchedule();
     }
-
-    return () => subscription.remove();
   }, [smartRemindersEnabled, reminderTime, settingsLoaded]);
 
   // 4. Auto-Sync Personal Entries on Start
