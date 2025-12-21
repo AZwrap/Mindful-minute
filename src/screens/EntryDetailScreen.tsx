@@ -67,8 +67,9 @@ export default function EntryDetailScreen({ route, navigation }: Props) {
 const { date } = route.params;
 
 // Select entry from store
-  const entry = useEntriesStore((s) => s.entries[date]);
-const { journals, currentJournalId, sharedEntries, setSharedEntries } = useJournalStore(); // Get full list, data & setter
+const entry = useEntriesStore((s) => s.entries[date]);
+  // Add updateSharedEntry to the destructuring
+  const { journals, currentJournalId, sharedEntries, setSharedEntries, updateSharedEntry } = useJournalStore();
 
   const [isSharing, setIsSharing] = useState(false);
   const [showShareModal, setShowShareModal] = useState(false);
@@ -93,6 +94,37 @@ const { journals, currentJournalId, sharedEntries, setSharedEntries } = useJourn
   useEffect(() => {
     setThemeLoaded(true);
   }, []);
+
+  // SYNC LOGIC: If this entry is modified locally, update any shared copies automatically
+  useEffect(() => {
+    if (!entry) return;
+
+    // Scan all journals to see if this entry is shared (matched by date)
+    Object.keys(journals).forEach(journalId => {
+      const journalEntries = sharedEntries[journalId] || [];
+      const sharedCopy = journalEntries.find((e: any) => e.originalDate === date);
+      
+      if (sharedCopy) {
+        // Compare content to see if an update is needed
+        // (Handle potential legacy object structure in shared entries safely)
+        const sharedText = typeof sharedCopy.text === 'object' ? sharedCopy.text?.text : sharedCopy.text;
+        const sharedImg = sharedCopy.imageUri || (typeof sharedCopy.text === 'object' ? sharedCopy.text?.imageUri : null);
+
+        const localText = entry.text || '';
+        const localImg = entry.imageUri || null;
+
+        // If local content differs from shared content, sync it
+        if (sharedText !== localText || sharedImg !== localImg) {
+          console.log(`Syncing update to journal ${journalId}...`);
+          updateSharedEntry(journalId, sharedCopy.entryId, {
+            text: localText,
+            imageUri: localImg,
+            updatedAt: Date.now() 
+          }).catch(err => console.error("Failed to auto-sync shared entry:", err));
+        }
+      }
+    });
+  }, [entry, journals, sharedEntries, updateSharedEntry, date]);
 
   if (!themeLoaded) {
     return null;
@@ -290,12 +322,8 @@ return (
                 <Text style={[styles.title, { color: textMain }]}>Journal Entry</Text>
                 <Text style={[styles.date, { color: textSub }]}>{formattedDate}</Text>
               </View>
-              <PremiumPressable
-                onPress={() => navigation.navigate('Write', { 
-                  date, 
-                  text: entry.text, 
-                  prompt: entry.prompt || { text: entry.promptText || '' } 
-                })}
+<PremiumPressable
+                onPress={() => (navigation as any).navigate('EditEntry', { date })}
                 haptic="light"
                 style={[styles.iconBtn, { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)' }]}
               >

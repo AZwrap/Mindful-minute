@@ -2,6 +2,7 @@ export type RootStackParamList = {
   Onboarding: undefined;
   Auth: undefined;
   MainTabs: undefined; 
+  EditEntry: { date: string };
 
   // Modals & Features
   Write: { date: string; prompt?: { text: string; isSmart?: boolean }; text?: string };

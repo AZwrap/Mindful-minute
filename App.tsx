@@ -1,6 +1,8 @@
 import 'react-native-get-random-values';
 import React, { useEffect } from "react"; // Add useEffect
 import * as Notifications from 'expo-notifications'; // Add Notifications
+import { auth } from './src/firebaseConfig'; // <--- Added
+import { useJournalStore } from './src/stores/journalStore'; // <--- Added
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { NavigationContainer } from "@react-navigation/native";
 import { StatusBar } from "expo-status-bar";
@@ -23,25 +25,38 @@ export default function App() {
   const { isReady, theme, linking } = useAppInitialization();
   const [currentRouteName, setCurrentRouteName] = React.useState<string | undefined>();
 
-  // Listen for notification taps
+  // SAFETY: Reset store immediately when user logs out to stop "Permission Denied" errors
+  useEffect(() => {
+    const unsubscribe = auth.onAuthStateChanged((user) => {
+      if (!user) {
+        useJournalStore.getState().reset();
+      }
+    });
+    return unsubscribe;
+  }, []);
+
+// Listen for notification taps
   useEffect(() => {
     const subscription = Notifications.addNotificationResponseReceivedListener(response => {
       const data = response.notification.request.content.data;
-      // Check if the notification contains a journalId and navigate
-if (data?.journalId && navigationRef.current) {
-        // Navigate to the nested SharedJournal screen inside MainTabs -> Today
-        (navigationRef.current as any).navigate('MainTabs', {
+
+      // 1. Handle Home Navigation (Daily Reminders)
+      if (data?.screen === 'Home' && navigationRef.isReady()) {
+        navigationRef.navigate('MainTabs' as any);
+        return;
+      }
+
+      // 2. Handle Journal Navigation
+      if (data?.journalId && navigationRef.isReady()) {
+        navigationRef.navigate('MainTabs', {
           screen: 'Today',
           params: {
             screen: 'SharedJournal',
             params: { journalId: data.journalId }
           }
-        });
+        } as any);
       }
     });
-
-    return () => subscription.remove();
-  }, []);
 
   if (!isReady) return null;
 

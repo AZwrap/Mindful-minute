@@ -17,6 +17,7 @@ import SharedWriteScreen from "../screens/SharedWriteScreen";
 import SharedEntryDetailScreen from "../screens/SharedEntryDetailScreen";
 import InviteScreen from "../screens/InviteScreen";
 import SharedJournalScreen from "../screens/SharedJournalScreen";
+import EditEntryScreen from "../screens/EditEntryScreen";
 
 // Import Types
 import { RootStackParamList } from './types';
@@ -82,6 +83,11 @@ export default function RootStack() {
       <Stack.Screen 
         name="SharedWrite" 
         component={SharedWriteScreen} 
+        options={{ presentation: 'modal', animation: 'slide_from_bottom' }} 
+      />
+      <Stack.Screen 
+        name="EditEntry" 
+        component={EditEntryScreen} 
         options={{ presentation: 'modal', animation: 'slide_from_bottom' }} 
       />
       <Stack.Screen 

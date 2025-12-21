@@ -169,7 +169,7 @@ export const useJournalStore = create<JournalStore>()(
                   
                   const isOthers = data.owner !== get().currentUser && data.userId !== get().currentUser;
 
-                  if (isRecent && isOthers) {
+if (isRecent && isOthers) {
                     const author = data.authorName || "Someone";
                     const journalName = get().journals?.[journalId]?.name || "Journal";
                     sendImmediateNotification(
@@ -179,6 +179,40 @@ export const useJournalStore = create<JournalStore>()(
                     );
                   }
                 }
+                
+                // --- NEW: Detect Comments (Modified Entries) ---
+                if (change.type === "modified") {
+                  const data = change.doc.data();
+                  const currentUserId = get().currentUser;
+
+                  // 1. Only care if *I* am the author of the entry
+                  if (data.userId === currentUserId) {
+                    
+                    const comments = data.comments || [];
+                    if (comments.length > 0) {
+                      const latestComment = comments[comments.length - 1];
+
+                      // 2. Check Recency (Last 60 seconds)
+                      // Prevents spam when loading old data or syncing
+                      const diff = Date.now() - (latestComment.createdAt || 0);
+                      const isRecentComment = diff < 60000 && diff > -5000;
+
+                      // 3. Ensure *I* didn't write the comment (No self-notification)
+                      const isOthersComment = latestComment.userId !== currentUserId;
+
+                      if (isRecentComment && isOthersComment) {
+                        const commenter = latestComment.authorName || "Someone";
+                        sendImmediateNotification(
+                          "New Comment", 
+                          `${commenter} commented on your entry.`,
+                          { journalId, entryId: change.doc.id }
+                        );
+                      }
+                    }
+                  }
+                }
+                // -----------------------------------------------
+
               });
             }
 

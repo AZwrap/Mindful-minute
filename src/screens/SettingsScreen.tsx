@@ -48,7 +48,7 @@ import { saveBackupToCloud, restoreBackupFromCloud } from '../services/cloudBack
 import { updateUserPhotoInJournals } from '../services/syncedJournalService'; // <--- Added
 import { MediaService } from '../services/mediaService'; // <--- Added
 import { analyzeWritingAnalytics } from '../constants/writingAnalytics';
-import { scheduleDailyReminder, cancelDailyReminders } from '../lib/notifications'; 
+import { scheduleDailyReminder, cancelDailyReminders } from '../lib/notifications';
 import { exportBulkEntries } from '../utils/exportHelper';
 import DateTimePickerModal from "react-native-modal-datetime-picker";
 import { RootStackParamList } from '../navigation/RootStack';

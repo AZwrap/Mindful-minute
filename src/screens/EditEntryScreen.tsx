@@ -4,40 +4,33 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useUIStore } from '../stores/uiStore';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { Camera, XCircle } from 'lucide-react-native'; // Icons
-import * as ImagePicker from 'expo-image-picker'; // Image Picker
+import { Camera, XCircle } from 'lucide-react-native'; 
+import * as ImagePicker from 'expo-image-picker'; 
 
 import { RootStackParamList } from '../navigation/RootStack';
-import { useJournalStore } from '../stores/journalStore';
-import { auth } from '../firebaseConfig';
 import { useEntriesStore } from '../stores/entriesStore';
 import { useSharedPalette } from '../hooks/useSharedPalette';
-import { sendImmediateNotification } from '../lib/notifications';
 import PremiumPressable from '../components/PremiumPressable';
 
-type Props = NativeStackScreenProps<RootStackParamList, 'SharedWrite'>;
+type Props = NativeStackScreenProps<RootStackParamList, any>;
 
-export default function SharedWriteScreen({ navigation, route }: Props) {
-  const { journalId, entry } = route.params;
+export default function EditEntryScreen({ navigation, route }: Props) {
+  const { date } = route.params as any;
   const { showAlert } = useUIStore();
-  const isEditing = !!entry;
+  const palette = useSharedPalette();
   
-// SAFEGUARD: Handle corrupted 'text' objects from database
-  const rawText = typeof entry?.text === 'object' ? (entry.text?.text || '') : (entry?.text || '');
-  const rawImage = entry?.imageUri || (typeof entry?.text === 'object' ? entry.text?.imageUri : null);
+  // Get existing local entry
+  const entry = useEntriesStore(s => s.entries[date]);
+  const upsert = useEntriesStore(s => s.upsert);
 
-  // State
-  const [text, setText] = useState(rawText);
-  const [imageUri, setImageUri] = useState<string | null>(rawImage);
+  // Initialize state
+  const [text, setText] = useState(entry?.text || '');
+  const [imageUri, setImageUri] = useState<string | null>(entry?.imageUri || null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   
-  const palette = useSharedPalette();
-  const { addSharedEntry, updateSharedEntry } = useJournalStore();
-  
-  // --- IMAGE LOGIC (Base64 for Alpha) ---
-const pickImage = () => {
+  const pickImage = () => {
     showAlert(
-      "Add Photo",
+      "Update Photo",
       "Capture a moment or choose from your gallery.",
       [
         {
@@ -51,7 +44,7 @@ const pickImage = () => {
               }
               const result = await ImagePicker.launchCameraAsync({
                 mediaTypes: ImagePicker.MediaTypeOptions.Images,
-                allowsEditing: false, // <--- Disabled cropping
+                allowsEditing: false, 
                 quality: 0.3, 
                 base64: true,
               });
@@ -67,7 +60,7 @@ const pickImage = () => {
             try {
               const result = await ImagePicker.launchImageLibraryAsync({
                 mediaTypes: ImagePicker.MediaTypeOptions.Images,
-                allowsEditing: false, // <--- Disabled cropping
+                allowsEditing: false, 
                 quality: 0.3,
                 base64: true,
               });
@@ -82,55 +75,23 @@ const pickImage = () => {
     );
   };
 
-  const handlePost = async () => {
-    if ((!text.trim() && !imageUri) || isSubmitting) return;
-
-    // 1. Lock UI
+  const handleSave = async () => {
+    if (isSubmitting) return;
     setIsSubmitting(true);
 
-    // 2. Optimistic Navigation: Go back IMMEDIATELY.
-    // The upload will continue in the background.
-    navigation.goBack();
-
     try {
-if (isEditing) {
-        // 1. Update Shared Entry (Cloud + Journal Store)
-        await updateSharedEntry(journalId, entry.entryId, { 
-          text: text.trim(), 
-          imageUri: imageUri 
-        });
-
-        // 2. Sync Back to Local Entry (if linked)
-        // This ensures your personal "Entry of the Day" matches what you just edited
-        if (entry.originalDate) {
-            const localEntry = useEntriesStore.getState().entries[entry.originalDate];
-            if (localEntry) {
-                useEntriesStore.getState().upsert({
-                    ...localEntry,
-                    text: text.trim(),
-                    imageUri: imageUri
-                });
-            }
-        }
-      } else {
-        // CREATE
-        const user = auth.currentUser;
-        const authorName = user?.displayName || user?.email?.split('@')[0] || 'Anonymous';
-
-await addSharedEntry({
-          text: text.trim(),
-          imageUri, // Add Image
-          authorName,
-userId: user?.uid,
-          journalId,
-        });
-      }
+      // Update Local Store (This will trigger the auto-sync in EntryDetailScreen)
+      upsert({
+        ...entry,
+        date,
+        text: text.trim(),
+        imageUri: imageUri
+      });
       
-      // Notification removed (User is already in the app, no need to notify)
-      
+      navigation.goBack();
     } catch (e) {
-      console.error("Post failed in background:", e);
-      sendImmediateNotification("Post Failed", "Your entry could not be saved. Please try again.");
+      console.error("Failed to save entry:", e);
+      setIsSubmitting(false);
     }
   };
 
@@ -144,15 +105,16 @@ userId: user?.uid,
             <PremiumPressable onPress={() => navigation.goBack()}>
                 <Text style={{ color: palette.subtleText, fontWeight: '600' }}>Cancel</Text>
             </PremiumPressable>
+            <Text style={{ fontWeight: '700', fontSize: 16, color: palette.text }}>Edit Entry</Text>
             <PremiumPressable 
-              onPress={handlePost} 
+              onPress={handleSave} 
               disabled={isSubmitting}
-              style={[styles.postBtn, { backgroundColor: palette.accent, opacity: isSubmitting ? 0.7 : 1 }]}
+              style={[styles.saveBtn, { backgroundColor: palette.accent, opacity: isSubmitting ? 0.7 : 1 }]}
             >
                 {isSubmitting ? (
                   <ActivityIndicator color="white" size="small" />
                 ) : (
-                  <Text style={styles.postText}>{isEditing ? "Update" : "Post"}</Text>
+                  <Text style={styles.saveText}>Save</Text>
                 )}
             </PremiumPressable>
           </View>
@@ -160,12 +122,12 @@ userId: user?.uid,
           <ScrollView contentContainerStyle={{ padding: 16 }}>
             <TextInput
               style={[styles.input, { color: palette.text }]}
-              placeholder="Write something for the group..."
+              placeholder="What's on your mind?"
               placeholderTextColor={palette.subtleText}
               multiline
               value={text}
               onChangeText={setText}
-              autoFocus={!imageUri}
+              autoFocus={false}
             />
 
             {/* IMAGE PREVIEW */}
@@ -183,7 +145,7 @@ userId: user?.uid,
           <View style={[styles.toolbar, { borderTopColor: palette.border }]}>
             <PremiumPressable onPress={pickImage} style={[styles.mediaBtn, { backgroundColor: palette.card }]}>
               <Camera size={20} color={palette.accent} />
-              <Text style={{ color: palette.accent, fontWeight: '600' }}>Add Photo</Text>
+              <Text style={{ color: palette.accent, fontWeight: '600' }}>{imageUri ? "Change Photo" : "Add Photo"}</Text>
             </PremiumPressable>
           </View>
 
@@ -196,9 +158,9 @@ userId: user?.uid,
 const styles = StyleSheet.create({
   container: { flex: 1 },
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 16, borderBottomWidth: 1, borderBottomColor: 'rgba(0,0,0,0.05)' },
-  postBtn: { paddingVertical: 8, paddingHorizontal: 16, borderRadius: 20, minWidth: 70, alignItems: 'center', justifyContent: 'center' },
-  postText: { color: 'white', fontWeight: '700' },
-  input: { flex: 1, padding: 20, fontSize: 18, lineHeight: 28, textAlignVertical: 'top' },
+  saveBtn: { paddingVertical: 8, paddingHorizontal: 16, borderRadius: 20, minWidth: 70, alignItems: 'center', justifyContent: 'center' },
+  saveText: { color: 'white', fontWeight: '700' },
+  input: { flex: 1, padding: 10, fontSize: 18, lineHeight: 28, textAlignVertical: 'top' },
   toolbar: { padding: 12, borderTopWidth: 1 },
   mediaBtn: { flexDirection: 'row', alignItems: 'center', gap: 8, padding: 12, borderRadius: 12, alignSelf: 'flex-start' },
   previewImage: { width: '100%', height: 250, borderRadius: 12 },

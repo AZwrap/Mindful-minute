@@ -469,11 +469,19 @@ return (
            <Text style={[styles.date, { color: palette.subtleText }]}>{dateStr}</Text>
            <Text style={[styles.author, { color: palette.accent }]}>By {entry.authorName || 'Anonymous'}</Text>
 
-           {entry.imageUri && (
-             <Image source={{ uri: entry.imageUri }} style={styles.image} resizeMode="cover" />
+{/* Render image preview (Check both root and nested object) */}
+           {(entry.imageUri || (typeof entry.text === 'object' && entry.text?.imageUri)) && (
+             <Image 
+               source={{ uri: entry.imageUri || entry.text?.imageUri }} 
+               style={styles.image} 
+               resizeMode="cover" 
+             />
            )}
 
-           <Text style={[styles.text, { color: palette.text }]}>{entry.text}</Text>
+           {/* SAFEGUARD: Handle corrupted text objects */}
+           <Text style={[styles.text, { color: palette.text }]}>
+             {typeof entry.text === 'object' ? (entry.text?.text || '') : entry.text}
+           </Text>
            
 {/* REACTIONS */}
            <View style={[styles.reactionRow, { borderColor: palette.border }]}>

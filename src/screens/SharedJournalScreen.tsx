@@ -92,11 +92,15 @@ const entries = sharedEntries[journalId] || [];
 
     if (!searchText.trim()) return validEntries;
     
-    const term = searchText.toLowerCase();
-    return validEntries.filter(e => 
-      (e.text && e.text.toLowerCase().includes(term)) || 
-      (e.authorName && e.authorName.toLowerCase().includes(term))
-    );
+const term = searchText.toLowerCase();
+    return validEntries.filter(e => {
+      // SAFEGUARD: Handle if text is accidentally an object
+      const rawText = typeof e.text === 'object' ? (e.text?.text || '') : e.text;
+      return (
+        (rawText && rawText.toLowerCase().includes(term)) || 
+        (e.authorName && e.authorName.toLowerCase().includes(term))
+      );
+    });
   }, [entries, searchText]);
 
 // Load journal data on mount
@@ -357,8 +361,9 @@ return (
              </View>
           )}
         </View>
-<Text style={[styles.entryText, { color: palette.text }]} numberOfLines={3}>
-          {item.text}
+{/* SAFEGUARD: Handle corrupted text objects */}
+        <Text style={[styles.entryText, { color: palette.text }]} numberOfLines={3}>
+          {typeof item.text === 'object' ? (item.text?.text || '') : item.text}
         </Text>
         
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
@@ -382,10 +387,10 @@ return (
           </Text>
         </View>
         
-{/* Render image preview if exists */}
-        {item.imageUri && (
+{/* Render image preview (Check both root and nested object) */}
+        {(item.imageUri || (typeof item.text === 'object' && item.text?.imageUri)) && (
           <Image 
-            source={{ uri: item.imageUri }} 
+            source={{ uri: item.imageUri || item.text?.imageUri }} 
             style={{ width: '100%', height: 150, borderRadius: 8, marginTop: 12 }} 
             resizeMode="cover"
           />
