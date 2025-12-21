@@ -21,11 +21,12 @@ const openSettings = () => {
 
 export async function registerForPushNotificationsAsync() {
   if (Platform.OS === 'android') {
-    try {
-      await Notifications.setNotificationChannelAsync('daily-reminders', {
+try {
+      // NOTE: Changed ID to force update on Android
+      await Notifications.setNotificationChannelAsync('daily-reminders-subtle', {
         name: 'Daily Reminders',
         importance: Notifications.AndroidImportance.MAX,
-        vibrationPattern: [0, 250, 250, 250],
+        vibrationPattern: [0, 100, 100, 100], // Soft "bip-bip"
         lightColor: '#6366F1',
         sound: 'default',
       });
@@ -60,16 +61,21 @@ export async function scheduleDailyReminder(hour: number, minute: number) {
     const hasPermission = await registerForPushNotificationsAsync();
     if (!hasPermission) return;
 
-    // NUCLEAR CANCELLATION: Explicitly find and kill all existing schedules
-    // This fixes the "Duplicate" bug where cancelAll() sometimes fails silently on Android
-    const scheduled = await Notifications.getAllScheduledNotificationsAsync();
-for (const n of scheduled) {
+// 1. NUCLEAR CLEANUP
+    // Remove alerts already in the tray (fixes "Wrong Screen" from old notifications)
+    await Notifications.dismissAllNotificationsAsync(); 
+    
+    // Cancel all future schedules
+    await Notifications.cancelAllScheduledNotificationsAsync();
+
+    // Safety Delay: Give Android 1 second to fully clear the queue
+    await new Promise(resolve => setTimeout(resolve, 1000));
+
+    // Double Check: explicitly kill anything that survived
+    const zombies = await Notifications.getAllScheduledNotificationsAsync();
+    for (const n of zombies) {
       await Notifications.cancelScheduledNotificationAsync(n.identifier);
     }
-    await Notifications.cancelAllScheduledNotificationsAsync(); // Double tap
-
-    // SAFETY: Wait 500ms to ensure Android processes the cancellations before adding new ones
-    await new Promise(resolve => setTimeout(resolve, 500));
 
     const h = Math.floor(hour);
     const m = Math.floor(minute);
@@ -92,15 +98,15 @@ for (const n of scheduled) {
                     body: "It's time for your daily reflection.",
                     sound: true,
                     priority: Notifications.AndroidNotificationPriority.MAX,
-                    // FORCE HOME NAVIGATION
+// FORCE HOME NAVIGATION
                     data: { screen: 'Home' },
-                    ...(Platform.OS === 'android' ? { channelId: 'daily-reminders' } : {}),
+                    ...(Platform.OS === 'android' ? { channelId: 'daily-reminders-subtle' } : {}),
                 },
                 trigger: {
                     type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
                     seconds: Math.floor(diffSeconds),
                     repeats: false,
-                    channelId: 'daily-reminders', 
+                    channelId: 'daily-reminders-subtle', 
                 },
             });
             scheduledCount++;
@@ -127,16 +133,16 @@ export async function sendTestNotification() {
     await Notifications.scheduleNotificationAsync({
       content: {
         title: "Test Notification",
-        body: "Notifications are working!",
+body: "Notifications are working!",
         sound: true,
         priority: Notifications.AndroidNotificationPriority.MAX,
-        ...(Platform.OS === 'android' ? { channelId: 'daily-reminders' } : {}),
+        ...(Platform.OS === 'android' ? { channelId: 'daily-reminders-subtle' } : {}),
       },
       trigger: {
         type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
         seconds: 2,
         repeats: false,
-        channelId: 'daily-reminders',
+        channelId: 'daily-reminders-subtle',
       },
     });
   } catch (e: any) {
@@ -186,10 +192,10 @@ export async function sendImmediateNotification(title: string, body: string, dat
       content: { 
         title, 
         body, 
-        data,
+data,
         sound: true,
         priority: Notifications.AndroidNotificationPriority.HIGH,
-        ...(Platform.OS === 'android' ? { channelId: 'daily-reminders' } : {}),
+        ...(Platform.OS === 'android' ? { channelId: 'daily-reminders-subtle' } : {}),
       },
       trigger: null,
     });

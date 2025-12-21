@@ -35,26 +35,45 @@ export default function App() {
     return unsubscribe;
   }, []);
 
-// Listen for notification taps
+// Listen for notification taps (With Cold Start Fix)
   useEffect(() => {
     const subscription = Notifications.addNotificationResponseReceivedListener(response => {
       const data = response.notification.request.content.data;
 
-      // 1. Handle Home Navigation (Daily Reminders)
-      if (data?.screen === 'Home' && navigationRef.isReady()) {
-        navigationRef.navigate('MainTabs' as any);
+// 1. Handle Home Navigation (Daily Reminders)
+      if (data?.screen === 'Home') {
+        // TARGET: Explicitly switch to 'Today' tab -> 'HomeScreen'
+        const target = {
+          screen: 'Today',
+          params: { screen: 'HomeScreen' }
+        };
+
+        if (navigationRef.isReady()) {
+           navigationRef.navigate('MainTabs', target as any);
+        } else {
+           // RETRY: If app is waking up, wait 500ms and try again
+           setTimeout(() => {
+             if (navigationRef.isReady()) navigationRef.navigate('MainTabs', target as any);
+           }, 500);
+        }
         return;
       }
 
       // 2. Handle Journal Navigation
-if (data?.journalId && navigationRef.isReady()) {
-        navigationRef.navigate('MainTabs', {
-          screen: 'Today',
-          params: {
-            screen: 'SharedJournal',
-            params: { journalId: data.journalId }
-          }
-        } as any);
+      if (data?.journalId) {
+         const target = {
+            screen: 'Today',
+            params: { screen: 'SharedJournal', params: { journalId: data.journalId } }
+         };
+         
+         if (navigationRef.isReady()) {
+            navigationRef.navigate('MainTabs', target as any);
+         } else {
+            // RETRY: If app is waking up, wait 500ms and try again
+            setTimeout(() => {
+               if (navigationRef.isReady()) navigationRef.navigate('MainTabs', target as any);
+            }, 500);
+         }
       }
     });
 

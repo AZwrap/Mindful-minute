@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { useColorScheme } from 'react-native';
 import { onAuthStateChanged } from 'firebase/auth';
 import { auth } from '../firebaseConfig'; 
@@ -42,25 +42,44 @@ export function useAppInitialization() {
     },
   };
 
-// 3. Notifications (Schedule Only - Tap handled in App.tsx)
-  useEffect(() => {
-    // A. Manage Schedule based on Settings
-    const manageSchedule = async () => {
-      if (smartRemindersEnabled) {
-        const token = await registerForPushNotificationsAsync();
-        if (token !== undefined) {
-          const { hour, minute } = reminderTime || { hour: 20, minute: 0 };
-          await scheduleDailyReminder(hour, minute);
-        }
-      } else {
-        await cancelDailyReminders();
-      }
-    };
+// 3. Notifications (Debounced Schedule)
+  // We use a ref to track the timer so it persists across re-renders
+  const scheduleTimeout = useRef<any>(null);
 
-if (settingsLoaded) {
-      manageSchedule();
+  useEffect(() => {
+    // 1. CLEAR any pending schedule from the previous millisecond
+    if (scheduleTimeout.current) {
+      clearTimeout(scheduleTimeout.current);
     }
-  }, [smartRemindersEnabled, reminderTime, settingsLoaded]);
+
+    // 2. SET A NEW TIMER
+    // We wait 2 seconds. If another update comes in (e.g. settings loading),
+    // this timer gets killed and a new one starts. Only the LAST one survives.
+    if (settingsLoaded) {
+      scheduleTimeout.current = setTimeout(async () => {
+        try {
+          if (smartRemindersEnabled) {
+            const token = await registerForPushNotificationsAsync();
+            if (token !== undefined) {
+              const { hour, minute } = reminderTime || { hour: 20, minute: 0 };
+              await scheduleDailyReminder(hour, minute);
+            }
+          } else {
+            await cancelDailyReminders();
+          }
+        } catch (e) {
+          console.warn("Debounced schedule failed:", e);
+        }
+      }, 2000); // 2000ms delay to let app settle completely
+    }
+
+    // Cleanup: Kill timer if component unmounts
+    return () => {
+      if (scheduleTimeout.current) clearTimeout(scheduleTimeout.current);
+    };
+    
+    // FIX: Depend on specific values (hour/minute) to avoid object-reference loops
+  }, [smartRemindersEnabled, reminderTime?.hour, reminderTime?.minute, settingsLoaded]);
 
   // 4. Auto-Sync Personal Entries on Start
   useEffect(() => {
