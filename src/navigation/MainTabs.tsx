@@ -19,8 +19,18 @@ const Tab = createBottomTabNavigator();
 const HomeStack = createNativeStackNavigator();
 
 function HomeStackNavigator() {
+  // Fix: Get palette here to set the container background (prevents white flash on swipe)
+  const palette = useSharedPalette();
+  
   return (
-    <HomeStack.Navigator screenOptions={{ headerShown: false, animation: 'slide_from_right' }}>
+    <HomeStack.Navigator 
+      initialRouteName="HomeScreen" 
+      screenOptions={{ 
+        headerShown: false, 
+        animation: 'slide_from_right',
+        contentStyle: { backgroundColor: palette.bg } // <--- The Magic Fix
+      }}
+    >
       <HomeStack.Screen name="HomeScreen" component={HomeScreen} />
       {/* ONLY these two are added here to keep the Tab Bar visible */}
       <HomeStack.Screen name="JournalList" component={require('../screens/JournalListScreen').default} />

@@ -47,10 +47,11 @@ interface JournalActions {
   joinJournal: (journalId: string, memberName?: string) => Promise<boolean>;
   restoreJournals: () => Promise<number>;
   subscribeToJournal: (journalId: string) => void;
-  subscribeToAllJournals: () => void; // <--- ADDED: Missing function
+subscribeToAllJournals: () => void; 
   deleteSharedEntry: (journalId: string, entryId: string) => Promise<void>;
+  updateSharedEntry: (journalId: string, entryId: string, updates: any) => Promise<void>; // <--- ADDED THIS
   toggleCommentReaction: (journalId: string, entryId: string, commentId: string, userId: string, emoji: string) => Promise<void>;
-  setSharedEntries: (journalId: string, entries: any[]) => void; 
+  setSharedEntries: (journalId: string, entries: any[]) => void;
   addSharedEntry: (entry: any) => Promise<void>; 
   updateJournalMeta: (journalId: string, data: any) => void;
   setMemberNickname: (journalId: string, userId: string, nickname: string) => void; // <--- Added
@@ -260,7 +261,28 @@ if (latest) {
             }));
         }
 
-        await JournalService.addEntry(targetId, entry);
+await JournalService.addEntry(targetId, entry);
+      },
+
+// NEW: Handle Updates
+      updateSharedEntry: async (journalId, entryId, updates) => {
+        // 1. Optimistic Update
+        set((state) => {
+           const list = state.sharedEntries?.[journalId] || [];
+           // Triple check the '...updates' part below:
+           const updatedList = list.map(e => e.entryId === entryId ? { ...e, ...updates } : e);
+           return {
+              sharedEntries: { ...(state.sharedEntries || {}), [journalId]: updatedList }
+           };
+        });
+
+        // 2. Network Request
+        try {
+           await JournalService.updateEntry(journalId, entryId, updates);
+        } catch (e) {
+           console.error("Update failed:", e);
+           throw e; 
+        }
       },
 
       deleteSharedEntry: async (journalId, entryId) => {

@@ -88,9 +88,12 @@ const pickImage = () => {
     navigation.goBack();
 
     try {
-      if (isEditing) {
-        // UPDATE MODE
-        await updateSharedEntry(journalId, entry.entryId, text.trim(), imageUri);
+if (isEditing) {
+        // UPDATE MODE (Pass updates as an object)
+        await updateSharedEntry(journalId, entry.entryId, { 
+          text: text.trim(), 
+          imageUri: imageUri 
+        });
       } else {
         // CREATE
         const user = auth.currentUser;
