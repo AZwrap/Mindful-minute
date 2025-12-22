@@ -6,13 +6,19 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { Camera, XCircle } from 'lucide-react-native'; // Icons
 import * as ImagePicker from 'expo-image-picker'; // Image Picker
+import * as FileSystem from 'expo-file-system/legacy';
 
 import { RootStackParamList } from '../navigation/RootStack';
 import { useJournalStore } from '../stores/journalStore';
 import { auth } from '../firebaseConfig';
 import { useEntriesStore } from '../stores/entriesStore';
+
+import { useSettings } from '../stores/settingsStore';
 import { useSharedPalette } from '../hooks/useSharedPalette';
+import { Lock } from 'lucide-react-native';
 import { sendImmediateNotification } from '../lib/notifications';
+import { moderateContent, moderateImage, moderateAudio } from '../lib/moderation';
+import AudioRecorder from '../components/AudioRecorder';
 import PremiumPressable from '../components/PremiumPressable';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'SharedWrite'>;
@@ -29,13 +35,31 @@ export default function SharedWriteScreen({ navigation, route }: Props) {
   // State
   const [text, setText] = useState(rawText);
   const [imageUri, setImageUri] = useState<string | null>(rawImage);
+  const [audioUri, setAudioUri] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   
-  const palette = useSharedPalette();
+const palette = useSharedPalette();
   const { addSharedEntry, updateSharedEntry } = useJournalStore();
+
+  // --- QUOTA SETTINGS ---
+  const { 
+    isPremium, 
+    freeImageCount, 
+    freeAudioCount, 
+    incrementImageCount, 
+    incrementAudioCount 
+  } = useSettings();
+  const IMAGE_LIMIT = 5;
+  const AUDIO_LIMIT = 5;
   
   // --- IMAGE LOGIC (Base64 for Alpha) ---
 const pickImage = () => {
+    // 1. CHECK QUOTA
+    if (!isPremium && freeImageCount >= IMAGE_LIMIT) {
+        showAlert("Premium Limit Reached", `You have used ${IMAGE_LIMIT}/${IMAGE_LIMIT} free photos. Upgrade to Premium to share unlimited moments!`);
+        return;
+    }
+
     showAlert(
       "Add Photo",
       "Capture a moment or choose from your gallery.",
@@ -82,55 +106,73 @@ const pickImage = () => {
     );
   };
 
-  const handlePost = async () => {
-    if ((!text.trim() && !imageUri) || isSubmitting) return;
+const handlePost = async () => {
+      // Check if we have *something* to post
+    if ((!text.trim() && !imageUri && !audioUri) || isSubmitting) return;
 
-    // 1. Lock UI
     setIsSubmitting(true);
 
-    // 2. Optimistic Navigation: Go back IMMEDIATELY.
-    // The upload will continue in the background.
+    // --- A. MODERATION ---
+    // 1. Check Text
+    const isTextSafe = await moderateContent(text);
+    if (!isTextSafe) { setIsSubmitting(false); return; }
+
+    // 2. Check Image
+    if (imageUri) {
+        const isImageSafe = await moderateImage(imageUri);
+        if (!isImageSafe) { setIsSubmitting(false); return; }
+    }
+
+    // 3. Check Audio
+    if (audioUri) {
+        const { safe } = await moderateAudio(audioUri);
+        if (!safe) { setIsSubmitting(false); return; }
+    }
+    // ---------------------
+
+    // --- B. PREPARE DATA ---
+    // Convert Audio to Base64 (so it can be saved in Firestore)
+    let finalAudio = null;
+// Only convert if it's a new recording (starts with file://)
+    if (audioUri && audioUri.startsWith('file://')) {
+        try {
+            // FIX: Use 'base64' string directly
+            const base64 = await FileSystem.readAsStringAsync(audioUri, { encoding: 'base64' });
+            finalAudio = `data:audio/m4a;base64,${base64}`;
+        } catch (e) {
+            console.error("Audio conversion failed:", e);
+        }
+    }
+
+    // 2. Optimistic Navigation
     navigation.goBack();
 
     try {
-if (isEditing) {
-        // 1. Update Shared Entry (Cloud + Journal Store)
-        await updateSharedEntry(journalId, entry.entryId, { 
-          text: text.trim(), 
-          imageUri: imageUri 
-        });
+      const user = auth.currentUser;
+      const authorName = user?.displayName || 'Anonymous';
 
-        // 2. Sync Back to Local Entry (if linked)
-        // This ensures your personal "Entry of the Day" matches what you just edited
-        if (entry.originalDate) {
-            const localEntry = useEntriesStore.getState().entries[entry.originalDate];
-            if (localEntry) {
-                useEntriesStore.getState().upsert({
-                    ...localEntry,
-                    text: text.trim(),
-                    imageUri: imageUri
-                });
-            }
-        }
-      } else {
-        // CREATE
-        const user = auth.currentUser;
-        const authorName = user?.displayName || user?.email?.split('@')[0] || 'Anonymous';
-
-await addSharedEntry({
+      const entryData = {
           text: text.trim(),
-          imageUri, // Add Image
+          imageUri: imageUri, // Already Base64 from picker
+          audioUri: finalAudio, // <--- SAVING AUDIO HERE
           authorName,
-userId: user?.uid,
+          userId: user?.uid,
           journalId,
-        });
+      };
+
+if (isEditing) {
+        await updateSharedEntry(journalId, entry.entryId, entryData);
+      } else {
+        await addSharedEntry(entryData);
+        
+        // --- INCREMENT QUOTA (New Posts Only) ---
+        if (imageUri) incrementImageCount();
+        if (finalAudio) incrementAudioCount();
       }
       
-      // Notification removed (User is already in the app, no need to notify)
-      
     } catch (e) {
-      console.error("Post failed in background:", e);
-      sendImmediateNotification("Post Failed", "Your entry could not be saved. Please try again.");
+      console.error("Post failed:", e);
+      sendImmediateNotification("Post Failed", "Could not save entry.");
     }
   };
 
@@ -177,6 +219,32 @@ userId: user?.uid,
                 </Pressable>
               </View>
             )}
+
+{/* 3. AUDIO PREVIEW OR LOCKED STATE */}
+            <View style={{ paddingHorizontal: 20, marginBottom: 16, marginTop: 16 }}>
+              {(!isPremium && freeAudioCount >= AUDIO_LIMIT && !audioUri) ? (
+                 <PremiumPressable 
+                    onPress={() => showAlert("Premium Limit Reached", `You have used ${AUDIO_LIMIT}/${AUDIO_LIMIT} free voice notes. Upgrade to Premium to record more!`)}
+                    style={{ 
+                        flexDirection: 'row', alignItems: 'center', gap: 12,
+                        padding: 16, borderRadius: 12, backgroundColor: palette.card, borderWidth: 1, borderColor: palette.border 
+                    }}
+                 >
+                    <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(239, 68, 68, 0.1)', alignItems: 'center', justifyContent: 'center' }}>
+                        <Lock size={20} color="#EF4444" />
+                    </View>
+                    <View>
+                        <Text style={{ color: palette.text, fontWeight: '600' }}>Voice Notes Locked</Text>
+                        <Text style={{ color: palette.subtleText, fontSize: 12 }}>Free limit reached ({AUDIO_LIMIT}/{AUDIO_LIMIT})</Text>
+                    </View>
+                 </PremiumPressable>
+              ) : (
+                <AudioRecorder 
+                  onRecordingComplete={setAudioUri} 
+                  existingUri={audioUri}
+                />
+              )}
+            </View>
           </ScrollView>
 
           {/* TOOLBAR */}

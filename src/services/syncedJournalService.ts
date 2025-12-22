@@ -348,3 +348,4 @@ export async function updateUserNameInJournals(userId: string, newName: string):
   
   await Promise.all(batchUpdates);
 }
+

@@ -34,7 +34,7 @@ ChevronDown, ChevronUp, Palette, Cloud, CloudDownload, Bell, Lock, Zap, Volume2,
 MessageSquare, Gift, UserX, Shield
 } from 'lucide-react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { updateProfile, signOut } from 'firebase/auth';
+import { updateProfile, signOut, deleteUser } from 'firebase/auth';
 import { auth } from '../firebaseConfig';
 
 // Stores & Config
@@ -44,6 +44,7 @@ import { useJournalStore } from '../stores/journalStore';
 import { useTheme, ThemeType } from "../stores/themeStore";
 import { useWritingSettings } from "../stores/writingSettingsStore";
 import { updateUserNameInJournals } from '../services/syncedJournalService'; // <--- Added
+import { moderateContent } from '../lib/moderation';
 import { saveBackupToCloud, restoreBackupFromCloud } from '../services/cloudBackupService';
 import { updateUserPhotoInJournals } from '../services/syncedJournalService'; // <--- Added
 import { MediaService } from '../services/mediaService'; // <--- Added
@@ -51,7 +52,7 @@ import { analyzeWritingAnalytics } from '../constants/writingAnalytics';
 import { scheduleDailyReminder, cancelDailyReminders } from '../lib/notifications';
 import { exportBulkEntries } from '../utils/exportHelper';
 import DateTimePickerModal from "react-native-modal-datetime-picker";
-import { RootStackParamList } from '../navigation/RootStack';
+import { RootStackParamList } from '../navigation/types';
 import { useSharedPalette } from '../hooks/useSharedPalette';
 
 // Components
@@ -72,7 +73,9 @@ const APP_COLORS = [
   '#8B5CF6', // Violet
 ];
 
-type Props = NativeStackScreenProps<RootStackParamList, 'Settings'>;
+// CORRECTION: Create a local type to guarantee Settings exists
+type LocalParamList = RootStackParamList & { Settings: undefined };
+type Props = NativeStackScreenProps<LocalParamList, 'Settings'>;
 
 export default function SettingsScreen({ navigation }: Props) {
   const systemScheme = useColorScheme();
@@ -82,9 +85,18 @@ export default function SettingsScreen({ navigation }: Props) {
   const isDark = currentTheme === 'dark';
   const palette = useSharedPalette();
 
-  // FIX: Get Store actions via Hook (Prevents "undefined" error)
+// FIX: Get Store actions via Hook (Prevents "undefined" error)
   const updateJournalMeta = useJournalStore(state => state.updateJournalMeta);
   const allJournals = useJournalStore(state => state.journals);
+
+  // BLOCKED USERS (Multi-user fix)
+  const { blockedUsers: allBlockedMap, unblockUser } = useJournalStore();
+  const currentUser = auth.currentUser?.uid || '';
+  
+  // Derive list specific to this user (Safe check for Map vs Array)
+  const blockedUserIds = Array.isArray(allBlockedMap) 
+      ? [] 
+      : (allBlockedMap[currentUser] || []);
   
   const loaded = useSettings((s) => s.loaded);
   
@@ -101,10 +113,11 @@ export default function SettingsScreen({ navigation }: Props) {
 preserveTimerProgress, setPreserveTimerProgress,
 gratitudeModeEnabled, setGratitudeModeEnabled,
     zenModeEnabled, setZenModeEnabled,
-    isBiometricsEnabled, setIsBiometricsEnabled,
+isBiometricsEnabled, setIsBiometricsEnabled,
 smartRemindersEnabled, setSmartRemindersEnabled,
     reminderTime, setReminderTime,
-    isPremium // <--- Get isPremium
+    // Removed blocked actions from here
+    isPremium 
   } = useSettings();
 
   const entriesMap = useEntriesStore((s) => s.entries);
@@ -168,14 +181,23 @@ const handlePickAvatar = async () => {
     }
   };
 
-  const handleUpdateProfile = async () => {
+const handleUpdateProfile = async () => {
     if (!auth.currentUser) {
       showAlert("Not Signed In", "You must be signed in to set a profile name.");
       return;
     }
-    if (!displayName.trim()) return;
+    const cleanName = displayName.trim();
+    if (!cleanName) return;
 
-setIsUpdatingProfile(true);
+    setIsUpdatingProfile(true);
+
+    // --- MODERATION CHECK ---
+    const isSafe = await moderateContent(cleanName);
+    if (!isSafe) {
+      setIsUpdatingProfile(false);
+      return; 
+    }
+    // ------------------------
     try {
       let finalPhotoUrl = auth.currentUser?.photoURL;
 
@@ -329,7 +351,7 @@ setIsUpdatingProfile(true);
 
   const entries = useMemo(() => {
     return Object.entries(entriesMap || {}).sort((a, b) => (a[0] < b[0] ? 1 : -1))
-      .map(([date, entry]) => ({ date, ...entry }));
+.map(([date, entry]) => ({ ...entry, date }));
   }, [entriesMap]);
 
   // --- ACTIONS ---
@@ -367,7 +389,9 @@ const handleBulkExport = () => {
 
   const handleBackup = async () => {
     const data = JSON.stringify(useEntriesStore.getState().entries);
-    const fileUri = FileSystem.documentDirectory + `backup-${Date.now()}.json`;
+// Force TypeScript to accept documentDirectory exists
+const docDir = (FileSystem as any).documentDirectory; 
+const fileUri = docDir + `backup-${Date.now()}.json`;
     await FileSystem.writeAsStringAsync(fileUri, data);
     if (await Sharing.isAvailableAsync()) { await Sharing.shareAsync(fileUri); }
   };
@@ -579,9 +603,9 @@ const SettingRow = ({ label, description, value, onValueChange, icon }: any) => 
 
   return (
     <View style={{ flex: 1, backgroundColor: palette.bg }}>
-      <LinearGradient
-        colors={currentGradient.primary}
-        style={styles.container}
+<LinearGradient
+          colors={currentGradient.primary as any} // <--- Fix: Cast to any
+          style={styles.container}
         start={{ x: 0, y: 0 }}
         end={{ x: 0, y: 1 }}
       >
@@ -889,16 +913,6 @@ const SettingRow = ({ label, description, value, onValueChange, icon }: any) => 
                 />
               </View>
 
-              {/* 3. SECURITY CARD */}
-              <View style={[styles.card, { backgroundColor: palette.card, borderColor: palette.border }]}>
-                <Text style={[styles.title, { color: palette.text }]}>Security</Text>
-                <SettingRow 
-                    label="Biometric Lock" 
-                    value={isBiometricsEnabled} 
-                    onValueChange={(val: boolean) => { setIsBiometricsEnabled(val); if (val && hapticsEnabled) Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success); }} 
-                />
-              </View>
-
               {/* 3. SESSION SETTINGS */}
               <View style={[styles.card, { backgroundColor: palette.card, borderColor: palette.border }]}>
                 <Text style={[styles.title, { color: palette.text }]}>Session Configuration</Text>
@@ -1074,6 +1088,57 @@ const SettingRow = ({ label, description, value, onValueChange, icon }: any) => 
                   })()}
                 />
               </View>
+
+              {/* 3. SECURITY CARD */}
+              <View style={[styles.card, { backgroundColor: palette.card, borderColor: palette.border }]}>
+                <Text style={[styles.title, { color: palette.text }]}>Security</Text>
+                <SettingRow 
+                    label="Biometric Lock" 
+                    value={isBiometricsEnabled} 
+                    onValueChange={(val: boolean) => { setIsBiometricsEnabled(val); if (val && hapticsEnabled) Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success); }} 
+                />
+              </View>
+
+              {/* BLOCKED USERS CARD (Only shows if users are blocked) */}
+{blockedUserIds && blockedUserIds.length > 0 && (
+                <View style={[styles.card, { backgroundColor: palette.card, borderColor: palette.border }]}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+                    <Shield size={18} color={palette.accent} />
+                    <Text style={[styles.title, { color: palette.text, marginBottom: 0 }]}>Blocked Users</Text>
+                  </View>
+                  
+                  {/* Deduplicate list before rendering to fix crash */}
+                  {Array.from(new Set(blockedUserIds)).map((uid: string) => {
+                    // Helper: Try to find their real name from your shared journals
+                    let userName = "Unknown User";
+                    if (allJournals) {
+                        for (const j of Object.values(allJournals)) {
+                           if (j.membersMap?.[uid]) {
+                             userName = j.membersMap[uid];
+                             break;
+                           }
+                        }
+                    }
+
+                    return (
+                      <View key={uid} style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 8 }}>
+                        <Text style={{ flex: 1, color: palette.text, fontSize: 14, fontWeight: '500' }}>
+                          {userName}
+                        </Text>
+<PremiumPressable 
+                          onPress={() => {
+                              unblockUser(currentUser, uid); // Pass Current User ID
+                              showToast(`Unblocked ${userName}`);
+                          }}
+                          style={{ backgroundColor: palette.border, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8 }}
+                        >
+                          <Text style={{ fontSize: 12, fontWeight: '600', color: palette.text }}>Unblock</Text>
+                        </PremiumPressable>
+                      </View>
+                    );
+                  })}
+                </View>
+              )}
 
               {/* 5. DATA & PRIVACY */}
               <View style={[styles.section, { marginTop: 8 }]}>

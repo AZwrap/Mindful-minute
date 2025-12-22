@@ -9,6 +9,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useEntriesStore } from '../stores/entriesStore';
 import { useSettings } from '../stores/settingsStore';
 import * as Haptics from 'expo-haptics';
+import { useUIStore } from '../stores/uiStore';
 import { useProgress } from '../stores/progressStore';
 import { useCustomization } from '../stores/customizationStore';
 import { useTheme } from '../stores/themeStore';
@@ -26,6 +27,7 @@ const moodOptions = ['Calm','Grateful','Anxious','Focused','Happy','Reflective',
 export default function MoodTagScreen({ navigation, route }) {
   const systemScheme = useColorScheme();
 const { getCurrentTheme, accentColor } = useTheme();
+const { showAlert } = useUIStore();
   const currentTheme = getCurrentTheme(systemScheme);
   const isDark = currentTheme === 'dark';
   const { date, prompt, text, suggestedMood, initialMood } = route.params || {};
@@ -159,7 +161,7 @@ async function handleSave() {
       
       // 1. Validation
       if (!text?.trim()) {
-        Alert.alert('Missing Reflection', 'Please go back and write something before saving.', [
+        showAlert('Missing Reflection', 'Please go back and write something before saving.', [
           { text: 'Go Back', onPress: () => navigation.goBack() },
           { text: 'Cancel', style: 'cancel' }
         ]);
@@ -168,7 +170,7 @@ async function handleSave() {
 
       const mood = selectedMood || customMood.trim();
       if (!mood) {
-        Alert.alert('Select a Mood', 'Please choose how you are feeling before saving.', [{ text: 'OK' }]);
+        showAlert('Select a Mood', 'Please choose how you are feeling before saving.', [{ text: 'OK' }]);
         return;
       }
 

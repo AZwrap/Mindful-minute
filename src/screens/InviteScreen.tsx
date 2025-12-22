@@ -19,6 +19,7 @@ import { useUIStore } from "../stores/uiStore";
 import { auth } from "../firebaseConfig";
 import { createSharedJournal, joinSharedJournal } from "../services/syncedJournalService";
 import * as Clipboard from 'expo-clipboard';
+import { moderateContent } from '../lib/moderation';
 
 // --------------------------------------------------
 // TYPES
@@ -51,10 +52,27 @@ export default function InviteScreen({ navigation }: Props) {
 const handleCreate = async () => {
     if (!name.trim()) return;
     setIsCreating(true);
+    
+    // 1. Moderate Journal Name
+    const isNameSafe = await moderateContent(name);
+    if (!isNameSafe) {
+        setIsCreating(false); 
+        return; 
+    }
+
+    // 2. Moderate User Name (Gatekeeper)
+    const userName = auth.currentUser?.displayName || "Founder";
+    const isUserSafe = await moderateContent(userName, true); // Silent check
+    if (!isUserSafe) {
+        setIsCreating(false);
+        showAlert("Profile Name Flagged", "Your username contains restricted content. Please change it in Settings before creating a group.");
+        return;
+    }
+
     try {
       if (!auth.currentUser) throw new Error("Not logged in");
       // Pass the Display Name to be saved in membersMap
-      const id = await createSharedJournal(name, auth.currentUser.uid, auth.currentUser.displayName || "Founder");
+      const id = await createSharedJournal(name, auth.currentUser.uid, userName);
       navigation.goBack();
       showAlert("Success", `Journal created! ID: ${id}`);
 } catch (e) {
@@ -68,15 +86,34 @@ const handleCreate = async () => {
 const handleJoin = async () => {
     if (!joinCode.trim()) return;
     setIsJoining(true);
+
+    // 1. Moderate User Name (Gatekeeper)
+    // We don't check joinCode because it's usually just an ID, but we MUST check the user entering.
+    const userName = auth.currentUser?.displayName || "Member";
+    const isUserSafe = await moderateContent(userName, true); // Silent check
+    if (!isUserSafe) {
+        setIsJoining(false);
+        showAlert("Profile Name Flagged", "Your username contains restricted content. Please change it in Settings before joining a group.");
+        return;
+    }
+
     try {
       if (!auth.currentUser) throw new Error("Not logged in");
       // Pass the Display Name to be saved in membersMap
-      await joinSharedJournal(joinCode.trim(), auth.currentUser.uid, auth.currentUser.displayName || "Member");
+      await joinSharedJournal(joinCode.trim(), auth.currentUser.uid, userName);
       navigation.goBack();
       showAlert("Success", "Joined journal!");
 } catch (e: any) {
-      console.error("Join Journal Error:", e);
-      showAlert("Error", e.message || "Failed to join journal.");
+      // 1. Detect "Not Found" error specifically
+      const isNotFound = e.message?.includes("exist") || e.message?.includes("found");
+      
+      const userTitle = isNotFound ? "Journal Not Found" : "Join Failed";
+      const userMessage = isNotFound 
+        ? "We couldn't find a group with that ID. Please check the code." 
+        : (e.message || "Something went wrong.");
+
+      // 2. Show ONLY the Global Alert (Removed console.error to hide the bottom LogBox)
+      showAlert(userTitle, userMessage);
     } finally {
       setIsJoining(false);
     }

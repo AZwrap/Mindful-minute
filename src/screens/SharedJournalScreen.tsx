@@ -6,12 +6,13 @@ import { Swipeable } from 'react-native-gesture-handler';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { PenTool, Share2, LogOut, Search, X, Trash2, MessageCircle, Heart, Users } from 'lucide-react-native';
+import { PenTool, Share2, LogOut, Search, X, Trash2, MessageCircle, Heart, Users, Mic, Image as ImageIcon } from 'lucide-react-native';
 
-import { RootStackParamList } from '../navigation/RootStack';
+import { RootStackParamList } from '../navigation/types';
 import { useJournalStore } from '../stores/journalStore';
 import { useSharedPalette } from '../hooks/useSharedPalette';
 import { createInviteLink, leaveSharedJournal } from '../services/syncedJournalService';
+// Removed useSettings import if not used elsewhere, or keep if needed for other things
 import PremiumPressable from '../components/PremiumPressable';
 import * as Clipboard from 'expo-clipboard';
 import { auth } from '../firebaseConfig';
@@ -22,6 +23,11 @@ export default function SharedJournalScreen({ navigation, route }: Props) {
   const { journalId } = route.params;
   const { showAlert } = useUIStore(); 
   const palette = useSharedPalette();
+  const currentUser = auth.currentUser?.uid || '';
+  const { blockedUsers: allBlockedMap } = useJournalStore();
+  const myBlockedUsers = Array.isArray(allBlockedMap) 
+      ? allBlockedMap 
+      : (allBlockedMap[currentUser] || []);
 
   // Ref to track the currently open swipeable row
   const openSwipeableRef = useRef<Swipeable | null>(null);
@@ -85,10 +91,24 @@ const entries = sharedEntries[journalId] || [];
     }
   }, []);
 
-// Filter Logic
+// Filter Logic: Get Blocked List from Journal Store
+  const { blockedUsers } = useJournalStore(); // <--- USE JOURNAL STORE
+  
+  // Derive list for THIS user
+  const myBlockedIds = React.useMemo(() => {
+     if (!currentUserId) return [];
+     // Handle both Array (Legacy) and Map (New) structures safely
+     if (Array.isArray(blockedUsers)) return []; 
+     return blockedUsers[currentUserId] || [];
+  }, [blockedUsers, currentUserId]);
+
   const filteredEntries = React.useMemo(() => {
-    // Safety: Filter out invalid entries (missing ID) to prevent key warnings & crashes
-    const validEntries = entries.filter(e => e && e.entryId);
+    // 1. Safety & Block Filter
+    const validEntries = entries.filter(e => 
+      e && 
+      e.entryId && 
+      !myBlockedIds.includes(e.userId) // <--- USE myBlockedIds
+    );
 
     if (!searchText.trim()) return validEntries;
     
@@ -96,12 +116,13 @@ const term = searchText.toLowerCase();
     return validEntries.filter(e => {
       // SAFEGUARD: Handle if text is accidentally an object
       const rawText = typeof e.text === 'object' ? (e.text?.text || '') : e.text;
-      return (
+return (
         (rawText && rawText.toLowerCase().includes(term)) || 
         (e.authorName && e.authorName.toLowerCase().includes(term))
       );
     });
-  }, [entries, searchText]);
+// FIX: Add 'myBlockedIds' here so the list updates immediately
+  }, [entries, searchText, myBlockedIds]);
 
 // Load journal data on mount
   useEffect(() => {
@@ -222,8 +243,9 @@ return (
         )}
 
 <FlatList
-          data={filteredEntries}
-          keyExtractor={(item) => item.entryId}
+        // Filter out entries from blocked users
+        data={entries.filter(e => !myBlockedUsers.includes(e.userId))}
+        keyExtractor={(item) => item.entryId}
           contentContainerStyle={styles.list}
           refreshControl={
             <RefreshControl 
@@ -361,10 +383,16 @@ return (
              </View>
           )}
         </View>
-{/* SAFEGUARD: Handle corrupted text objects */}
-        <Text style={[styles.entryText, { color: palette.text }]} numberOfLines={3}>
-          {typeof item.text === 'object' ? (item.text?.text || '') : item.text}
-        </Text>
+{/* SAFEGUARD: Handle corrupted text objects & Hide if empty */}
+        {(() => {
+           const content = typeof item.text === 'object' ? (item.text?.text || '') : item.text;
+           if (!content || !content.trim()) return null; // Close gap if no text
+           return (
+             <Text style={[styles.entryText, { color: palette.text }]} numberOfLines={3}>
+               {content}
+             </Text>
+           );
+        })()}
         
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
           {/* Author Profile Picture */}
@@ -387,14 +415,25 @@ return (
           </Text>
         </View>
         
-{/* Render image preview (Check both root and nested object) */}
+{/* Image Indicator (Hidden Preview) */}
         {(item.imageUri || (typeof item.text === 'object' && item.text?.imageUri)) && (
-          <Image 
-            source={{ uri: item.imageUri || item.text?.imageUri }} 
-            style={{ width: '100%', height: 150, borderRadius: 8, marginTop: 12 }} 
-            resizeMode="cover"
-          />
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 10, opacity: 0.8 }}>
+             <ImageIcon size={14} color={palette.subtleText} />
+             <Text style={{ fontSize: 12, color: palette.subtleText, fontStyle: 'italic' }}>
+               Includes an image
+             </Text>
+          </View>
         )}
+        {/* Audio Indicator (Hidden Player) */}
+        {(item.audioUri || (typeof item.text === 'object' && item.text?.audioUri)) && (
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 6, opacity: 0.8 }}>
+             <Mic size={14} color={palette.subtleText} />
+             <Text style={{ fontSize: 12, color: palette.subtleText, fontStyle: 'italic' }}>
+               Includes a voice note
+             </Text>
+          </View>
+        )}
+
 
         {/* Stats Row */}
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16, marginTop: 12 }}>

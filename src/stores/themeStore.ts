@@ -6,7 +6,7 @@ import { ColorSchemeName } from "react-native";
 // --------------------------------------------------
 // TYPES
 // --------------------------------------------------
-type ThemeType = "light" | "dark" | "system" | "dynamic";
+export type ThemeType = "light" | "dark" | "system" | "dynamic";
 
 interface ThemeState {
   theme: ThemeType;

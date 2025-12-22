@@ -10,56 +10,45 @@ import { sendImmediateNotification } from "../lib/notifications";
 // TYPES
 // --------------------------------------------------
 
-export interface JournalMeta {
-  id: string;
-  name: string;
-  members: string[]; 
-  memberIds?: string[];
-membersMap?: Record<string, string>; // Maps UID -> Display Name
-  memberPhotos?: Record<string, string>; // Maps UID -> Photo URL
-  nicknames?: Record<string, string>; // Maps UID -> Local Nickname (Private) <--- Added
-  photoUrl?: string;
-  createdAt?: any;
-  owner?: string;
-  updatedAt?: number;
-lastEntry?: {
-    text: string;
-    author: string;
-    createdAt: number;
-    userId?: string; // <--- Added userId
-  };
-}
 
 interface JournalState {
   currentJournalId: string | null;
   sharedEntries: Record<string, any[]>;
   journalInfo: JournalMeta | null;
   isLoading: boolean;
-  _unsubscribes: Record<string, Unsubscribe>; // <--- UPDATED: Track multiple listeners
+  _unsubscribes: Record<string, Unsubscribe>; 
   journals: Record<string, JournalMeta>;
   currentUser: string | null;
   lastRead: Record<string, number>;
   deletedDocDates: string[];
+  blockedUsers: Record<string, string[]>; // <--- ADDED STATE
 }
 
 interface JournalActions {
-  createJournal: (ownerName: string) => Promise<string>;
+  // Fix createJournal to take 2 args if needed, or keep 1 if your code expects 1
+  createJournal: (journalName: string, ownerName: string) => Promise<string>; 
   joinJournal: (journalId: string, memberName?: string) => Promise<boolean>;
+  
+  // --- ADD THESE DEFINITIONS ---
+blockUser: (currentUserId: string, targetUserId: string) => void;
+  unblockUser: (currentUserId: string, targetUserId: string) => void;
+  // -----------------------------
+
   restoreJournals: () => Promise<number>;
   subscribeToJournal: (journalId: string) => void;
-subscribeToAllJournals: () => void; 
+  subscribeToAllJournals: () => void; 
   deleteSharedEntry: (journalId: string, entryId: string) => Promise<void>;
-  updateSharedEntry: (journalId: string, entryId: string, updates: any) => Promise<void>; // <--- ADDED THIS
+  updateSharedEntry: (journalId: string, entryId: string, updates: any) => Promise<void>;
   toggleCommentReaction: (journalId: string, entryId: string, commentId: string, userId: string, emoji: string) => Promise<void>;
   setSharedEntries: (journalId: string, entries: any[]) => void;
   addSharedEntry: (entry: any) => Promise<void>; 
   updateJournalMeta: (journalId: string, data: any) => void;
-  setMemberNickname: (journalId: string, userId: string, nickname: string) => void; // <--- Added
+  setMemberNickname: (journalId: string, userId: string, nickname: string) => void;
   addJournal: (journal: JournalMeta) => void;
   removeJournal: (journalId: string) => void;
   setCurrentUser: (userId: string) => void;
   markAsRead: (journalId: string) => void;
-leaveJournal: () => void;
+  leaveJournal: () => void;
   reset: () => void;
   deleteComment: (journalId: string, entryId: string, comment: any) => Promise<void>;
 }
@@ -79,9 +68,10 @@ export const useJournalStore = create<JournalStore>()(
       journalInfo: null,
       isLoading: false,
       _unsubscribes: {}, // <--- Initial State
-      currentUser: null,
+currentUser: null,
       lastRead: {},
       deletedDocDates: [],
+      blockedUsers: {}, // <--- INITIALIZE STATE
 
       // ACTIONS
       setCurrentUser: (userId) => set({ currentUser: userId }),
@@ -445,7 +435,8 @@ setMemberNickname: (journalId, userId, nickname) => {
         });
       },
 
-      addSharedEntryList: (journalId, entries) =>
+// Add 'any' types to silence errors
+      addSharedEntryList: (journalId: string, entries: any[]) =>
         set((state) => ({
           sharedEntries: { ...(state.sharedEntries || {}), [journalId]: entries },
         })),
@@ -493,6 +484,23 @@ reset: () => {
         get().leaveJournal();
       },
 
+      // --- BLOCKING LOGIC ---
+blockUser: (currentUserId, targetUserId) => set((state) => {
+        const userBlocks = state.blockedUsers?.[currentUserId] || [];
+        if (userBlocks.includes(targetUserId)) return state;
+        return {
+          blockedUsers: { ...state.blockedUsers, [currentUserId]: [...userBlocks, targetUserId] }
+        };
+      }),
+
+unblockUser: (currentUserId, targetUserId) => set((state) => {
+         const userBlocks = state.blockedUsers?.[currentUserId] || [];
+         return {
+           blockedUsers: { ...state.blockedUsers, [currentUserId]: userBlocks.filter(id => id !== targetUserId) }
+         };
+      }),
+      // ----------------------
+
       deleteComment: async (journalId, entryId, comment) => {
          // 1. Optimistic Update (Remove from UI immediately)
          set((state) => {
@@ -523,9 +531,10 @@ reset: () => {
         journalInfo: state.journalInfo,
         journals: state.journals,
         sharedEntries: state.sharedEntries, 
-        currentUser: state.currentUser,
+currentUser: state.currentUser,
         lastRead: state.lastRead, 
         deletedDocDates: state.deletedDocDates,
+        blockedUsers: state.blockedUsers, // <--- SAVE TO DISK
       }),
     }
   )

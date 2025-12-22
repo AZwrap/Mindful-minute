@@ -66,6 +66,14 @@ export default function MainTabs() {
       <Tab.Screen 
         name="Today" 
         component={HomeStackNavigator}
+        listeners={({ navigation }) => ({
+          tabPress: (e) => {
+            // Prevent default action (which preserves stack history)
+            e.preventDefault();
+            // Always reset to the root 'HomeScreen' of this stack
+            navigation.navigate('Today', { screen: 'HomeScreen' });
+          },
+        })}
         options={{
           tabBarIcon: ({ color }) => <Sun color={color} size={24} />,
         }}

@@ -2,18 +2,23 @@ import React from 'react';
 import { View, Text, StyleSheet, ScrollView, Image, TextInput, KeyboardAvoidingView, Platform, Pressable, Keyboard, Modal, Animated, InteractionManager, FlatList, SectionList } from 'react-native';
 import { Swipeable } from 'react-native-gesture-handler'; 
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Trash2, Edit2, ChevronLeft, Send, Heart, Flame, ThumbsUp, MessageCircle, Smile, Flag, Users, X } from 'lucide-react-native';
+import { Trash2, Edit2, ChevronLeft, Send, Heart, Flame, ThumbsUp, MessageCircle, Smile, Flag, Users, X, Play, Square } from 'lucide-react-native';
+import { Audio } from 'expo-av';
 import { LinearGradient } from 'expo-linear-gradient';
 import { reportContent } from '../services/syncedJournalService'; // <--- Added Service
 import { useUIStore } from '../stores/uiStore';
+import { useSettings } from '../stores/settingsStore';
+import { ShieldBan } from 'lucide-react-native'; // <--- Add Icon
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 
-import { RootStackParamList } from '../navigation/RootStack';
+import { RootStackParamList } from '../navigation/types';
 import { useJournalStore } from '../stores/journalStore';
 import { useSharedPalette } from '../hooks/useSharedPalette';
 import { auth } from '../firebaseConfig';
 import PremiumPressable from '../components/PremiumPressable';
+import { moderateContent } from '../lib/moderation';
+import AudioPlayer from '../components/AudioPlayer';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'SharedEntryDetail'>;
 
@@ -188,6 +193,17 @@ const CommentItem = ({ comment, currentUser, onDelete, onReport, onRowOpen, pale
 export default function SharedEntryDetailScreen({ navigation, route }: Props) {
   // --- MANUAL KEYBOARD HANDLING (Android Fix) ---
   const { showAlert } = useUIStore();
+
+  // Audio State
+  const [sound, setSound] = React.useState<Audio.Sound | null>(null);
+  const [isPlaying, setIsPlaying] = React.useState(false);
+
+  React.useEffect(() => {
+    return () => {
+      if (sound) sound.unloadAsync();
+    };
+  }, [sound]);
+
   const bottomPadding = React.useRef(new Animated.Value(0)).current;
 
   // Track which comment we are reacting to (null = reacting to the main entry)
@@ -284,13 +300,26 @@ const hideSub = Keyboard.addListener('keyboardDidHide', () => {
     openSwipeableRef.current = ref;
   };
   
-  // 1. Get LIVE entry from store (fallback to params if not found yet)
-const entry = useJournalStore(s => 
+// 1. Get LIVE entry & Settings
+  const { blockedUserIds, blockUser } = useSettings();
+  
+  const rawEntry = useJournalStore(s => 
     s.sharedEntries[initialEntry.journalId]?.find(e => e.entryId === initialEntry.entryId)
   ) || initialEntry;
+
+  // 2. Filter Blocked Comments on the fly
+  const entry = React.useMemo(() => ({
+    ...rawEntry,
+    comments: rawEntry.comments?.filter((c: any) => !blockedUserIds.includes(c.userId))
+  }), [rawEntry, blockedUserIds]);
   
   // Check if user is a Group Admin
   const journal = useJournalStore(s => s.journals[entry.journalId]);
+  // Get Blocked List
+  const { blockedUsers: allBlockedMap } = useJournalStore();
+  const myBlockedUsers = Array.isArray(allBlockedMap) 
+      ? allBlockedMap 
+      : (allBlockedMap[auth.currentUser?.uid || ''] || []);
   const userRole = journal?.roles?.[auth.currentUser?.uid || ''] || 'member';
   const isGroupAdmin = (auth.currentUser?.uid === journal?.owner) || userRole === 'admin' || userRole === 'owner';
 
@@ -327,9 +356,18 @@ const handlePostComment = async () => {
     const textToSend = commentText.trim();
     if (!textToSend || !currentUser || !entry.journalId) return;
     
-    // Optimistic clear: Remove text immediately
-    setCommentText('');
     setIsSubmitting(true);
+
+    // --- MODERATION CHECK ---
+    // Check content safety before posting
+    const isSafe = await moderateContent(textToSend);
+    if (!isSafe) {
+      setIsSubmitting(false); // Unlock so user can fix it
+      return; 
+    }
+
+    // Optimistic clear: Remove text only after passing safety check
+    setCommentText('');
     
     try {
       await JournalService.addComment(entry.journalId, entry.entryId, {
@@ -346,9 +384,31 @@ const handlePostComment = async () => {
     }
   };
 
+const handleBlockUser = () => {
+    showAlert(
+      "Block User",
+      "You will no longer see posts or comments from this user. This action is local to your device.",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Block",
+          style: "destructive",
+          onPress: () => {
+            // FIX: Removed auth.currentUser?.uid. 
+            // The function expects only the target userId.
+            blockUser(entry.userId);
+            
+            navigation.goBack(); // Exit screen since we blocked the author
+          }
+        }
+      ]
+    );
+  };
+
   const handleReportEntry = () => {
      showAlert("Report Entry", "Why are you reporting this content?", [
        { text: "Cancel", style: "cancel" },
+       { text: "Block User", onPress: handleBlockUser }, // <--- Added shortcut
        { text: "It's spam", onPress: () => submitReport('entry', entry.entryId, 'spam', entry.userId, entry.text) },
        { text: "It's abusive", onPress: () => submitReport('entry', entry.entryId, 'abusive', entry.userId, entry.text) }
      ]);
@@ -453,10 +513,17 @@ return (
            )}
 
 {/* Only show Report button if NOT author and NOT admin */}
-           {!isAuthor && !isGroupAdmin && (
-              <PremiumPressable onPress={handleReportEntry} style={[styles.actionBtn, { backgroundColor: 'rgba(245, 158, 11, 0.1)' }]}>
-                 <Flag size={20} color="#F59E0B" />
-               </PremiumPressable>
+{!isAuthor && !isGroupAdmin && (
+              <View style={{ flexDirection: 'row', gap: 8 }}>
+                {/* Block Button */}
+                <PremiumPressable onPress={handleBlockUser} style={[styles.actionBtn, { backgroundColor: 'rgba(239, 68, 68, 0.1)' }]}>
+                   <ShieldBan size={20} color="#EF4444" />
+                </PremiumPressable>
+                {/* Report Button */}
+                <PremiumPressable onPress={handleReportEntry} style={[styles.actionBtn, { backgroundColor: 'rgba(245, 158, 11, 0.1)' }]}>
+                   <Flag size={20} color="#F59E0B" />
+                </PremiumPressable>
+              </View>
            )}
         </View>
         
@@ -466,10 +533,55 @@ return (
           keyboardDismissMode="on-drag"
           keyboardShouldPersistTaps="handled"
         >
-           <Text style={[styles.date, { color: palette.subtleText }]}>{dateStr}</Text>
+<Text style={[styles.date, { color: palette.subtleText }]}>{dateStr}</Text>
            <Text style={[styles.author, { color: palette.accent }]}>By {entry.authorName || 'Anonymous'}</Text>
 
-{/* Render image preview (Check both root and nested object) */}
+           {/* 1. ENTRY TEXT */}
+           <Text style={[styles.text, { color: palette.text }]}>
+             {typeof entry.text === 'object' ? (entry.text?.text || '') : entry.text}
+           </Text>
+
+           {/* 2. AUDIO PLAYER (Voice Note) */}
+           {((entry.audioUri) || (typeof entry.text === 'object' && entry.text?.audioUri)) && (
+              <View style={{ marginTop: 16, marginBottom: 12 }}>
+                 <PremiumPressable 
+                    onPress={async () => {
+                      const uri = entry.audioUri || (typeof entry.text === 'object' ? entry.text?.audioUri : null);
+                      if (!uri) return;
+                      try {
+                        if (sound) {
+                          if (isPlaying) { await sound.pauseAsync(); setIsPlaying(false); } 
+                          else { await sound.playAsync(); setIsPlaying(true); }
+                        } else {
+                          const { sound: newSound } = await Audio.Sound.createAsync({ uri });
+                          setSound(newSound);
+                          setIsPlaying(true);
+                          await newSound.playAsync();
+                          newSound.setOnPlaybackStatusUpdate((s) => {
+                            if (s.isLoaded && s.didJustFinish) { setIsPlaying(false); newSound.setPositionAsync(0); }
+                          });
+                        }
+                      } catch (e) { showAlert("Error", "Could not play audio."); }
+                    }}
+                    style={{
+                      flexDirection: 'row', alignItems: 'center',
+                      backgroundColor: palette.card,
+                      borderColor: palette.border,
+                      borderWidth: 1, padding: 12, borderRadius: 16, gap: 12
+                    }}
+                 >
+                    <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: palette.accent, alignItems: 'center', justifyContent: 'center' }}>
+                       {isPlaying ? <Square size={16} color="white" fill="white" /> : <Play size={16} color="white" fill="white" />}
+                    </View>
+                    <View>
+                        <Text style={{ fontSize: 14, fontWeight: '700', color: palette.text }}>Voice Note</Text>
+                        <Text style={{ fontSize: 12, color: palette.subtleText }}>{isPlaying ? 'Playing...' : 'Tap to listen'}</Text>
+                    </View>
+                 </PremiumPressable>
+              </View>
+           )}
+
+           {/* 3. IMAGE */}
            {(entry.imageUri || (typeof entry.text === 'object' && entry.text?.imageUri)) && (
              <Image 
                source={{ uri: entry.imageUri || entry.text?.imageUri }} 
@@ -478,10 +590,12 @@ return (
              />
            )}
 
-           {/* SAFEGUARD: Handle corrupted text objects */}
-           <Text style={[styles.text, { color: palette.text }]}>
-             {typeof entry.text === 'object' ? (entry.text?.text || '') : entry.text}
-           </Text>
+           {/* AUDIO PLAYER */}
+            {entry.audioUri && (
+                <View style={{ marginTop: 8 }}>
+                   <AudioPlayer uri={entry.audioUri} />
+                </View>
+            )}
            
 {/* REACTIONS */}
            <View style={[styles.reactionRow, { borderColor: palette.border }]}>
@@ -520,10 +634,12 @@ return (
                 <MessageCircle size={16} color={palette.sub} />
                 <Text style={{ fontSize: 14, fontWeight: '700', color: palette.sub, textTransform: 'uppercase' }}>Comments ({entry.comments?.length || 0})</Text>
              </View>
-{entry.comments?.map((c: any) => (
+{entry.comments
+                ?.filter((c: any) => !myBlockedUsers.includes(c.userId)) // <--- Filter blocked comments
+                .map((c: any) => (
                <CommentItem 
                    key={c.id} 
-                   comment={c} 
+                   comment={c}
                    journal={journal} // <--- Added this line
                    currentUser={currentUser}
                    isGroupAdmin={isGroupAdmin} // <--- Pass the permission

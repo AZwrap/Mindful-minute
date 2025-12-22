@@ -8,6 +8,9 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 interface SettingsState {
   isPremium: boolean;
   hapticsEnabled: boolean;
+  blockedUserIds: string[]; // <--- New
+  freeImageCount: number;
+  freeAudioCount: number;
   soundEnabled: boolean;
   preserveTimerProgress: boolean;
   gratitudeModeEnabled: boolean;
@@ -27,8 +30,12 @@ setPreserveTimerProgress: (val: boolean) => void;
   setZenModeEnabled: (val: boolean) => void; // New Action
   setHasOnboarded: (val: boolean) => void;
 setIsBiometricsEnabled: (val: boolean) => void;
-  setSmartRemindersEnabled: (val: boolean) => void;
-  setReminderTime: (hour: number, minute: number) => void; // New Action
+setSmartRemindersEnabled: (val: boolean) => void;
+  setReminderTime: (hour: number, minute: number) => void;
+  blockUser: (userId: string) => void;   // <--- New Action
+  unblockUser: (userId: string) => void; // <--- New Action
+  incrementImageCount: () => void;
+  incrementAudioCount: () => void;
   setLoaded: (val: boolean) => void;
 }
 
@@ -51,6 +58,9 @@ preserveTimerProgress: true,
       isBiometricsEnabled: false,
       smartRemindersEnabled: false,
       reminderTime: { hour: 20, minute: 0 }, // Default to 8:00 PM
+      blockedUserIds: [],
+      freeImageCount: 0,
+      freeAudioCount: 0,
       
       loaded: false, 
 
@@ -63,8 +73,18 @@ setPreserveTimerProgress: (val) => set({ preserveTimerProgress: val }),
       setPremium: (status: boolean) => set({ isPremium: status }),
       setHasOnboarded: (val) => set({ hasOnboarded: val }),
 setIsBiometricsEnabled: (val) => set({ isBiometricsEnabled: val }),
-      setSmartRemindersEnabled: (val) => set({ smartRemindersEnabled: val }),
+setSmartRemindersEnabled: (val) => set({ smartRemindersEnabled: val }),
       setReminderTime: (hour, minute) => set({ reminderTime: { hour, minute } }),
+
+blockUser: (id) => set((state) => {
+        if (state.blockedUserIds.includes(id)) return state; // Prevent duplicates
+        return { blockedUserIds: [...state.blockedUserIds, id] };
+      }),
+      unblockUser: (id) => set((state) => ({ 
+        blockedUserIds: state.blockedUserIds.filter(uid => uid !== id) 
+      })),
+      incrementImageCount: () => set((state) => ({ freeImageCount: state.freeImageCount + 1 })),
+      incrementAudioCount: () => set((state) => ({ freeAudioCount: state.freeAudioCount + 1 })),
       
       setLoaded: (val) => set({ loaded: val }),
     }),
@@ -79,9 +99,10 @@ preserveTimerProgress: state.preserveTimerProgress,
         gratitudeModeEnabled: state.gratitudeModeEnabled,
         zenModeEnabled: state.zenModeEnabled,
 hasOnboarded: state.hasOnboarded,
-        isBiometricsEnabled: state.isBiometricsEnabled,
+isBiometricsEnabled: state.isBiometricsEnabled,
         smartRemindersEnabled: state.smartRemindersEnabled,
         reminderTime: state.reminderTime,
+        blockedUserIds: state.blockedUserIds, // <--- Persist this
       }),
       
       // FIXED: Added safe navigation operator (?.) to prevent crash if state is undefined

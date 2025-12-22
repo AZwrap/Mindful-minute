@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, useColorScheme, ScrollView, Image, Modal, FlatList, TouchableOpacity, Linking } from 'react-native';
 import * as Sharing from 'expo-sharing';
-import * as FileSystem from 'expo-file-system';
-import { Pencil, Users, Copy, X, CheckSquare, Square, PlayCircle, Share2 } from 'lucide-react-native';
+import * as FileSystem from 'expo-file-system/legacy';
+import { Pencil, Users, Copy, X, CheckSquare, Square, PlayCircle, Share2, Play } from 'lucide-react-native';
+import { Audio } from 'expo-av'; // Added Audio
 import * as Clipboard from 'expo-clipboard';
 // @ts-ignore
 import { getRecommendedPlaylist } from '../constants/moodCategories';
@@ -23,6 +24,7 @@ import { auth } from '../firebaseConfig';
 // @ts-ignore
 import { addSharedEntry } from '../services/syncedJournalService';
 import { sendImmediateNotification } from '../lib/notifications';
+import { moderateContent } from '../lib/moderation';
 
 // Components
 import PremiumPressable from '../components/PremiumPressable';
@@ -74,6 +76,44 @@ const entry = useEntriesStore((s) => s.entries[date]);
   const [isSharing, setIsSharing] = useState(false);
   const [showShareModal, setShowShareModal] = useState(false);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  // Audio State
+  const [sound, setSound] = useState<Audio.Sound | null>(null);
+  const [isPlaying, setIsPlaying] = useState(false);
+
+  useEffect(() => {
+    return () => {
+      if (sound) sound.unloadAsync();
+    };
+  }, [sound]);
+
+  const playRecording = async () => {
+    if (!entry?.audioUri) return;
+    try {
+      if (sound) {
+        if (isPlaying) {
+          await sound.pauseAsync();
+          setIsPlaying(false);
+        } else {
+          await sound.playAsync();
+          setIsPlaying(true);
+        }
+      } else {
+        const { sound: newSound } = await Audio.Sound.createAsync({ uri: entry.audioUri });
+        setSound(newSound);
+        setIsPlaying(true);
+        await newSound.playAsync();
+        newSound.setOnPlaybackStatusUpdate((s) => {
+          if (s.isLoaded && s.didJustFinish) {
+            setIsPlaying(false);
+            newSound.setPositionAsync(0);
+          }
+        });
+      }
+    } catch (e) {
+      console.log(e);
+      showAlert("Error", "Could not play audio.");
+    }
+  };
 
   const gradients = {
     dark: {
@@ -95,35 +135,49 @@ const entry = useEntriesStore((s) => s.entries[date]);
     setThemeLoaded(true);
   }, []);
 
-  // SYNC LOGIC: If this entry is modified locally, update any shared copies automatically
+// SYNC LOGIC: If this entry is modified locally, update any shared copies automatically
   useEffect(() => {
     if (!entry) return;
 
-    // Scan all journals to see if this entry is shared (matched by date)
-    Object.keys(journals).forEach(journalId => {
-      const journalEntries = sharedEntries[journalId] || [];
-      const sharedCopy = journalEntries.find((e: any) => e.originalDate === date);
-      
-      if (sharedCopy) {
-        // Compare content to see if an update is needed
-        // (Handle potential legacy object structure in shared entries safely)
-        const sharedText = typeof sharedCopy.text === 'object' ? sharedCopy.text?.text : sharedCopy.text;
-        const sharedImg = sharedCopy.imageUri || (typeof sharedCopy.text === 'object' ? sharedCopy.text?.imageUri : null);
+    const performSync = async () => {
+      // Scan all journals to see if this entry is shared (matched by date)
+      for (const journalId of Object.keys(journals)) {
+        const journalEntries = sharedEntries[journalId] || [];
+        const sharedCopy = journalEntries.find((e: any) => e.originalDate === date);
+        
+        if (sharedCopy) {
+          const sharedText = typeof sharedCopy.text === 'object' ? (sharedCopy.text?.text || '') : (sharedCopy.text || '');
+          const sharedImg = sharedCopy.imageUri || (typeof sharedCopy.text === 'object' ? sharedCopy.text?.imageUri : null);
 
-        const localText = entry.text || '';
-        const localImg = entry.imageUri || null;
+          const localText = entry.text || '';
+          const localImg = entry.imageUri || null;
 
-        // If local content differs from shared content, sync it
-        if (sharedText !== localText || sharedImg !== localImg) {
-          console.log(`Syncing update to journal ${journalId}...`);
-          updateSharedEntry(journalId, sharedCopy.entryId, {
-            text: localText,
-            imageUri: localImg,
-            updatedAt: Date.now() 
-          }).catch(err => console.error("Failed to auto-sync shared entry:", err));
+          // If local content differs from shared content
+          if (sharedText !== localText || sharedImg !== localImg) {
+            
+            // --- SECURITY FIX ---
+            // Check moderation silently. If it fails, we simply SKIP the sync.
+            // The private entry remains updated, but the public one stays safe.
+            const isSafe = await moderateContent(localText, true); // true = silent mode
+            
+            if (!isSafe) {
+              console.log(`Sync blocked for journal ${journalId}: Content unsafe.`);
+              continue; // Skip to next journal
+            }
+            // --------------------
+
+            console.log(`Syncing update to journal ${journalId}...`);
+            await updateSharedEntry(journalId, sharedCopy.entryId, {
+              text: localText,
+              imageUri: localImg,
+              updatedAt: Date.now() 
+            });
+          }
         }
       }
-    });
+    };
+
+    performSync();
   }, [entry, journals, sharedEntries, updateSharedEntry, date]);
 
   if (!themeLoaded) {
@@ -190,10 +244,33 @@ const copyToClipboard = async () => {
   };
 
 // --- SHARE LOGIC ---
-  const openShareModal = () => {
+  const openShareModal = async () => {
+    if (isSharing) return; // Prevent double taps
+
     const allIds = Object.keys(journals);
     if (allIds.length === 0) {
-showAlert("No Groups", "No Shared Groups Found. Go to the 'Together' tab to create or join one first.");
+      showAlert("No Groups", "No Shared Groups Found. Go to the 'Together' tab to create or join one first.");
+      return;
+    }
+
+    // 1. Lock UI
+    setIsSharing(true);
+
+// 2. MODERATION CHECK
+    // Ensure content is safe before we allow selecting a group
+    
+    // FIX: Safely extract string if entry.text is an object
+    const textToCheck = typeof entry.text === 'object' 
+      ? (entry.text?.text || '') 
+      : (entry.text || '');
+
+    const isSafe = await moderateContent(textToCheck);
+    
+    // Unlock UI regardless of result
+    setIsSharing(false);
+
+    if (!isSafe) {
+      // moderateContent handles the Alert, so we just stop here.
       return;
     }
     
@@ -333,11 +410,37 @@ return (
 
             <Text style={[styles.time, { color: textSub }]}>{formatTime(entry)}</Text>
 
-            <Text style={[styles.label, { color: textSub }]}>Prompt</Text>
+<Text style={[styles.label, { color: textSub }]}>Prompt</Text>
             <Text style={[styles.prompt, { color: textMain }]}>{entry.prompt?.text || entry.promptText}</Text>
 
+            <Text style={[styles.label, { color: textSub }]}>Your Reflection</Text>
+            <Text style={[styles.entry, { color: textMain }]}>{entry.text}</Text>
+
+            {/* Audio Player */}
+            {entry.audioUri && (
+               <View style={{ marginBottom: 12, marginTop: 4 }}>
+                 <PremiumPressable 
+                    onPress={playRecording}
+                    style={{
+                      flexDirection: 'row', alignItems: 'center',
+                      backgroundColor: isDark ? 'rgba(99, 102, 241, 0.15)' : 'rgba(99, 102, 241, 0.08)',
+                      borderColor: isDark ? 'rgba(99,102,241,0.3)' : 'rgba(99,102,241,0.2)',
+                      borderWidth: 1, padding: 12, borderRadius: 16, gap: 12
+                    }}
+                 >
+                    <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: palette.accent, alignItems: 'center', justifyContent: 'center' }}>
+                       {isPlaying ? <Square size={16} color="white" fill="white" /> : <Play size={16} color="white" fill="white" />}
+                    </View>
+                    <View>
+                        <Text style={{ fontSize: 14, fontWeight: '700', color: textMain }}>Voice Note</Text>
+                        <Text style={{ fontSize: 12, color: textSub }}>{isPlaying ? 'Playing...' : 'Tap to listen'}</Text>
+                    </View>
+                 </PremiumPressable>
+               </View>
+            )}
+
             {entry.imageUri && (
-              <View style={{ marginBottom: 20 }}>
+              <View style={{ marginBottom: 20, marginTop: 2 }}>
                 <Image 
                   source={{ uri: entry.imageUri }} 
                   style={{ width: '100%', height: 200, borderRadius: 16 }} 
@@ -345,9 +448,6 @@ return (
                 />
               </View>
             )}
-
-            <Text style={[styles.label, { color: textSub }]}>Your Reflection</Text>
-            <Text style={[styles.entry, { color: textMain }]}>{entry.text}</Text>
 
             {entry.moodTag?.value && (
               <View style={styles.moodSection}>

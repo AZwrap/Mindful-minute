@@ -26,6 +26,9 @@ export interface JournalMeta {
   name: string;
   members: string[]; 
   memberIds?: string[];
+  membersMap?: Record<string, string>; // Added
+  memberPhotos?: Record<string, string>; // Added
+  nicknames?: Record<string, string>; // Added
   photoUrl?: string;
   roles?: Record<string, 'owner' | 'admin' | 'member'>;
   createdAt?: any;
@@ -35,6 +38,7 @@ export interface JournalMeta {
     text: string;
     author: string;
     createdAt: number;
+    userId?: string; // Added
   };
 }
 
@@ -182,12 +186,18 @@ async deleteEntry(journalId: string, entryId: string) {
     // Filter out the ID we just deleted to be safe
     const remaining = snap.docs.filter(d => d.id !== entryId);
 
-    if (remaining.length > 0) {
+if (remaining.length > 0) {
         // Set to the next most recent entry
         const latest = remaining[0].data();
+        
+        // SAFEGUARD: Handle if 'text' is stored as an object or string
+        const safeText = typeof latest.text === 'object' 
+          ? (latest.text?.text || "") 
+          : (latest.text || "");
+
         await updateDoc(journalRef, {
             lastEntry: {
-                text: (latest.text || "").substring(0, 50),
+                text: safeText.substring(0, 50),
                 author: latest.authorName || latest.author || "Anonymous",
                 createdAt: latest.createdAt
             },
