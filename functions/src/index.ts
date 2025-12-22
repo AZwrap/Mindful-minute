@@ -1,36 +1,40 @@
-import * as functions from "firebase-functions";
-import { defineString } from "firebase-functions/params";
+import { onCall, HttpsError } from "firebase-functions/v2/https";
+// Remove defineString since we use secrets directly now
 import OpenAI from "openai";
-import * as admin from "firebase-admin"; // <--- Import Admin SDK
+import * as admin from "firebase-admin"; 
 
-// 1. Initialize Admin SDK (For manual token verification)
+// 1. Initialize Admin SDK
 admin.initializeApp();
 
-const openAiKey = defineString("OPENAI_API_KEY");
-
-export const moderateContent = functions.https.onCall(async (data: any, context: functions.https.CallableContext) => {
-  let uid = context.auth?.uid;
+// FIX: explicitly bind the secret to this function (v2)
+export const moderateContent = onCall({ secrets: ["OPENAI_API_KEY"] }, async (request) => {
+  const data = request.data;
+  let uid = request.auth?.uid;
 
   // 2. FALLBACK: If automatic auth failed, check for manual token
+  let authError = "";
   if (!uid && data.token) {
     try {
       const decodedToken = await admin.auth().verifyIdToken(data.token);
       uid = decodedToken.uid;
       console.log("✅ Manual Token Verification Successful for:", uid);
-    } catch (e) {
+    } catch (e: any) {
       console.warn("❌ Manual Token Verification Failed:", e);
+      authError = e.message || "Unknown Verify Error";
     }
   }
 
-  // 3. Final Security Check
+// 3. Final Security Check
   if (!uid) {
-    throw new functions.https.HttpsError(
+    console.error("Auth Failed. Context Auth:", !!request.auth, "UID:", uid);
+    throw new HttpsError(
       "unauthenticated",
-      "You must be logged in to post."
+      `DEBUG: Auth Failed. Manual Verify Error: ${authError || "None"}. Context: ${request.auth ? "Yes" : "No"}`
     );
   }
 
-  const openai = new OpenAI({ apiKey: openAiKey.value() });
+// Access the secret directly via process.env
+  const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
   const text = data.text;
   if (!text) return {flagged: false};
 
