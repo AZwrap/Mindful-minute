@@ -1,5 +1,40 @@
 import * as Notifications from 'expo-notifications';
 import { Platform, Alert, Linking } from 'react-native';
+import { Asset } from 'expo-asset';
+
+// 1. Module-level variable to store the URI once loaded
+let cachedIconUri: string | undefined = undefined;
+
+// SAFE ASSET HELPER (With Caching & Longer Timeout)
+const getNotificationIcon = async () => {
+  // Return immediately if we already have it
+  if (cachedIconUri) return cachedIconUri;
+
+  try {
+    // Increased timeout to 2000ms (1024px icons take time to decode)
+    const timeout = new Promise((_, reject) => setTimeout(() => reject(new Error("Timeout")), 2000));
+    
+    const loadAsset = async () => {
+        const iconAsset = Asset.fromModule(require('../../assets/icon.png'));
+        await iconAsset.downloadAsync();
+        return iconAsset.localUri || iconAsset.uri;
+    };
+
+    // Race against time
+    const uri = await Promise.race([loadAsset(), timeout]) as string;
+    
+    // Cache it for next time
+    if (uri) cachedIconUri = uri;
+    return uri;
+
+  } catch (e) {
+    console.log("Icon load skipped (timeout or error):", e);
+    return undefined; 
+  }
+};
+
+// Fire and forget: Start loading it now so it's ready when needed
+getNotificationIcon();
 
 // 1. GLOBAL CONFIG
 Notifications.setNotificationHandler({
@@ -20,15 +55,16 @@ const openSettings = () => {
 };
 
 export async function registerForPushNotificationsAsync() {
-  if (Platform.OS === 'android') {
-try {
-      // NOTE: Changed ID to force update on Android
-      await Notifications.setNotificationChannelAsync('daily-reminders-subtle', {
-        name: 'Daily Reminders',
-        importance: Notifications.AndroidImportance.MAX,
-        vibrationPattern: [0, 100, 100, 100], // Soft "bip-bip"
+if (Platform.OS === 'android') {
+    try {
+// NEW ID: "micromuse-v2" (Forces fresh resource linking)
+await Notifications.setNotificationChannelAsync('micromuse-v2', {
+        name: 'Micro Muse',
+        importance: Notifications.AndroidImportance.HIGH, // Downgrade slightly from MAX
+        vibrationPattern: [0, 500], // Simple "Buzz" instead of "Buzz-Buzz-Buzz" (Chat style)
         lightColor: '#6366F1',
         sound: 'default',
+        lockscreenVisibility: Notifications.AndroidNotificationVisibility.PUBLIC,
       });
     } catch (e: any) {
       console.log("Channel creation failed: " + e.message);
@@ -77,6 +113,9 @@ export async function scheduleDailyReminder(hour: number, minute: number) {
       await Notifications.cancelScheduledNotificationAsync(n.identifier);
     }
 
+// Resolve Icon Safely (Don't crash if it fails)
+    const iconUri = await getNotificationIcon();
+
     const h = Math.floor(hour);
     const m = Math.floor(minute);
     
@@ -99,14 +138,19 @@ export async function scheduleDailyReminder(hour: number, minute: number) {
                     sound: true,
                     priority: Notifications.AndroidNotificationPriority.MAX,
 // FORCE HOME NAVIGATION
-                    data: { screen: 'Home' },
-                    ...(Platform.OS === 'android' ? { channelId: 'daily-reminders-subtle' } : {}),
+color: '#6366F1',
+        ...(iconUri ? { largeIcon: iconUri } : {}),
+        ...(Platform.OS === 'android' ? { 
+            channelId: 'micromuse-v2',
+            category: 'recommendation', // <--- The "Garmin Trick"
+            colorized: true
+        } : {}),
                 },
                 trigger: {
                     type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
                     seconds: Math.floor(diffSeconds),
                     repeats: false,
-                    channelId: 'daily-reminders-subtle', 
+                    channelId: 'micromuse-v2', 
                 },
             });
             scheduledCount++;
@@ -130,12 +174,16 @@ export async function sendTestNotification() {
     const hasPermission = await registerForPushNotificationsAsync();
     if (!hasPermission) return;
 
-    await Notifications.scheduleNotificationAsync({
+const iconUri = await getNotificationIcon();
+
+await Notifications.scheduleNotificationAsync({
       content: {
         title: "Test Notification",
-body: "Notifications are working!",
+        body: "Notifications are working!",
         sound: true,
         priority: Notifications.AndroidNotificationPriority.MAX,
+        color: '#6366F1', // <--- FORCE BRAND COLOR
+        ...(iconUri ? { largeIcon: iconUri } : {}),
         ...(Platform.OS === 'android' ? { channelId: 'daily-reminders-subtle' } : {}),
       },
       trigger: {
@@ -188,13 +236,17 @@ export async function checkPendingNotifications() {
 
 export async function sendImmediateNotification(title: string, body: string, data?: any) {
   try {
-     await Notifications.scheduleNotificationAsync({
+     const iconUri = await getNotificationIcon();
+
+await Notifications.scheduleNotificationAsync({
       content: { 
         title, 
         body, 
-data,
+        data,
         sound: true,
         priority: Notifications.AndroidNotificationPriority.HIGH,
+        color: '#6366F1', // <--- FORCE BRAND COLOR
+        ...(iconUri ? { largeIcon: iconUri } : {}),
         ...(Platform.OS === 'android' ? { channelId: 'daily-reminders-subtle' } : {}),
       },
       trigger: null,

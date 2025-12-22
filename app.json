@@ -66,8 +66,9 @@
 "@react-native-google-signin/google-signin"
     ],
 "notification": {
-      "icon": "./assets/notification-icon.png",
-      "color": "#6366F1"
+      "icon": "./assets/notif.png",
+      "color": "#6366F1",
+      "androidMode": "default" 
     },
     "web": {
       "favicon": "./assets/favicon.png",

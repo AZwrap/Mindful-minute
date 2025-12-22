@@ -34,7 +34,7 @@ import { Flame, Lock } from 'lucide-react-native'
 
 // Components
 import PremiumPressable from '../components/PremiumPressable';
-import { registerForPushNotificationsAsync } from '../lib/notifications';
+import { registerForPushNotificationsAsync} from '../lib/notifications';
 
 // --------------------------------------------------
 // TYPES
@@ -623,7 +623,6 @@ style={[
             Saved ✓
           </Text>
         </Animated.View>
-
         </ScrollView>
       </LinearGradient>
       </Animated.View>

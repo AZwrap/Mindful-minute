@@ -18,7 +18,7 @@ arrayRemove,
   getDocs,    // <--- Added
   DocumentData,
 } from "firebase/firestore";
-
+import { moderateContent } from '../lib/moderation';
 import { useJournalStore, JournalMeta } from "../stores/journalStore";
 // Removed uuid import to prevent RN crash
 import { JournalService } from "./journalService";
