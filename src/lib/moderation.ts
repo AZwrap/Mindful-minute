@@ -25,8 +25,9 @@ export async function moderateContent(text: string, silent: boolean = false): Pr
     }
 
 // FIX: Force a token refresh to ensure the Functions SDK picks up the credentials
+    let token: string;
     try {
-      const token = await auth.currentUser.getIdToken(true);
+      token = await auth.currentUser.getIdToken(true);
       console.log("✅ Fresh Token Generated. Length:", token.length);
     } catch (e: any) {
       console.error("❌ Token Generation Failed:", e);
@@ -36,7 +37,7 @@ export async function moderateContent(text: string, silent: boolean = false): Pr
     
     console.log("Calling Moderation as:", auth.currentUser.uid); 
 
-const moderateFn = httpsCallable(functions, 'moderateContent');
+    const moderateFn = httpsCallable(functions, 'moderateContent');
     // Pass the token explicitly in the data object
     const response = await moderateFn({ text, token });
     const data = response.data as any;
