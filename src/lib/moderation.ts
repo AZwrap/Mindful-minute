@@ -1,56 +1,51 @@
 import { useUIStore } from '../stores/uiStore';
 import * as FileSystem from 'expo-file-system/legacy';
+import { httpsCallable } from 'firebase/functions';
+import { functions, auth } from '../firebaseConfig';
 
 // 1. REGEX: Strict "No Links" Policy
-// Updated: Removed '\b' to catch sneaky links like "google.comtext"
 const LINK_REGEX = /((https?:\/\/)|(www\.))[^\s]+|([a-zA-Z0-9-]+\.(com|net|org|io|xyz|info|co|uk|us|ai|app))/i;
-
-// 2. OPENAI CONFIG (Re-using your likely existing setup or needing a key)
-// NOTE: Ideally, store this in your .env or use the same source as your smartPrompts.
-// For now, you can paste your key here or import it if you have a centralized config.
-const apiKey = process.env.EXPO_PUBLIC_OPENAI_API_KEY;
 
 export async function moderateContent(text: string, silent: boolean = false): Promise<boolean> {
   
   // A. Check for Links (Local & Fast)
+  // We keep this local to save money and speed up checks
   if (LINK_REGEX.test(text)) {
     if (!silent) useUIStore.getState().showAlert("Moderation Blocked", "To keep this space safe, external links are not allowed.");
     return false; // Blocked
   }
 
-  // B. Check for Nudity/Violence/Hate (OpenAI API)
+  // B. Check for Nudity/Violence/Hate (Cloud Function)
   try {
-    const response = await fetch("https://api.openai.com/v1/moderations", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${OPENAI_API_KEY}`,
-      },
-body: JSON.stringify({ input: text }),
-    });
-
-const data = await response.json();
-
-// --- DEBUGGING START ---
-    if (!response.ok) {
-      console.error("OpenAI API Error:", data);
-      if (!silent) useUIStore.getState().showAlert("Moderation Error", data.error?.message || "Check API Key or Billing");
-      return true; 
+// DEBUG: Ensure we are actually logged in
+    if (!auth.currentUser) {
+       console.error("Moderation Aborted: No User Logged In");
+       useUIStore.getState().showAlert("Error", "You must be logged in to post.");
+       return false;
     }
-    // --- DEBUGGING END ---
 
-    const result = data.results?.[0];
+// FIX: Force a token refresh to ensure the Functions SDK picks up the credentials
+    try {
+      const token = await auth.currentUser.getIdToken(true);
+      console.log("✅ Fresh Token Generated. Length:", token.length);
+    } catch (e: any) {
+      console.error("❌ Token Generation Failed:", e);
+      useUIStore.getState().showAlert("Auth Error", "Could not verify your identity. Please log out and back in.");
+      return false;
+    }
+    
+    console.log("Calling Moderation as:", auth.currentUser.uid); 
 
-if (result?.flagged) {
-      // It failed moderation
-      const categories = Object.keys(result.categories)
-        .filter((key) => result.categories[key])
-        .join(", ");
+const moderateFn = httpsCallable(functions, 'moderateContent');
+    // Pass the token explicitly in the data object
+    const response = await moderateFn({ text, token });
+    const data = response.data as any;
 
+    if (data.flagged) {
       if (!silent) {
         useUIStore.getState().showAlert(
           "Content Removed", 
-          `Your post contains content flagged as: ${categories}. Please revise.`
+          `Your post contains content flagged as: ${data.categories || 'Restricted Content'}. Please revise.`
         );
       }
       return false; // Blocked
@@ -58,12 +53,11 @@ if (result?.flagged) {
 
     return true; // Passed
 
-  } catch (error) {
+} catch (error: any) {
     console.warn("Moderation check failed:", error);
-    // FALLBACK: If API fails (offline), do we block or allow?
-    // Safe option: Allow, but warn user. Or strict: Block.
-    // We'll allow it to avoid locking users out due to bad internet.
-    return true; 
+    // DEBUG: Show specific error on screen
+    useUIStore.getState().showAlert("System Error", `Moderation Failed: ${error.message}`);
+    return false; // <--- FAIL SECURE (Block content if system fails)
   }
 }
 

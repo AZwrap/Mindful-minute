@@ -1,6 +1,6 @@
 import { initializeApp } from "firebase/app";
 import { getFirestore } from "firebase/firestore";
-import { getStorage } from "firebase/storage"; // Added
+import { getStorage } from "firebase/storage"; 
 import { initializeAuth, getAuth, getReactNativePersistence } from "firebase/auth";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { getApp, getApps } from "firebase/app";
@@ -41,3 +41,8 @@ export const auth = authInstance;
 
 // Storage Initialization
 export const storage = getStorage(app);
+
+// Functions Initialization (MUST BE LAST)
+// This ensures it binds to the fully initialized Auth instance above
+import { getFunctions } from "firebase/functions";
+export const functions = getFunctions(app);

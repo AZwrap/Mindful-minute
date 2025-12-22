@@ -6,7 +6,7 @@ import { Swipeable } from 'react-native-gesture-handler';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { PenTool, Share2, LogOut, Search, X, Trash2, MessageCircle, Heart, Users, Mic, Image as ImageIcon } from 'lucide-react-native';
+import { PenTool, Share2, LogOut, Search, X, Trash2, MessageCircle, Heart, Users, Mic, Image as ImageIcon, Info } from 'lucide-react-native';
 
 import { RootStackParamList } from '../navigation/types';
 import { useJournalStore } from '../stores/journalStore';
@@ -177,30 +177,34 @@ return (
     <LinearGradient colors={[palette.bg, palette.bg]} style={styles.container}>
       <SafeAreaView style={{ flex: 1 }}>
 <View style={styles.header}>
-          <PremiumPressable onPress={() => navigation.navigate('JournalDetails', { journalId })}>
-             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-                {/* Journal Avatar Thumbnail */}
+          {/* Row 1: Identity & Info */}
+          <PremiumPressable 
+            onPress={() => navigation.navigate('JournalDetails', { journalId })}
+            style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}
+          >
+             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1 }}>
+                {/* Journal Avatar */}
                 {journal?.photoUrl ? (
                   <Image 
                     source={{ uri: journal.photoUrl }} 
-                    style={{ width: 38, height: 38, borderRadius: 12, borderWidth: 1, borderColor: palette.border }} 
+                    style={{ width: 44, height: 44, borderRadius: 14, borderWidth: 1, borderColor: palette.border }} 
                   />
                 ) : (
                   <View style={{ 
-                    width: 38, height: 38, borderRadius: 12, 
+                    width: 44, height: 44, borderRadius: 14, 
                     backgroundColor: palette.accent + '15', 
                     alignItems: 'center', justifyContent: 'center',
                     borderWidth: 1, borderColor: palette.border
                   }}>
-                    <Users size={18} color={palette.accent} />
+                    <Users size={20} color={palette.accent} />
                   </View>
                 )}
 
-                <View>
-                  <Text style={[styles.title, { color: palette.text, fontSize: 18 }]}>
-                    {journal?.name || 'Shared Journal'} <Text style={{ fontSize: 14, color: palette.subtleText }}>ⓘ</Text>
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.title, { color: palette.text, fontSize: 20 }]} numberOfLines={1}>
+                    {journal?.name || 'Shared Journal'}
                   </Text>
-                  <Text style={[styles.subtitle, { color: palette.subtleText, marginTop: 0 }]}>
+                  <Text style={[styles.subtitle, { color: palette.subtleText, marginTop: 2 }]}>
                     {(() => {
                        const count = journal?.memberIds?.length || journal?.members?.length || 1;
                        const entryCount = entries.length;
@@ -209,22 +213,44 @@ return (
                   </Text>
                 </View>
              </View>
+             
+             {/* Info Icon */}
+             <View style={{ padding: 8 }}>
+                <Info size={22} color={palette.subtleText} />
+             </View>
           </PremiumPressable>
-          <View style={{ flexDirection: 'row', gap: 12 }}>
-            <PremiumPressable onPress={handleInvite} style={[styles.iconBtn, { backgroundColor: palette.card }]}>
-                <Share2 size={20} color={palette.accent} />
+
+          {/* Row 2: Action Bar */}
+          <View style={{ flexDirection: 'row', gap: 10 }}>
+            {/* Invite Button */}
+            <PremiumPressable 
+              onPress={handleInvite} 
+              style={[styles.actionChip, { backgroundColor: palette.accent + '15', flex: 1 }]}
+            >
+                <Share2 size={16} color={palette.accent} />
+                <Text style={{ fontSize: 13, fontWeight: '600', color: palette.accent }}>Invite</Text>
             </PremiumPressable>
-            <PremiumPressable onPress={handleLeave} style={[styles.iconBtn, { backgroundColor: palette.card }]}>
-                <LogOut size={20} color="#EF4444" />
-            </PremiumPressable>
+
+            {/* Search Button */}
             <PremiumPressable 
               onPress={() => {
                 if (isSearching) setSearchText('');
                 setIsSearching(!isSearching);
               }} 
-              style={[styles.iconBtn, { backgroundColor: palette.card }]}
+              style={[styles.actionChip, { backgroundColor: palette.card, flex: 1, borderColor: isSearching ? palette.accent : palette.border, borderWidth: 1 }]}
             >
-                {isSearching ? <X size={20} color={palette.text} /> : <Search size={20} color={palette.text} />}
+                {isSearching ? <X size={16} color={palette.text} /> : <Search size={16} color={palette.text} />}
+                <Text style={{ fontSize: 13, fontWeight: '600', color: palette.text }}>
+                  {isSearching ? 'Close' : 'Search'}
+                </Text>
+            </PremiumPressable>
+
+            {/* Leave Button */}
+            <PremiumPressable 
+              onPress={handleLeave} 
+              style={[styles.actionChip, { backgroundColor: 'rgba(239, 68, 68, 0.1)', width: 'auto', paddingHorizontal: 14 }]}
+            >
+                <LogOut size={16} color="#EF4444" />
             </PremiumPressable>
           </View>
         </View>
@@ -453,9 +479,22 @@ return (
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  header: { padding: 20, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  // Changed header from row to column to support stacked layout
+  header: { padding: 20, flexDirection: 'column' }, 
   title: { fontSize: 24, fontWeight: '800' },
-  subtitle: { fontSize: 14, marginTop: 4 },
+  subtitle: { fontSize: 13, marginTop: 4 },
+  
+  // New Styles for the Action Buttons
+  actionChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderRadius: 12,
+    gap: 6,
+  },
+
   list: { padding: 16, gap: 12 },
   entryCard: { padding: 16, borderRadius: 16, borderWidth: 1 },
   entryDate: { fontSize: 12, marginBottom: 8, fontWeight: '600' },

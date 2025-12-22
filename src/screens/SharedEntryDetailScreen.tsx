@@ -276,13 +276,19 @@ const hideSub = Keyboard.addListener('keyboardDidHide', () => {
   }, []);
   // ----------------------------------------------
 
-  const { entry: initialEntry } = route.params;
+const { entry: initialEntry } = route.params;
   const palette = useSharedPalette();
-  const { deleteSharedEntry, toggleCommentReaction, deleteComment, journals, markAsRead } = useJournalStore();
+  const { 
+    deleteSharedEntry, 
+    toggleCommentReaction, 
+    deleteComment, 
+    journals, 
+    markAsRead, 
+    blockUser, 
+    blockedUsers: allBlockedMap 
+  } = useJournalStore();
 
 // Mark journal as read only when LEAVING (Unmounting).
-  // This keeps the "New Comment" badge visible during the navigation transition
-  // and clears it only after you have finished reading and returned to the list.
   React.useEffect(() => {
     return () => {
       if (initialEntry.journalId) {
@@ -300,26 +306,26 @@ const hideSub = Keyboard.addListener('keyboardDidHide', () => {
     openSwipeableRef.current = ref;
   };
   
-// 1. Get LIVE entry & Settings
-  const { blockedUserIds, blockUser } = useSettings();
-  
+// 1. Get LIVE entry
   const rawEntry = useJournalStore(s => 
     s.sharedEntries[initialEntry.journalId]?.find(e => e.entryId === initialEntry.entryId)
   ) || initialEntry;
 
-  // 2. Filter Blocked Comments on the fly
+  // 2. Get Blocked List from JournalStore (Unified)
+  const myBlockedUsers = React.useMemo(() => {
+     const uid = auth.currentUser?.uid || '';
+     if (Array.isArray(allBlockedMap)) return [];
+     return allBlockedMap?.[uid] || [];
+  }, [allBlockedMap]);
+
+  // 3. Filter Blocked Comments on the fly
   const entry = React.useMemo(() => ({
     ...rawEntry,
-    comments: rawEntry.comments?.filter((c: any) => !blockedUserIds.includes(c.userId))
-  }), [rawEntry, blockedUserIds]);
+    comments: rawEntry.comments?.filter((c: any) => !myBlockedUsers.includes(c.userId))
+  }), [rawEntry, myBlockedUsers]);
   
   // Check if user is a Group Admin
   const journal = useJournalStore(s => s.journals[entry.journalId]);
-  // Get Blocked List
-  const { blockedUsers: allBlockedMap } = useJournalStore();
-  const myBlockedUsers = Array.isArray(allBlockedMap) 
-      ? allBlockedMap 
-      : (allBlockedMap[auth.currentUser?.uid || ''] || []);
   const userRole = journal?.roles?.[auth.currentUser?.uid || ''] || 'member';
   const isGroupAdmin = (auth.currentUser?.uid === journal?.owner) || userRole === 'admin' || userRole === 'owner';
 
@@ -390,15 +396,15 @@ const handleBlockUser = () => {
       "You will no longer see posts or comments from this user. This action is local to your device.",
       [
         { text: "Cancel", style: "cancel" },
-        {
-          text: "Block",
-          style: "destructive",
+        { 
+          text: "Block", 
+          style: "destructive", 
           onPress: () => {
-            // FIX: Removed auth.currentUser?.uid. 
-            // The function expects only the target userId.
-            blockUser(entry.userId);
-            
-            navigation.goBack(); // Exit screen since we blocked the author
+            if (auth.currentUser?.uid) {
+               // Use JournalStore blocking (requires both IDs)
+               blockUser(auth.currentUser.uid, entry.userId);
+               navigation.goBack(); 
+            }
           }
         }
       ]
