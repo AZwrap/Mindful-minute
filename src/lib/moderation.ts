@@ -6,9 +6,26 @@ import { functions, auth } from '../firebaseConfig';
 // 1. REGEX: Strict "No Links" Policy
 const LINK_REGEX = /((https?:\/\/)|(www\.))[^\s]+|([a-zA-Z0-9-]+\.(com|net|org|io|xyz|info|co|uk|us|ai|app))/i;
 
+// Local backstop for self-harm/suicide phrasing — fires before any network call
+// so we always respond with crisis support, even if the API is slow or misses it.
+const SELF_HARM_REGEX = /\b(kill(ing)?\s+(my\s*self|myself)|end(ing)?\s+(my|it\s+all)\s+(life|all)?|(want|wanna|gonna|going)\s+(to\s+)?die|suicid(e|al)|hurt(ing)?\s+myself|harm(ing)?\s+myself|cut(ting)?\s+myself|kms)\b/i;
+
+function showCrisisAlert() {
+  useUIStore.getState().showAlert(
+    "We're here for you",
+    "It sounds like you may be going through a really painful moment. You don't have to face this alone — please reach out for support:\n\n• Call or text 988 (US Suicide & Crisis Lifeline)\n• Text HOME to 741741 (Crisis Text Line)\n• Or call your local emergency services\n\nYour post wasn't sent. We want to keep this space safe for you and others."
+  );
+}
+
 export async function moderateContent(text: string, silent: boolean = false): Promise<boolean> {
-  
-  // A. Check for Links (Local & Fast)
+
+  // A. Self-harm guard (Local & Fast — runs before everything else)
+  if (SELF_HARM_REGEX.test(text)) {
+    if (!silent) showCrisisAlert();
+    return false; // Blocked
+  }
+
+  // B. Check for Links (Local & Fast)
   // We keep this local to save money and speed up checks
   if (LINK_REGEX.test(text)) {
     if (!silent) useUIStore.getState().showAlert("Moderation Blocked", "To keep this space safe, external links are not allowed.");
@@ -44,10 +61,15 @@ export async function moderateContent(text: string, silent: boolean = false): Pr
 
     if (data.flagged) {
       if (!silent) {
-        useUIStore.getState().showAlert(
-          "Content Removed", 
-          `Your post contains content flagged as: ${data.categories || 'Restricted Content'}. Please revise.`
-        );
+        const cats = (data.categories || '').toLowerCase();
+        if (cats.includes('self-harm') || cats.includes('self_harm')) {
+          showCrisisAlert();
+        } else {
+          useUIStore.getState().showAlert(
+            "Content Removed",
+            `Your post contains content flagged as: ${data.categories || 'Restricted Content'}. Please revise.`
+          );
+        }
       }
       return false; // Blocked
     }

@@ -39,7 +39,10 @@ export const moderateContent = onCall({ secrets: ["OPENAI_API_KEY"] }, async (re
   if (!text) return {flagged: false};
 
   try {
-    const response = await openai.moderations.create({input: text});
+    const response = await openai.moderations.create({
+      model: "omni-moderation-latest",
+      input: text,
+    });
     const result = response.results[0];
 
     if (result.flagged) {

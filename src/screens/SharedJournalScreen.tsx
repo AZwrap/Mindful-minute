@@ -268,7 +268,19 @@ return (
           </View>
         )}
 
-<FlatList
+{(() => {
+          const hidden = entries.length - entries.filter(e => !myBlockedUsers.includes(e.userId)).length;
+          if (hidden <= 0) return null;
+          return (
+            <View style={{ paddingHorizontal: 20, marginBottom: 8 }}>
+              <Text style={{ fontSize: 12, color: palette.subtleText, fontStyle: 'italic' }}>
+                {hidden} {hidden === 1 ? 'entry' : 'entries'} hidden from blocked users
+              </Text>
+            </View>
+          );
+        })()}
+
+        <FlatList
         // Filter out entries from blocked users
         data={entries.filter(e => !myBlockedUsers.includes(e.userId))}
         keyExtractor={(item) => item.entryId}

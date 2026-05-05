@@ -23,7 +23,7 @@
       }
     },
     "scheme": "micromuse",
-"android": {
+    "android": {
       "softwareKeyboardLayoutMode": "resize",
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
@@ -63,12 +63,14 @@
           "cameraPermission": "Allow Micro Muse to access your camera."
         }
       ],
-"@react-native-google-signin/google-signin"
+      "@react-native-google-signin/google-signin",
+      "expo-asset",
+      "expo-audio"
     ],
-"notification": {
+    "notification": {
       "icon": "./assets/notif.png",
       "color": "#6366F1",
-      "androidMode": "default" 
+      "androidMode": "default"
     },
     "web": {
       "favicon": "./assets/favicon.png",
