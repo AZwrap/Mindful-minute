@@ -367,7 +367,16 @@ const [suggestedMoods, setSuggestedMoods] = useState<Suggestion[]>([]);
     remaining, running, phase, currentCycle, totalCycles, skipBreakAvailable, timerCompleted,
 setRunning, handleTick, skipBreak, handleReset, fade
   } = useJournalTimer(date, isScreenActive);
-  
+
+  // Pause the timer when the screen blurs so the underlying setInterval is
+  // cleared and cycle-transition haptics can't fire from another screen.
+  useFocusEffect(
+    useCallback(() => {
+      setRunning(true);
+      return () => setRunning(false);
+    }, [setRunning])
+  );
+
   // (useWritingSettings moved to top)
   
   // Restore the missing variable
