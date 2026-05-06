@@ -64,10 +64,6 @@ export default function PremiumScreen() {
                   </Text>
                 </LinearGradient>
              </PremiumPressable>
-             
-             <PremiumPressable onPress={() => navigation.goBack()} style={{ marginTop: 16 }}>
-               <Text style={{ color: '#94A3B8', textAlign: 'center' }}>Restore Purchases</Text>
-             </PremiumPressable>
           </View>
         </ScrollView>
       </SafeAreaView>

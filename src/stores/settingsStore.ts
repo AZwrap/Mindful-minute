@@ -23,6 +23,7 @@ interface SettingsState {
 }
 
 interface SettingsActions {
+  setPremium: (status: boolean) => void;
   setHapticsEnabled: (val: boolean) => void;
   setSoundEnabled: (val: boolean) => void;
 setPreserveTimerProgress: (val: boolean) => void;
