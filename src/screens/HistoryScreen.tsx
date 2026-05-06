@@ -11,7 +11,6 @@ Animated,
   Platform,
   SectionList,
   LayoutAnimation, // <--- Added
-  UIManager,       // <--- Added
   TextInput,
   StyleProp,
   ViewStyle,
@@ -232,13 +231,6 @@ const [selectedMood, setSelectedMood] = useState('all');
   }, [entries, isDark]);
 const [refreshing, setRefreshing] = useState(false);
   const [deletedEntries, setDeletedEntries] = useState<Record<string, boolean>>({});
-
-  // Enable LayoutAnimation for Android
-  useEffect(() => {
-    if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
-      UIManager.setLayoutAnimationEnabledExperimental(true);
-    }
-  }, []);
 
   // Export Handler
   const handleLongPressEntry = (entry: JournalEntry) => {

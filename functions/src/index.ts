@@ -1,7 +1,8 @@
 import { onCall, HttpsError } from "firebase-functions/v2/https";
+import { auth as v1Auth } from "firebase-functions/v1";
 // Remove defineString since we use secrets directly now
 import OpenAI from "openai";
-import * as admin from "firebase-admin"; 
+import * as admin from "firebase-admin";
 
 // 1. Initialize Admin SDK
 admin.initializeApp();
@@ -59,4 +60,172 @@ export const moderateContent = onCall({ secrets: ["OPENAI_API_KEY"] }, async (re
     console.error("OpenAI Error:", error);
     return {flagged: false};
   }
+});
+
+// ============================================================================
+// Account-deletion cleanup: wipes Firestore + Storage when a user is deleted
+// from Firebase Auth. Triggered automatically by deleteUser() in the app.
+//
+// For shared journals where the user was a member (not sole owner), we
+// anonymize their authored entries and comments so other members can still
+// read history. Reports are left intact for moderation audit trail.
+// ============================================================================
+const DELETED_AUTHOR_LABEL = "Deleted user";
+
+export const cleanupOnUserDelete = v1Auth.user().onDelete(async (user) => {
+  const uid = user.uid;
+  const db = admin.firestore();
+  const bucket = admin.storage().bucket();
+  const FieldValue = admin.firestore.FieldValue;
+
+  console.log(`[cleanup] starting for uid=${uid}`);
+
+  // 1. Delete all user-private data (users/{uid} + all subcollections)
+  try {
+    await db.recursiveDelete(db.collection("users").doc(uid));
+    console.log(`[cleanup] deleted users/${uid}`);
+  } catch (e) {
+    console.error(`[cleanup] failed users/${uid}:`, e);
+  }
+
+  // 2. Handle shared journals where the user is involved
+  try {
+    const journalsSnap = await db
+      .collection("journals")
+      .where("memberIds", "array-contains", uid)
+      .get();
+
+    for (const j of journalsSnap.docs) {
+      const data = j.data();
+
+      if (data.owner === uid) {
+        // User was owner → delete the whole journal (other members lose access)
+        await db.recursiveDelete(j.ref);
+        console.log(`[cleanup] deleted journal ${j.id} (user was owner)`);
+        continue;
+      }
+
+      // User was a non-owner member → anonymize their content, then remove
+      // membership / denormalized references.
+
+      // 2a. Anonymize entries + comments + reactions in this journal
+      try {
+        const entriesSnap = await j.ref.collection("entries").get();
+
+        const results: number[] = await Promise.all(
+          entriesSnap.docs.map(async (e): Promise<number> => {
+            const eData = e.data();
+            const updates: Record<string, any> = {};
+
+            // Author scrub on the entry itself
+            if (eData.userId === uid) {
+              updates.authorName = DELETED_AUTHOR_LABEL;
+              updates.userId = null;
+            }
+
+            // Entry-level reactions: drop deleted UID from each list
+            const reactions = eData.reactions || {};
+            let reactionsChanged = false;
+            const newReactions: Record<string, string[]> = {};
+            for (const [type, list] of Object.entries(reactions)) {
+              if (Array.isArray(list) && list.includes(uid)) {
+                newReactions[type] = (list as string[]).filter((u) => u !== uid);
+                reactionsChanged = true;
+              } else {
+                newReactions[type] = list as string[];
+              }
+            }
+            if (reactionsChanged) updates.reactions = newReactions;
+
+            // Comments are stored as an array on the entry doc; walk and scrub
+            const comments = (eData.comments || []) as any[];
+            let commentsChanged = false;
+            const newComments = comments.map((c) => {
+              let modified = c;
+
+              if (c.userId === uid) {
+                modified = {
+                  ...modified,
+                  userId: null,
+                  authorName: DELETED_AUTHOR_LABEL,
+                };
+                commentsChanged = true;
+              }
+
+              const cReactions = (c.reactions || {}) as Record<string, string[]>;
+              let cReactionsChanged = false;
+              const newCReactions: Record<string, string[]> = {};
+              for (const [type, list] of Object.entries(cReactions)) {
+                if (Array.isArray(list) && list.includes(uid)) {
+                  newCReactions[type] = (list as string[]).filter((u) => u !== uid);
+                  cReactionsChanged = true;
+                } else {
+                  newCReactions[type] = list as string[];
+                }
+              }
+              if (cReactionsChanged) {
+                modified = { ...modified, reactions: newCReactions };
+                commentsChanged = true;
+              }
+
+              return modified;
+            });
+            if (commentsChanged) updates.comments = newComments;
+
+            if (Object.keys(updates).length > 0) {
+              await e.ref.update(updates);
+              return 1;
+            }
+            return 0;
+          })
+        );
+
+        const anonymized = results.reduce((a, b) => a + b, 0);
+        console.log(
+          `[cleanup] anonymized ${anonymized}/${entriesSnap.size} entries in journal ${j.id}`
+        );
+      } catch (err) {
+        console.error(
+          `[cleanup] entry anonymization failed for journal ${j.id}:`,
+          err
+        );
+      }
+
+      // 2b. Membership cleanup + scrub denormalized lastEntry preview
+      try {
+        const journalUpdates: Record<string, any> = {
+          memberIds: FieldValue.arrayRemove(uid),
+          [`membersMap.${uid}`]: FieldValue.delete(),
+          [`memberPhotos.${uid}`]: FieldValue.delete(),
+          [`nicknames.${uid}`]: FieldValue.delete(),
+          [`roles.${uid}`]: FieldValue.delete(),
+        };
+
+        if (data.lastEntry?.userId === uid) {
+          journalUpdates["lastEntry.author"] = DELETED_AUTHOR_LABEL;
+          journalUpdates["lastEntry.userId"] = null;
+        }
+
+        await j.ref.update(journalUpdates);
+        console.log(`[cleanup] removed uid=${uid} from journal ${j.id}`);
+      } catch (err) {
+        console.error(
+          `[cleanup] membership cleanup failed for journal ${j.id}:`,
+          err
+        );
+      }
+    }
+  } catch (e) {
+    console.error(`[cleanup] shared journals failed for uid=${uid}:`, e);
+  }
+
+  // 3. Delete all user's Storage files (audio, photos)
+  try {
+    await bucket.deleteFiles({ prefix: `users/${uid}/` });
+    console.log(`[cleanup] deleted Storage users/${uid}/`);
+  } catch (e) {
+    console.error(`[cleanup] Storage failed for uid=${uid}:`, e);
+  }
+
+  console.log(`[cleanup] complete for uid=${uid}`);
 });

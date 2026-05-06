@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { View, TextInput, StyleSheet, Text, KeyboardAvoidingView, Platform, Image, Pressable, ScrollView, ActivityIndicator } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useUIStore } from '../stores/uiStore';
@@ -18,7 +18,7 @@ import { useSharedPalette } from '../hooks/useSharedPalette';
 import { Lock } from 'lucide-react-native';
 import { sendImmediateNotification } from '../lib/notifications';
 import { moderateContent, moderateImage, moderateAudio } from '../lib/moderation';
-import AudioRecorder from '../components/AudioRecorder';
+import AudioRecorder, { AudioRecorderHandle } from '../components/AudioRecorder';
 import PremiumPressable from '../components/PremiumPressable';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'SharedWrite'>;
@@ -37,6 +37,7 @@ export default function SharedWriteScreen({ navigation, route }: Props) {
   const [imageUri, setImageUri] = useState<string | null>(rawImage);
   const [audioUri, setAudioUri] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const audioRecorderRef = useRef<AudioRecorderHandle>(null);
   
 const palette = useSharedPalette();
   const { addSharedEntry, updateSharedEntry } = useJournalStore();
@@ -107,8 +108,15 @@ const pickImage = () => {
   };
 
 const handlePost = async () => {
+    if (isSubmitting) return;
+
+    // Flush any in-progress recording first; the URI it returns is the
+    // source of truth (component state updates aren't visible until re-render).
+    const flushedAudioUri =
+      (await audioRecorderRef.current?.stopIfRecording()) ?? audioUri;
+
       // Check if we have *something* to post
-    if ((!text.trim() && !imageUri && !audioUri) || isSubmitting) return;
+    if (!text.trim() && !imageUri && !flushedAudioUri) return;
 
     setIsSubmitting(true);
 
@@ -124,8 +132,8 @@ const handlePost = async () => {
     }
 
     // 3. Check Audio
-    if (audioUri) {
-        const { safe } = await moderateAudio(audioUri);
+    if (flushedAudioUri) {
+        const { safe } = await moderateAudio(flushedAudioUri);
         if (!safe) { setIsSubmitting(false); return; }
     }
     // ---------------------
@@ -134,10 +142,10 @@ const handlePost = async () => {
     // Convert Audio to Base64 (so it can be saved in Firestore)
     let finalAudio = null;
 // Only convert if it's a new recording (starts with file://)
-    if (audioUri && audioUri.startsWith('file://')) {
+    if (flushedAudioUri && flushedAudioUri.startsWith('file://')) {
         try {
             // FIX: Use 'base64' string directly
-            const base64 = await FileSystem.readAsStringAsync(audioUri, { encoding: 'base64' });
+            const base64 = await FileSystem.readAsStringAsync(flushedAudioUri, { encoding: 'base64' });
             finalAudio = `data:audio/m4a;base64,${base64}`;
         } catch (e) {
             console.error("Audio conversion failed:", e);
@@ -199,7 +207,7 @@ if (isEditing) {
             </PremiumPressable>
           </View>
           
-          <ScrollView contentContainerStyle={{ padding: 16 }}>
+          <ScrollView contentContainerStyle={{ padding: 16 }} keyboardShouldPersistTaps="handled">
             <TextInput
               style={[styles.input, { color: palette.text }]}
               placeholder="Write something for the group..."
@@ -239,8 +247,9 @@ if (isEditing) {
                     </View>
                  </PremiumPressable>
               ) : (
-                <AudioRecorder 
-                  onRecordingComplete={setAudioUri} 
+                <AudioRecorder
+                  ref={audioRecorderRef}
+                  onRecordingComplete={setAudioUri}
                   existingUri={audioUri}
                 />
               )}

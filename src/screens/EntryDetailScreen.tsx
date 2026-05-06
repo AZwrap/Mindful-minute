@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, useColorScheme, ScrollView, Image, Modal, FlatL
 import * as Sharing from 'expo-sharing';
 import * as FileSystem from 'expo-file-system/legacy';
 import { Pencil, Users, Copy, X, CheckSquare, Square, PlayCircle, Share2, Play } from 'lucide-react-native';
-import { Audio } from 'expo-av'; // Added Audio
+import { createAudioPlayer, AudioPlayer } from 'expo-audio';
 import * as Clipboard from 'expo-clipboard';
 // @ts-ignore
 import { getRecommendedPlaylist } from '../constants/moodCategories';
@@ -77,12 +77,12 @@ const entry = useEntriesStore((s) => s.entries[date]);
   const [showShareModal, setShowShareModal] = useState(false);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   // Audio State
-  const [sound, setSound] = useState<Audio.Sound | null>(null);
+  const [sound, setSound] = useState<AudioPlayer | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
 
   useEffect(() => {
     return () => {
-      if (sound) sound.unloadAsync();
+      if (sound) sound.remove();
     };
   }, [sound]);
 
@@ -91,21 +91,22 @@ const entry = useEntriesStore((s) => s.entries[date]);
     try {
       if (sound) {
         if (isPlaying) {
-          await sound.pauseAsync();
+          sound.pause();
           setIsPlaying(false);
         } else {
-          await sound.playAsync();
+          sound.play();
           setIsPlaying(true);
         }
       } else {
-        const { sound: newSound } = await Audio.Sound.createAsync({ uri: entry.audioUri });
+        const newSound = createAudioPlayer({ uri: entry.audioUri });
         setSound(newSound);
         setIsPlaying(true);
-        await newSound.playAsync();
-        newSound.setOnPlaybackStatusUpdate((s) => {
+        newSound.play();
+        newSound.addListener('playbackStatusUpdate', (s) => {
           if (s.isLoaded && s.didJustFinish) {
+            newSound.pause();
+            newSound.seekTo(0);
             setIsPlaying(false);
-            newSound.setPositionAsync(0);
           }
         });
       }

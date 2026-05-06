@@ -2,8 +2,7 @@ import React from 'react';
 import { View, Text, StyleSheet, ScrollView, Image, TextInput, KeyboardAvoidingView, Platform, Pressable, Keyboard, Modal, Animated, InteractionManager, FlatList, SectionList } from 'react-native';
 import { Swipeable } from 'react-native-gesture-handler'; 
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Trash2, Edit2, ChevronLeft, Send, Heart, Flame, ThumbsUp, MessageCircle, Smile, Flag, Users, X, Play, Square } from 'lucide-react-native';
-import { Audio } from 'expo-av';
+import { Trash2, Edit2, ChevronLeft, Send, Heart, Flame, ThumbsUp, MessageCircle, Smile, Flag, Users, X } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { reportContent } from '../services/syncedJournalService'; // <--- Added Service
 import { useUIStore } from '../stores/uiStore';
@@ -18,7 +17,7 @@ import { useSharedPalette } from '../hooks/useSharedPalette';
 import { auth } from '../firebaseConfig';
 import PremiumPressable from '../components/PremiumPressable';
 import { moderateContent } from '../lib/moderation';
-import AudioPlayer from '../components/AudioPlayer';
+import VoiceNotePlayer from '../components/VoiceNotePlayer';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'SharedEntryDetail'>;
 
@@ -193,16 +192,6 @@ const CommentItem = ({ comment, currentUser, onDelete, onReport, onRowOpen, pale
 export default function SharedEntryDetailScreen({ navigation, route }: Props) {
   // --- MANUAL KEYBOARD HANDLING (Android Fix) ---
   const { showAlert } = useUIStore();
-
-  // Audio State
-  const [sound, setSound] = React.useState<Audio.Sound | null>(null);
-  const [isPlaying, setIsPlaying] = React.useState(false);
-
-  React.useEffect(() => {
-    return () => {
-      if (sound) sound.unloadAsync();
-    };
-  }, [sound]);
 
   const bottomPadding = React.useRef(new Animated.Value(0)).current;
 
@@ -548,44 +537,15 @@ return (
            </Text>
 
            {/* 2. AUDIO PLAYER (Voice Note) */}
-           {((entry.audioUri) || (typeof entry.text === 'object' && entry.text?.audioUri)) && (
-              <View style={{ marginTop: 16, marginBottom: 12 }}>
-                 <PremiumPressable 
-                    onPress={async () => {
-                      const uri = entry.audioUri || (typeof entry.text === 'object' ? entry.text?.audioUri : null);
-                      if (!uri) return;
-                      try {
-                        if (sound) {
-                          if (isPlaying) { await sound.pauseAsync(); setIsPlaying(false); } 
-                          else { await sound.playAsync(); setIsPlaying(true); }
-                        } else {
-                          const { sound: newSound } = await Audio.Sound.createAsync({ uri });
-                          setSound(newSound);
-                          setIsPlaying(true);
-                          await newSound.playAsync();
-                          newSound.setOnPlaybackStatusUpdate((s) => {
-                            if (s.isLoaded && s.didJustFinish) { setIsPlaying(false); newSound.setPositionAsync(0); }
-                          });
-                        }
-                      } catch (e) { showAlert("Error", "Could not play audio."); }
-                    }}
-                    style={{
-                      flexDirection: 'row', alignItems: 'center',
-                      backgroundColor: palette.card,
-                      borderColor: palette.border,
-                      borderWidth: 1, padding: 12, borderRadius: 16, gap: 12
-                    }}
-                 >
-                    <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: palette.accent, alignItems: 'center', justifyContent: 'center' }}>
-                       {isPlaying ? <Square size={16} color="white" fill="white" /> : <Play size={16} color="white" fill="white" />}
-                    </View>
-                    <View>
-                        <Text style={{ fontSize: 14, fontWeight: '700', color: palette.text }}>Voice Note</Text>
-                        <Text style={{ fontSize: 12, color: palette.subtleText }}>{isPlaying ? 'Playing...' : 'Tap to listen'}</Text>
-                    </View>
-                 </PremiumPressable>
-              </View>
-           )}
+           {(() => {
+             const audioUri = entry.audioUri || (typeof entry.text === 'object' ? entry.text?.audioUri : null);
+             if (!audioUri) return null;
+             return (
+               <View style={{ marginTop: 16, marginBottom: 12 }}>
+                 <VoiceNotePlayer uri={audioUri} />
+               </View>
+             );
+           })()}
 
            {/* 3. IMAGE */}
            {(entry.imageUri || (typeof entry.text === 'object' && entry.text?.imageUri)) && (
@@ -596,13 +556,6 @@ return (
              />
            )}
 
-           {/* AUDIO PLAYER */}
-            {entry.audioUri && (
-                <View style={{ marginTop: 8 }}>
-                   <AudioPlayer uri={entry.audioUri} />
-                </View>
-            )}
-           
 {/* REACTIONS */}
            <View style={[styles.reactionRow, { borderColor: palette.border }]}>
              {Object.entries(entry?.reactions || {}).map(([emoji, userList]: any) => {

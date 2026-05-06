@@ -10,9 +10,7 @@ import {
   Animated,
   ScrollView,
   NativeModules,
-Platform,
   LayoutAnimation,
-UIManager,
   Keyboard,
   Linking,
   Image, // <--- Added
@@ -58,11 +56,6 @@ import { useSharedPalette } from '../hooks/useSharedPalette';
 // Components
 import PremiumPressable from '../components/PremiumPressable';
 import SunTimesSelector from '../components/SunTimesSelector';
-
-// Enable LayoutAnimation for Android
-if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
-  UIManager.setLayoutAnimationEnabledExperimental(true);
-}
 
 const APP_COLORS = [
   '#6366F1', // Indigo (Default)

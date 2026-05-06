@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, FlatList, Pressable, TextInput, Share, Animated, LayoutAnimation, Platform, UIManager, Image, ActivityIndicator, RefreshControl } from 'react-native';
+import { View, Text, StyleSheet, FlatList, Pressable, TextInput, Share, Animated, LayoutAnimation, Image, ActivityIndicator, RefreshControl } from 'react-native';
 import { JournalService } from '../services/journalService'; // <--- Added
 import { useUIStore } from '../stores/uiStore';
 import { Swipeable } from 'react-native-gesture-handler';
@@ -84,13 +84,6 @@ const entries = sharedEntries[journalId] || [];
   // Search State
   const [searchText, setSearchText] = React.useState('');
   const [isSearching, setIsSearching] = React.useState(false);
-// Enable LayoutAnimation for Android
-  useEffect(() => {
-    if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
-      UIManager.setLayoutAnimationEnabledExperimental(true);
-    }
-  }, []);
-
 // Filter Logic: Get Blocked List from Journal Store
   const { blockedUsers } = useJournalStore(); // <--- USE JOURNAL STORE
   

@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "PowerShell(npm --prefix functions install --save firebase-functions@latest)",
+      "PowerShell(npm --prefix functions run build)"
+    ]
+  }
+}

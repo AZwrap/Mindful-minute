@@ -1,6 +1,14 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, forwardRef, useImperativeHandle } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Alert } from 'react-native';
-import { Audio } from 'expo-av';
+import {
+  createAudioPlayer,
+  useAudioRecorder,
+  useAudioRecorderState,
+  requestRecordingPermissionsAsync,
+  setAudioModeAsync,
+  RecordingPresets,
+  AudioPlayer,
+} from 'expo-audio';
 import { Mic, Square, Trash2, Play, Pause } from 'lucide-react-native';
 import { useSharedPalette } from '../hooks/useSharedPalette';
 
@@ -9,25 +17,51 @@ interface Props {
   existingUri?: string | null;
 }
 
-export default function AudioRecorder({ onRecordingComplete, existingUri }: Props) {
+export interface AudioRecorderHandle {
+  /** If a recording is in progress, stop it and return the URI. Otherwise return the current URI. */
+  stopIfRecording: () => Promise<string | null>;
+}
+
+const BAR_COUNT = 24;
+const METER_DB_MIN = -60;
+const METER_DB_MAX = 0;
+
+const AudioRecorder = forwardRef<AudioRecorderHandle, Props>(function AudioRecorder(
+  { onRecordingComplete, existingUri },
+  ref,
+) {
   const palette = useSharedPalette();
-  const [recording, setRecording] = useState<Audio.Recording | null>(null);
-  const [sound, setSound] = useState<Audio.Sound | null>(null);
+  const recorder = useAudioRecorder({
+    ...RecordingPresets.HIGH_QUALITY,
+    isMeteringEnabled: true,
+  });
+  const recorderState = useAudioRecorderState(recorder, 100);
+  const [player, setPlayer] = useState<AudioPlayer | null>(null);
   const [uri, setUri] = useState<string | null>(existingUri || null);
   const [isPlaying, setIsPlaying] = useState(false);
-  const [duration, setDuration] = useState("00:00");
-  const [timer, setTimer] = useState<NodeJS.Timeout | null>(null);
+  const [timer, setTimer] = useState<ReturnType<typeof setInterval> | null>(null);
   const [seconds, setSeconds] = useState(0);
+  const [meterHistory, setMeterHistory] = useState<number[]>(() => Array(BAR_COUNT).fill(0));
 
-  // Cleanup on unmount
   useEffect(() => {
     return () => {
       if (timer) clearInterval(timer);
-      if (sound) sound.unloadAsync();
+      if (player) player.remove();
     };
-  }, [sound, timer]);
+  }, [player, timer]);
 
-  // Format time helper
+  useEffect(() => {
+    if (!recorderState.isRecording) {
+      setMeterHistory(Array(BAR_COUNT).fill(0));
+      return;
+    }
+    const m = recorderState.metering;
+    if (m === undefined || !Number.isFinite(m)) return;
+    const clamped = Math.max(METER_DB_MIN, Math.min(METER_DB_MAX, m));
+    const norm = (clamped - METER_DB_MIN) / (METER_DB_MAX - METER_DB_MIN);
+    setMeterHistory((prev) => [...prev.slice(1), norm]);
+  }, [recorderState.metering, recorderState.isRecording]);
+
   const formatTime = (secs: number) => {
     const mins = Math.floor(secs / 60);
     const s = secs % 60;
@@ -36,22 +70,20 @@ export default function AudioRecorder({ onRecordingComplete, existingUri }: Prop
 
   const startRecording = async () => {
     try {
-      const permission = await Audio.requestPermissionsAsync();
+      const permission = await requestRecordingPermissionsAsync();
       if (permission.status !== 'granted') {
         Alert.alert("Permission Required", "Please allow microphone access to record.");
         return;
       }
 
-      await Audio.setAudioModeAsync({
-        allowsRecordingIOS: true,
-        playsInSilentModeIOS: true,
+      await setAudioModeAsync({
+        allowsRecording: true,
+        playsInSilentMode: true,
       });
 
-      const { recording } = await Audio.Recording.createAsync(
-        Audio.RecordingOptionsPresets.HIGH_QUALITY
-      );
-      
-      setRecording(recording);
+      await recorder.prepareToRecordAsync();
+      recorder.record();
+
       setSeconds(0);
       setTimer(setInterval(() => setSeconds(s => s + 1), 1000));
     } catch (err) {
@@ -59,30 +91,42 @@ export default function AudioRecorder({ onRecordingComplete, existingUri }: Prop
     }
   };
 
-  const stopRecording = async () => {
-    if (!recording) return;
-    
+  const stopRecording = async (): Promise<string | null> => {
     if (timer) clearInterval(timer);
-    setRecording(null);
-    await recording.stopAndUnloadAsync();
-    
-    const newUri = recording.getURI();
+    setTimer(null);
+
+    await recorder.stop();
+    const newUri = recorder.uri;
     setUri(newUri);
     onRecordingComplete(newUri);
+    return newUri;
   };
+
+  useImperativeHandle(
+    ref,
+    () => ({
+      async stopIfRecording() {
+        if (recorderState.isRecording) {
+          return stopRecording();
+        }
+        return uri;
+      },
+    }),
+    [recorderState.isRecording, uri],
+  );
 
   const playSound = async () => {
     if (!uri) return;
     try {
-      const { sound } = await Audio.Sound.createAsync({ uri });
-      setSound(sound);
+      const newPlayer = createAudioPlayer({ uri });
+      setPlayer(newPlayer);
       setIsPlaying(true);
-      await sound.playAsync();
-      
-      sound.setOnPlaybackStatusUpdate((status) => {
+      newPlayer.play();
+
+      newPlayer.addListener('playbackStatusUpdate', (status) => {
         if (status.isLoaded && status.didJustFinish) {
           setIsPlaying(false);
-          sound.unloadAsync();
+          newPlayer.remove();
         }
       });
     } catch (error) {
@@ -91,8 +135,9 @@ export default function AudioRecorder({ onRecordingComplete, existingUri }: Prop
   };
 
   const stopSound = async () => {
-    if (sound) {
-      await sound.stopAsync();
+    if (player) {
+      player.pause();
+      player.seekTo(0);
       setIsPlaying(false);
     }
   };
@@ -103,10 +148,8 @@ export default function AudioRecorder({ onRecordingComplete, existingUri }: Prop
     setSeconds(0);
   };
 
-  // --- UI RENDER ---
-  
   // 1. Idle State (No recording, No file)
-  if (!recording && !uri) {
+  if (!recorderState.isRecording && !uri) {
     return (
       <TouchableOpacity onPress={startRecording} style={[styles.btn, { backgroundColor: palette.card }]}>
         <Mic size={24} color={palette.text} />
@@ -115,10 +158,21 @@ export default function AudioRecorder({ onRecordingComplete, existingUri }: Prop
   }
 
   // 2. Recording State
-  if (recording) {
+  if (recorderState.isRecording) {
     return (
-      <View style={[styles.container, { backgroundColor: palette.card }]}>
+      <View style={[styles.container, { backgroundColor: palette.card, flex: 1 }]}>
         <Text style={{ color: '#EF4444', fontWeight: '600' }}>{formatTime(seconds)}</Text>
+        <View style={styles.waveform}>
+          {meterHistory.map((amp, i) => (
+            <View
+              key={i}
+              style={[
+                styles.bar,
+                { height: 4 + amp * 24, backgroundColor: '#EF4444' },
+              ]}
+            />
+          ))}
+        </View>
         <TouchableOpacity onPress={stopRecording} style={styles.stopBtn}>
             <Square size={20} color="#FFF" fill="#FFF" />
         </TouchableOpacity>
@@ -132,7 +186,7 @@ export default function AudioRecorder({ onRecordingComplete, existingUri }: Prop
       <TouchableOpacity onPress={isPlaying ? stopSound : playSound}>
         {isPlaying ? <Pause size={24} color={palette.accent} /> : <Play size={24} color={palette.accent} />}
       </TouchableOpacity>
-      
+
       <Text style={{ color: palette.text, fontSize: 14 }}>Audio Recorded</Text>
 
       <TouchableOpacity onPress={deleteRecording}>
@@ -140,7 +194,9 @@ export default function AudioRecorder({ onRecordingComplete, existingUri }: Prop
       </TouchableOpacity>
     </View>
   );
-}
+});
+
+export default AudioRecorder;
 
 const styles = StyleSheet.create({
   btn: {
@@ -169,5 +225,16 @@ const styles = StyleSheet.create({
     backgroundColor: '#EF4444',
     justifyContent: 'center',
     alignItems: 'center',
-  }
+  },
+  waveform: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    height: 32,
+  },
+  bar: {
+    width: 3,
+    borderRadius: 2,
+  },
 });

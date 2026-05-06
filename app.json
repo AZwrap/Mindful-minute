@@ -65,7 +65,14 @@
       ],
       "@react-native-google-signin/google-signin",
       "expo-asset",
-      "expo-audio"
+      "expo-audio",
+      [
+        "@sentry/react-native/expo",
+        {
+          "organization": "kovalt-labs",
+          "project": "react-native"
+        }
+      ]
     ],
     "notification": {
       "icon": "./assets/notif.png",

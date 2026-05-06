@@ -17,7 +17,15 @@ Platform,
 import { useUIStore } from '../stores/uiStore';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
-import { Audio } from 'expo-av';
+import {
+  createAudioPlayer,
+  useAudioRecorder,
+  useAudioRecorderState,
+  requestRecordingPermissionsAsync,
+  setAudioModeAsync,
+  RecordingPresets,
+  AudioPlayer,
+} from 'expo-audio';
 import { Mic, Square, Play, Trash2, RotateCcw, Camera, XCircle } from 'lucide-react-native';
 import * as ImagePicker from 'expo-image-picker'; // NEW
 import * as FileSystem from 'expo-file-system'; // Added for permanent storage
@@ -97,9 +105,11 @@ export default function WriteScreen({ navigation, route }: Props) {
   const existingEntry = useEntriesStore(s => s.entries[date]);
 
   // --- VOICE MEMO STATE ---
-  const [recording, setRecording] = useState<Audio.Recording | undefined | null>(null);
+  const audioRecorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY);
+  const recorderState = useAudioRecorderState(audioRecorder);
+  const isRecording = recorderState.isRecording;
   const [audioUri, setAudioUri] = useState<string | null>(null);
-const [sound, setSound] = useState<Audio.Sound | null>(null);
+const [sound, setSound] = useState<AudioPlayer | null>(null);
 const [isPlaying, setIsPlaying] = useState(false);
   const [imageUri, setImageUri] = useState<string | null>(null); // NEW
 
@@ -180,58 +190,58 @@ const [isPlaying, setIsPlaying] = useState(false);
   // --- VOICE LOGIC ---
   async function startRecording() {
     try {
-      const perm = await Audio.requestPermissionsAsync();
+      const perm = await requestRecordingPermissionsAsync();
       if (perm.status !== "granted") {
         showAlert("Permission Denied", "Allow microphone access.");
         return;
       }
-      await Audio.setAudioModeAsync({ allowsRecordingIOS: true, playsInSilentModeIOS: true });
-      const { recording: newRecording } = await Audio.Recording.createAsync(Audio.RecordingOptionsPresets.HIGH_QUALITY);
-      setRecording(newRecording);
+      await setAudioModeAsync({ allowsRecording: true, playsInSilentMode: true });
+      await audioRecorder.prepareToRecordAsync();
+      audioRecorder.record();
     } catch (err) { console.error("Failed to start recording", err); }
   }
 
   async function stopRecording() {
-    if (!recording) return;
+    if (!isRecording) return;
     try {
-        setRecording(undefined); // Clear state immediately
-        await recording.stopAndUnloadAsync();
-        const uri = recording.getURI();
-        setAudioUri(uri);
+        await audioRecorder.stop();
+        setAudioUri(audioRecorder.uri);
     } catch(err) { console.error(err); }
   }
 
   async function playSound() {
-    if (sound) { 
-      await sound.stopAsync(); 
-      setIsPlaying(false); 
-      return; 
+    if (sound) {
+      sound.pause();
+      sound.seekTo(0);
+      setIsPlaying(false);
+      return;
     }
-    
+
     if (!audioUri) return;
 
     try {
-      const { sound: newSound } = await Audio.Sound.createAsync({ uri: audioUri });
+      const newSound = createAudioPlayer({ uri: audioUri });
       setSound(newSound);
       setIsPlaying(true);
-      await newSound.playAsync();
-      newSound.setOnPlaybackStatusUpdate((status) => {
-        if (status.isLoaded && status.didJustFinish) { 
-          setIsPlaying(false); 
-          setSound(null); 
+      newSound.play();
+      newSound.addListener('playbackStatusUpdate', (status) => {
+        if (status.isLoaded && status.didJustFinish) {
+          setIsPlaying(false);
+          newSound.remove();
+          setSound(null);
         }
       });
     } catch (e) { console.log("Play error", e); }
   }
 
   const deleteRecording = async () => {
-    if (sound) { await sound.unloadAsync(); }
+    if (sound) { sound.remove(); }
     setAudioUri(null);
     setSound(null);
     setIsPlaying(false);
   };
 
-  useEffect(() => { return () => { if (sound) sound.unloadAsync(); }; }, [sound]);
+  useEffect(() => { return () => { if (sound) sound.remove(); }; }, [sound]);
 
   // ===== SMART PROMPT =====
   const map = useEntriesStore((s) => s.entries);
@@ -598,12 +608,12 @@ onBlur={() => handleInputFocusAnim(0)}
                 <View style={{ flexDirection: 'row', gap: 12 }}>
                   {/* Voice Button */}
                   {!audioUri ? (
-                    <PremiumPressable 
-                      onPress={recording ? stopRecording : startRecording} 
-                      style={{ 
+                    <PremiumPressable
+                      onPress={isRecording ? stopRecording : startRecording}
+                      style={{
                         flex: 1,
-                        backgroundColor: recording ? '#EF4444' : palette.card, 
-                        borderColor: recording ? '#EF4444' : palette.border, 
+                        backgroundColor: isRecording ? '#EF4444' : palette.card,
+                        borderColor: isRecording ? '#EF4444' : palette.border,
                         borderWidth: 1, 
                         borderRadius: 14, 
                         paddingVertical: 12, 
@@ -613,9 +623,9 @@ onBlur={() => handleInputFocusAnim(0)}
                         gap: 8 
                       }}
                     >
-                      {recording ? <Square size={20} color="white" /> : <Mic size={20} color={palette.text} />}
-                      <Text style={{ color: recording ? 'white' : palette.text, fontWeight: '600' }}>
-                        {recording ? "Stop" : "Voice"}
+                      {isRecording ? <Square size={20} color="white" /> : <Mic size={20} color={palette.text} />}
+                      <Text style={{ color: isRecording ? 'white' : palette.text, fontWeight: '600' }}>
+                        {isRecording ? "Stop" : "Voice"}
                       </Text>
                     </PremiumPressable>
                   ) : (

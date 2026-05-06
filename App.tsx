@@ -1,4 +1,5 @@
 import 'react-native-get-random-values';
+import * as Sentry from '@sentry/react-native';
 import React, { useEffect } from "react"; // Add useEffect
 import * as Notifications from 'expo-notifications'; // Add Notifications
 import { auth } from './src/firebaseConfig'; // <--- Added
@@ -21,7 +22,12 @@ import { ErrorBoundary } from "./src/components/ErrorBoundary";
 import GlobalAlert from "./src/components/GlobalAlert";
 import './src/utils/ignoreWarnings';
 
-export default function App() {
+Sentry.init({
+  dsn: process.env.EXPO_PUBLIC_SENTRY_DSN,
+  ignoreErrors: ['Unable to activate keep awake'],
+});
+
+function App() {
   const { isReady, theme, linking } = useAppInitialization();
   const [currentRouteName, setCurrentRouteName] = React.useState<string | undefined>();
 
@@ -117,3 +123,5 @@ export default function App() {
     </SafeAreaProvider>
   );
 }
+
+export default Sentry.wrap(App);

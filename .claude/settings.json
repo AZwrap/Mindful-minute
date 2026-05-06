@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "PowerShell(firebase deploy --only functions)",
+      "PowerShell(npm install)",
+      "PowerShell(npx tsc --noEmit)",
+      "PowerShell(firebase deploy --only functions:cleanupOnUserDelete)",
+      "PowerShell(npx expo install @sentry/react-native)",
+      "PowerShell(eas secret:create --scope project --name EXPO_PUBLIC_SENTRY_DSN --value \"https://2d27fa45d26d5f20261718565fca5cce@o4511344453681152.ingest.us.sentry.io/4511344459710464\" --non-interactive)"
+    ]
+  }
+}

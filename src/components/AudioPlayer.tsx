@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
-import { Audio } from 'expo-av';
+import { createAudioPlayer, AudioPlayer as ExpoAudioPlayer } from 'expo-audio';
 import { Play, Pause } from 'lucide-react-native';
 import { useSharedPalette } from '../hooks/useSharedPalette';
 
@@ -10,44 +10,38 @@ interface Props {
 
 export default function AudioPlayer({ uri }: Props) {
   const palette = useSharedPalette();
-  const [sound, setSound] = useState<Audio.Sound | null>(null);
+  const [player, setPlayer] = useState<ExpoAudioPlayer | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
 
-  // Cleanup when leaving the screen
   useEffect(() => {
     return () => {
-      if (sound) sound.unloadAsync();
+      if (player) player.remove();
     };
-  }, [sound]);
+  }, [player]);
 
   const handlePlayPause = async () => {
     try {
-      // 1. If sound exists, just toggle
-      if (sound) {
+      if (player) {
         if (isPlaying) {
-          await sound.pauseAsync();
+          player.pause();
           setIsPlaying(false);
         } else {
-          await sound.playAsync();
+          player.play();
           setIsPlaying(true);
         }
         return;
       }
 
-      // 2. If no sound loaded, load it now
-      const { sound: newSound } = await Audio.Sound.createAsync(
-        { uri },
-        { shouldPlay: true }
-      );
-      
-      setSound(newSound);
+      const newPlayer = createAudioPlayer({ uri });
+      setPlayer(newPlayer);
       setIsPlaying(true);
+      newPlayer.play();
 
-      // Reset when finished
-      newSound.setOnPlaybackStatusUpdate((status) => {
+      newPlayer.addListener('playbackStatusUpdate', (status) => {
         if (status.isLoaded && status.didJustFinish) {
+          newPlayer.pause();
+          newPlayer.seekTo(0);
           setIsPlaying(false);
-          newSound.setPositionAsync(0);
         }
       });
 
@@ -65,7 +59,7 @@ export default function AudioPlayer({ uri }: Props) {
             <Play size={18} color="#FFF" fill="#FFF" />
         )}
       </TouchableOpacity>
-      
+
       <Text style={{ color: palette.text, fontWeight: '500', marginLeft: 12 }}>
         Voice Note
       </Text>
