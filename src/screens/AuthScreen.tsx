@@ -82,7 +82,28 @@ export default function AuthScreen({ navigation }: Props) {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-const handleForgotPassword = async () => {
+const humanizeAuthError = (error: any): string => {
+    const code: string = error?.code || '';
+    const raw: string = error?.message || '';
+    const has = (needle: string) => code === needle || raw.includes(needle);
+
+    if (has('auth/invalid-email')) return 'That email address looks invalid.';
+    if (has('auth/invalid-credential')) return 'Incorrect email or password.';
+    if (has('auth/user-not-found')) return "We couldn't find an account with that email.";
+    if (has('auth/wrong-password')) return 'Incorrect password.';
+    if (has('auth/email-already-in-use')) return 'That email is already registered. Try logging in instead.';
+    if (has('auth/weak-password') || has('weak-password') || raw.toLowerCase().includes('should be at least')) {
+      return 'Your password needs to be at least 6 characters.';
+    }
+    if (has('auth/missing-password')) return 'Please enter a password.';
+    if (has('auth/too-many-requests')) return 'Too many attempts. Please wait a moment and try again.';
+    if (has('auth/network-request-failed')) return 'Network error. Check your connection and try again.';
+    if (has('auth/user-disabled')) return 'This account has been disabled.';
+
+    return 'Something went wrong. Please try again.';
+  };
+
+  const handleForgotPassword = async () => {
     if (!email) {
 showAlert('Email Required', 'Please enter your email address to reset your password.');
       return;
@@ -91,7 +112,7 @@ showAlert('Email Required', 'Please enter your email address to reset your passw
       await sendPasswordResetEmail(auth, email);
 showAlert('Email Sent', 'Check your inbox for password reset instructions.');
     } catch (error: any) {
-showAlert('Error', error.message);
+showAlert('Error', humanizeAuthError(error));
     }
   };
 const handleAuth = async () => {
@@ -124,15 +145,7 @@ if (isLogin) {
       // Do NOT call setLoading(false) here because component unmounts
     } catch (error: any) {
       setLoading(false); // Only stop loading on error (component remains mounted)
-      
-let msg = error.message;
-      if (msg.includes('auth/invalid-email')) msg = 'Invalid email address.';
-      // Handle "invalid-credential" which covers both wrong password and user not found in newer Firebase versions
-      if (msg.includes('auth/invalid-credential')) msg = 'Incorrect email or password.';
-      if (msg.includes('auth/user-not-found')) msg = 'No account found with this email.';
-      if (msg.includes('auth/wrong-password')) msg = 'Incorrect password.';
-      if (msg.includes('auth/email-already-in-use')) msg = 'Email is already registered.';
-showAlert('Authentication Error', msg);
+      showAlert('Authentication Error', humanizeAuthError(error));
     }
   };
 

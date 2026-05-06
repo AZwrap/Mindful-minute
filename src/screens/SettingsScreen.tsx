@@ -33,7 +33,8 @@ MessageSquare, Gift, UserX, Shield
 } from 'lucide-react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { updateProfile, signOut, deleteUser } from 'firebase/auth';
-import { auth } from '../firebaseConfig';
+import { httpsCallable } from 'firebase/functions';
+import { auth, functions } from '../firebaseConfig';
 
 // Stores & Config
 import { useSettings } from "../stores/settingsStore";
@@ -499,10 +500,23 @@ showAlert("Error", "Failed to reset data.");
           onPress: async () => {
             const user = auth.currentUser;
             if (!user) return;
-            
+
+            // 1. Server-side cleanup of Firestore + Storage. Must succeed
+            // before we delete the auth user, otherwise we'd lose the UID
+            // and the user couldn't retry.
+            try {
+              await httpsCallable(functions, 'cleanupUserData')();
+            } catch (e: any) {
+              showAlert(
+                "Cleanup Failed",
+                "We couldn't delete your data right now. Please check your connection and try again. Your account has not been deleted.",
+              );
+              return;
+            }
+
             try {
               await deleteUser(user);
-              
+
               // Clear local data (same as factory reset)
               await AsyncStorage.clear();
               useEntriesStore.setState({ 

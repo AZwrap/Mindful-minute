@@ -1,7 +1,7 @@
 export type RootStackParamList = {
   Onboarding: undefined;
   Auth: undefined;
-  MainTabs: undefined; 
+  MainTabs: undefined;
   EditEntry: { date: string };
 
   // Modals & Features
@@ -22,4 +22,13 @@ JournalList: undefined; // <--- Add this back!
   SharedWrite: { journalId: string; entry?: any };
   Invite: undefined;
   GroupReports: { journalId: string };
+};
+
+// Tab names match MainTabs.tsx (the active tab navigator).
+export type TabParamList = {
+  Today: undefined;
+  History: undefined;
+  Insights: { initialMood?: string };
+  Awards: undefined;
+  Settings: undefined;
 };

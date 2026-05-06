@@ -18,7 +18,7 @@ import { CompositeScreenProps } from '@react-navigation/native';
 import { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/RootStack';
-import { TabParamList } from '../navigation/TabNavigator';
+import { TabParamList } from '../navigation/types';
 import { 
   BarChart as BarChartIcon, 
   Clock, 
@@ -52,7 +52,7 @@ import { generateTherapistReport } from '../utils/generateTherapistReport';
 // TYPES
 // --------------------------------------------------
 type Props = CompositeScreenProps<
-  BottomTabScreenProps<TabParamList, 'Stats'>,
+  BottomTabScreenProps<TabParamList, 'Insights'>,
   NativeStackScreenProps<RootStackParamList>
 >;
 

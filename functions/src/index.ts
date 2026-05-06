@@ -1,5 +1,4 @@
 import { onCall, HttpsError } from "firebase-functions/v2/https";
-import { auth as v1Auth } from "firebase-functions/v1";
 // Remove defineString since we use secrets directly now
 import OpenAI from "openai";
 import * as admin from "firebase-admin";
@@ -63,8 +62,8 @@ export const moderateContent = onCall({ secrets: ["OPENAI_API_KEY"] }, async (re
 });
 
 // ============================================================================
-// Account-deletion cleanup: wipes Firestore + Storage when a user is deleted
-// from Firebase Auth. Triggered automatically by deleteUser() in the app.
+// Account-deletion cleanup: wipes Firestore + Storage for the calling user.
+// Must be invoked from the client BEFORE calling deleteUser() in Firebase Auth.
 //
 // For shared journals where the user was a member (not sole owner), we
 // anonymize their authored entries and comments so other members can still
@@ -72,8 +71,15 @@ export const moderateContent = onCall({ secrets: ["OPENAI_API_KEY"] }, async (re
 // ============================================================================
 const DELETED_AUTHOR_LABEL = "Deleted user";
 
-export const cleanupOnUserDelete = v1Auth.user().onDelete(async (user) => {
-  const uid = user.uid;
+export const cleanupUserData = onCall(async (request) => {
+  const uid = request.auth?.uid;
+  if (!uid) {
+    throw new HttpsError(
+      "unauthenticated",
+      "You must be signed in to delete your account data.",
+    );
+  }
+
   const db = admin.firestore();
   const bucket = admin.storage().bucket();
   const FieldValue = admin.firestore.FieldValue;
@@ -228,4 +234,5 @@ export const cleanupOnUserDelete = v1Auth.user().onDelete(async (user) => {
   }
 
   console.log(`[cleanup] complete for uid=${uid}`);
+  return { success: true };
 });

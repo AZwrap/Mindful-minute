@@ -26,7 +26,7 @@ import { CompositeScreenProps } from '@react-navigation/native';
 import { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/RootStack';
-import { TabParamList } from '../navigation/TabNavigator';
+import { TabParamList } from '../navigation/types';
 
 // Stores & Types
 import { useEntriesStore, JournalEntry } from "../stores/entriesStore";
@@ -379,7 +379,7 @@ return result;
 
           {/* STATS SUMMARY WIDGET */}
           <PremiumPressable
-            onPress={() => navigation.navigate('Stats', { initialMood: selectedMood })}
+            onPress={() => navigation.navigate('Insights', { initialMood: selectedMood })}
             haptic="light"
             style={[
               styles.statsWidget,
