@@ -1192,10 +1192,34 @@ const SettingRow = ({ label, description, value, onValueChange, icon }: any) => 
                     <Text style={{ color: palette.subtleText }}>›</Text>
                   </PremiumPressable>
 
-                  <PremiumPressable onPress={handleDeleteAccount} style={styles.menuItem}>
+                  <PremiumPressable onPress={handleDeleteAccount} style={[styles.menuItem, { borderBottomWidth: 1, borderBottomColor: palette.border }]}>
                     <View style={styles.menuItemContent}>
                       <UserX size={20} color="#EF4444" />
                       <Text style={[styles.menuItemTitle, { color: "#EF4444" }]}>Delete Account</Text>
+                    </View>
+                    <Text style={{ color: palette.subtleText }}>›</Text>
+                  </PremiumPressable>
+
+                  <PremiumPressable
+                    onPress={() => Linking.openURL("https://docs.google.com/document/d/1vFlRzHi_8XRNIPVNWteL4_ptNXcTEkELkquYwvW5f4E/view")}
+                    haptic="light"
+                    style={[styles.menuItem, { borderBottomWidth: 1, borderBottomColor: palette.border }]}
+                  >
+                    <View style={styles.menuItemContent}>
+                      <Shield size={20} color={palette.accent} />
+                      <Text style={[styles.menuItemTitle, { color: palette.text }]}>Privacy Policy</Text>
+                    </View>
+                    <Text style={{ color: palette.subtleText }}>›</Text>
+                  </PremiumPressable>
+
+                  <PremiumPressable
+                    onPress={() => Linking.openURL("https://docs.google.com/document/d/1ywQTqqK-OKf-_7pmfKNEVe3qJ21uqAD-32QBRjWi3o8/view")}
+                    haptic="light"
+                    style={styles.menuItem}
+                  >
+                    <View style={styles.menuItemContent}>
+                      <FileText size={20} color={palette.accent} />
+                      <Text style={[styles.menuItemTitle, { color: palette.text }]}>Terms of Service</Text>
                     </View>
                     <Text style={{ color: palette.subtleText }}>›</Text>
                   </PremiumPressable>
